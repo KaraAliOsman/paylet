@@ -1,0 +1,35 @@
+# Render Blueprint for Paylet (PayPal sandbox demo). Secrets are set in the Render dashboard, never committed.
+services:
+  - type: web
+    name: paylet
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install -g pnpm@12.5.1 && pnpm install --frozen-lockfile && pnpm build
+    startCommand: node --no-warnings --import tsx src/server/index.ts
+    healthCheckPath: /api/health
+    disk:
+      name: paylet-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: DATA_DIR
+        value: /var/data
+      - key: PUBLIC_URL
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: AI_BASE_URL
+        value: https://api.primalabs.ai/v1
+      - key: AI_MODEL
+        value: primalabs-ai/MiMo-V2.6-Pro
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_DAILY_CALL_LIMIT
+        value: "600"
+      - key: HASH_SECRET
+        generateValue: true

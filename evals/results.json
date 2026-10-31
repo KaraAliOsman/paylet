@@ -1,0 +1,77 @@
+{
+  "ranAt": "2026-10-31T23:50:35.943Z",
+  "model": "primalabs-ai/MiMo-V2.6-Pro",
+  "dataset": {
+    "sha256": "b8367bedadcf68570acc6e2766bbf3b0bfe00791883d5b131b4a21d04afb0dbd",
+    "entries": 169,
+    "groups": 121,
+    "kinds": {
+      "reshipper_network": 42,
+      "household": 21,
+      "fan": 70,
+      "neighbor": 20,
+      "namesake": 16
+    },
+    "generator": "syntheticCrowd(seed 20261112) + LLM red-team rewrites of reseller networks (42 rewrites accepted)",
+    "frozenAt": "2026-10-31T23:50:04.008Z"
+  },
+  "truthPairs": 123,
+  "uncertainPairs": 52,
+  "results": [
+    {
+      "system": "Exact match (raw address / email)",
+      "precision": 1,
+      "recall": 0.12195121951219512,
+      "f1": 0.21739130434782605,
+      "falseMerges": 0,
+      "missedLinks": 108,
+      "llmCalls": 0,
+      "ms": 8,
+      "recallByKind": {
+        "reshipper_network": 0,
+        "household": 0.8333333333333334
+      },
+      "falseMergeKinds": {}
+    },
+    {
+      "system": "Normalisation + rules (no AI)",
+      "precision": 0.9044117647058824,
+      "recall": 1,
+      "f1": 0.9498069498069499,
+      "falseMerges": 13,
+      "missedLinks": 0,
+      "llmCalls": 0,
+      "ms": 213,
+      "recallByKind": {
+        "reshipper_network": 1,
+        "household": 1
+      },
+      "falseMergeKinds": {
+        "fan": 12,
+        "reshipper_network": 12,
+        "neighbor": 2
+      }
+    },
+    {
+      "system": "Paylet: rules + AI adjudication (MiMo-V2.6-Pro)",
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "falseMerges": 0,
+      "missedLinks": 0,
+      "llmCalls": 17,
+      "ms": 31333,
+      "recallByKind": {
+        "reshipper_network": 1,
+        "household": 1
+      },
+      "falseMergeKinds": {}
+    }
+  ],
+  "notes": [
+    "Ground truth: 123 account pairs that belong to the same household or reseller operation.",
+    "Only 52 fuzzy pairs (out of 14196) were sent to the model; everything else is decided by deterministic rules.",
+    "Hard negatives include neighbours in different apartments of one building and identical common names in different cities.",
+    "In production nothing is auto-merged: these suggestions go to the seller, and fans can appeal."
+  ]
+}

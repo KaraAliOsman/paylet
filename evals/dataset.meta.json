@@ -1,0 +1,14 @@
+{
+  "sha256": "b8367bedadcf68570acc6e2766bbf3b0bfe00791883d5b131b4a21d04afb0dbd",
+  "entries": 169,
+  "groups": 121,
+  "kinds": {
+    "reshipper_network": 42,
+    "household": 21,
+    "fan": 70,
+    "neighbor": 20,
+    "namesake": 16
+  },
+  "generator": "syntheticCrowd(seed 20261112) + LLM red-team rewrites of reseller networks (42 rewrites accepted)",
+  "frozenAt": "2026-10-31T23:50:04.008Z"
+}
