@@ -58,7 +58,7 @@ const EDL = {
     ],
     vo: [["06a", "start+0.3"], ["06b", "a-ledger+0.2"]],
   },
-  "07-verify": { cap: "06  VERIFY IT YOURSELF", seg: [["start-0.2", "consistent+1.6", null], ["a-start-0.1", "ask+3.2", null]], vo: [["07", "start+0.4"]] },
+  "07-verify": { cap: "06  VERIFY IT YOURSELF", seg: [["start+0.5", "consistent+1.6", null], ["a-start+0.4", "ask+3.2", null]], vo: [["07", "start+0.4"]] },
   "08-how": { cap: "07  UNDER THE HOOD", seg: [["start-0.2", "end", null]], vo: [["08", "start+1.0"]] },
   "09-outro": { seg: [["start-0.6", "end", null]], vo: [["09", "start+0.6"]] },
 };
@@ -75,8 +75,8 @@ const caption = (text) => {
   writeFileSync(num, `[ ${n} ]`);
   writeFileSync(body, rest.join(" "));
   return (
-    `,drawtext=fontfile='${FONT}':textfile='${num}':fontsize=30:fontcolor=0x111110:box=1:boxcolor=0xF5A400:boxborderw=18:x=96:y=118:alpha='${a}'` +
-    `,drawtext=fontfile='${FONT}':textfile='${body}':fontsize=30:fontcolor=0xFFFFFF:box=1:boxcolor=0x111110:boxborderw=18:x=96+178:y=118:alpha='${a}'`
+    `,drawtext=fontfile='${FONT}':textfile='${num}':fontsize=30:fontcolor=0x111110:box=1:boxcolor=0xF5A400:boxborderw=18:x=96:y=h-th-104:alpha='${a}'` +
+    `,drawtext=fontfile='${FONT}':textfile='${body}':fontsize=30:fontcolor=0xFFFFFF:box=1:boxcolor=0x111110:boxborderw=18:x=96+178:y=h-th-104:alpha='${a}'`
   );
 };
 const run = (args) => execFileSync("ffmpeg", ["-v", "error", "-y", ...args], { stdio: "inherit" });

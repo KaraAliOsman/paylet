@@ -29,7 +29,7 @@ const PAGE_SETUP = `(() => {
     document.documentElement.style.zoom = onPayPal ? "1.35" : "1.5";
     const s = document.createElement("style");
     s.textContent = \`
-      html{scrollbar-width:none}html::-webkit-scrollbar{display:none}
+      html{scrollbar-width:none}html::-webkit-scrollbar{display:none}.topbar{background:#fff!important}
       #__cur{position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;will-change:transform;transform:translate(-200px,-200px)}
       #__cur svg{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
       .__rip{position:fixed;z-index:2147483646;pointer-events:none;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;
@@ -76,8 +76,13 @@ let marks: [string, number][] = [];
 let t0 = 0;
 const mark = (name: string) => marks.push([name, +((Date.now() - t0) / 1000).toFixed(2)]);
 
-async function scene(browser: Browser, name: string, run: (page: Page, ctx: BrowserContext) => Promise<void>) {
+/** Scenes that log in to PayPal run in the plain headless browser: PayPal's sandbox rejects the off-screen GPU window. */
+const PAYPAL_SCENES = ["03", "04"];
+let plain: Browser | null = null;
+
+async function scene(gpu: Browser, name: string, run: (page: Page, ctx: BrowserContext) => Promise<void>) {
   if (only && !only.includes(name.slice(0, 2))) return;
+  const browser = PAYPAL_SCENES.includes(name.slice(0, 2)) && process.env.HEADED ? (plain ??= await chromium.launch()) : gpu;
   const ctx = await browser.newContext({ viewport: { width: W, height: H }, recordVideo: { dir: `${out}/raw`, size: { width: W, height: H } }, locale: "en-US" });
   await ctx.addInitScript({ content: PAGE_SETUP });
   const page = await ctx.newPage();
@@ -266,7 +271,7 @@ await scene(browser, "03-agent", async (page) => {
   const href = await link.getAttribute("href");
   await page.mouse.down();
   await page.mouse.up();
-  await page.goto(href!);
+  await page.goto(href!, { waitUntil: "domcontentloaded", timeout: 90_000 });
   mark("paypal");
   await approveInPayPal(page, BUYER);
   mark("approved");
@@ -390,8 +395,9 @@ await scene(browser, "07-verify", async (page) => {
 
 await scene(browser, "08-how", async (page) => {
   await open(page, "/how?reveal=1", 200);
+  // frame the diagram (no half-hidden title under the bar)
+  await page.evaluate("(() => { document.querySelector('.seq-fig').scrollIntoView({ block: 'start' }); window.scrollBy(0, -90); })()");
   mark("start");
-  await glide(page, 330, 1200);
   await wait(13500);
 });
 
@@ -405,3 +411,4 @@ await scene(browser, "09-outro", async (page) => {
 });
 
 await browser.close();
+await (plain as Browser | null)?.close();
