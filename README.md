@@ -89,7 +89,7 @@ Native support would enforce the limit inside PayPal, before the approval, acros
 | Step | What happens | PayPal |
 |---|---|---|
 | 1. Request | A fan clicks the PayPal button (JS SDK v6), or their agent calls `enter_drop` over MCP and gets an approval link. **The agent stops there.** | `POST /v2/checkout/orders` (`AUTHORIZE`, `payer-action` link) |
-| 2. One per account | After approval Paylet reads the payer **server-side**, stores only an HMAC, and enforces a unique constraint per drop before authorizing. A second approval from the same account places **no hold**. | `GET /v2/checkout/orders/{id}` → `POST …/authorize` |
+| 2. One per account | After approval Paylet reads the payer **server-side**, keeps the payer id only as an HMAC, and enforces a unique constraint on it per drop before authorizing. A second approval from the same account places **no hold**. | `GET /v2/checkout/orders/{id}` → `POST …/authorize` |
 | 3. Households & networks | Rules normalize addresses (suffixes, `Ste/Unit/#`, `c/o`, mailbox aliases). Only fuzzy pairs go to the model, which must cite fields and may keep pairs apart. **Nothing is auto-merged**: the seller confirms, and the draw is blocked while suggestions are pending. | — |
 | 4. Freeze | At close, the eligible list is frozen and its SHA-256 published, together with every exclusion and its reason. The seed's SHA-256 was published when the drop opened. | — |
 | 5. Public randomness | Paylet waits for a future [drand](https://drand.love) quicknet round that nobody could know at freeze time, then reveals the seed. `finalSeed = SHA-256(seed + ":" + round randomness)`; each entry ranks by `SHA-256(finalSeed + ":" + publicId)`. Not even Paylet knew the winners in advance. | — |

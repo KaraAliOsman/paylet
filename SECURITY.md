@@ -23,8 +23,12 @@ compromised machine or a malicious seller (the seller is trusted by design; see 
   production); `.env*` files are git-ignored. GitHub Actions never receives PayPal or AI credentials.
 - **Every money-moving call is idempotent.** Authorize, capture and void go through a persistent queue whose key is the
   `PayPal-Request-Id`, so a retry after a crash cannot charge twice.
-- **Identity is stored as an HMAC.** The PayPal payer id and email are kept only as `HMAC-SHA256(HASH_SECRET, …)`; the
-  browser never receives PayPal order details.
+- **Identity: hashed where it is a key, minimal where it is not.** The PayPal payer id and account id are stored only as
+  `HMAC-SHA256(HASH_SECRET, …)`, and the one-hold-per-account rule is enforced on those HMACs. The email is stored as an
+  HMAC and also in clear text on the server, to spot mailbox aliases; no page or API response shows it. The name and
+  shipping address are stored in clear text, to group households and to ship, and only the drop's own seller console
+  (behind its owner key) shows them. Fan pages, public pages and `/verify` show public entry ids and masked PayPal ids only.
+  Details in the README, "Data flow & PII".
 - **Webhooks are verified** with `POST /v1/notifications/verify-webhook-signature` on the raw body and de-duplicated by
   `event_id` before they change anything.
 - **Agents cannot pay.** The MCP server can only create an order and return PayPal's approval link; a hold exists only

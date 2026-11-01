@@ -32,7 +32,10 @@ judge flow against the live demo every day.
   the `PayPal-Request-Id`. Never call a money-moving endpoint directly from a request handler.
 - **State transitions are conditional.** `UPDATE … WHERE id = ? AND status IN (…)`, so a webhook, the sweeper and the
   queue can race without double-processing.
-- **Identity stays server-side.** Payer id and email are stored only as HMACs; PayPal order details never reach the browser.
+- **Keep PII where it belongs.** Payer id and account id are stored only as HMACs. The email is stored as an HMAC plus
+  clear text on the server (alias detection) and never leaves it. Name and shipping address reach only the drop's seller
+  console; fan and public views get public entry ids and masked PayPal ids. A new field that carries PayPal order data
+  needs a row in the README's "Data flow & PII" table.
 - **AI suggests, people decide.** Nothing is merged without the seller's confirmation; fan-facing explanations are templates.
 - **Label simulated data.** Anything not backed by a real PayPal call carries `real = 0` and is shown as simulated.
 
