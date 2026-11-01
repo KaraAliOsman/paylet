@@ -150,8 +150,10 @@ app.post("/api/entries/:id/appeal", async (c) => {
 app.post("/api/judge-drop", async (c) => {
   if (!limit(c, "judge", 4)) return c.json({ error: "rate_limited" }, 429);
   const ip = clientIp(c);
+  const adminKey = c.req.header("x-seller-key");
+  const isOwner = Boolean(env.SELLER_ADMIN_KEY && adminKey && safeEq(adminKey, env.SELLER_ADMIN_KEY)); // test suite / owner
   const mine = judgeQuota.get(ip);
-  if (mine && mine.reset > Date.now() && mine.n >= 5) return c.json({ error: "judge_drop_quota", message: "You already have several judge drops today — reuse one of them." }, 429);
+  if (!isOwner && mine && mine.reset > Date.now() && mine.n >= 12) return c.json({ error: "judge_drop_quota", message: "You already have several judge drops today — reuse one of them." }, 429);
   const today = (db.prepare("SELECT COUNT(*) n FROM drops WHERE kind = 'judge' AND created_at > ?").get(now() - 86_400_000) as { n: number }).n;
   if (today > 150) return c.json({ error: "judge_drop_quota" }, 429);
   judgeQuota.set(ip, { n: (mine && mine.reset > Date.now() ? mine.n : 0) + 1, reset: mine && mine.reset > Date.now() ? mine.reset : Date.now() + 86_400_000 });

@@ -13,11 +13,12 @@
     "start": "node --no-warnings --env-file-if-exists=.env --import tsx src/server/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "e2e": "playwright test",
+    "e2e": "playwright test e2e/judge-flow.spec.ts",
     "mcp:smoke": "tsx scripts/mcp-smoke.ts",
     "evals:dataset": "node --no-warnings --env-file-if-exists=.env --import tsx scripts/build-dataset.ts",
     "evals": "node --no-warnings --env-file-if-exists=.env --import tsx scripts/run-evals.ts",
-    "screens": "tsx scripts/screens.ts"
+    "screens": "tsx scripts/screens.ts",
+    "e2e:real": "playwright test e2e/real-paypal.spec.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
