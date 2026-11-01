@@ -6,6 +6,38 @@ import { z } from "zod";
 import { db, now } from "./db";
 import { HttpError, participantView, publicDrop, startEntry } from "./domain";
 import type { DropRow } from "./models";
+import { classify } from "./paypal";
+
+/** PayPal leaves an unapproved order's approval link valid for 3 hours; the drop may close sooner. */
+export const APPROVAL_LINK_MS = 3 * 60 * 60_000;
+
+/** A drop slug, or the slug inside a Paylet drop URL (".../d/<slug>"), as fans paste it to their agent. */
+export function slugFrom(input: string): string {
+  const s = input.trim();
+  const m = s.match(/\/d\/([a-z0-9][a-z0-9-]{0,99})(?:[/?#]|$)/i);
+  return (m ? m[1] : s).toLowerCase();
+}
+
+/** What PayPal holds for an entry, from our ledger (the live answer is GET /api/drops/:slug/paypal-check). */
+export function paypalState(status: string, holdCents: number | null, capturedCents: number | null): string | null {
+  switch (status) {
+    case "held":
+    case "waitlist":
+    case "won":
+      return "CREATED";
+    case "captured":
+      return capturedCents != null && holdCents != null && capturedCents < holdCents ? "PARTIALLY_CAPTURED" : "CAPTURED";
+    case "refunded":
+      return "REFUNDED";
+    case "lost":
+    case "voided":
+    case "merged":
+    case "capture_failed":
+      return holdCents == null ? null : "VOIDED";
+    default:
+      return null; // no hold exists (awaiting approval, duplicate, expired, error)
+  }
+}
 
 function buildServer(): McpServer {
   const server = new McpServer({ name: "paylet", version: "0.1.0" });
@@ -14,14 +46,15 @@ function buildServer(): McpServer {
     "list_drops",
     {
       title: "List open drops",
-      description: "List limited drops that are currently open for entries on Paylet (one unit per PayPal account).",
+      description:
+        "List the public limited drops that are open for entries on Paylet (one unit per PayPal account). Private drops are not listed: if your person gives you a drop link (https://…/d/<slug>), pass it to enter_drop directly.",
       inputSchema: {},
       annotations: { readOnlyHint: true },
     },
     async () => {
-      // showcase drops first, then recent judge drops (each judge can also pass the slug from their drop page URL)
+      // public drops only (P0-10): judge drops are private and reachable by their slug / URL, never listed to other agents
       const drops = db
-        .prepare("SELECT * FROM drops WHERE status = 'open' AND closes_at > ? ORDER BY CASE kind WHEN 'showcase' THEN 0 ELSE 1 END, created_at DESC LIMIT 10")
+        .prepare("SELECT * FROM drops WHERE status = 'open' AND closes_at > ? AND kind IN ('showcase','proof') ORDER BY created_at DESC LIMIT 10")
         .all(now()) as unknown as DropRow[];
       const list = drops.map((d) => {
         const p = publicDrop(d);
@@ -38,25 +71,29 @@ function buildServer(): McpServer {
       description:
         "Request a Paylet entry in a drop for the person you act for. You CANNOT pay or approve: this returns a PayPal approval link that the person must open and approve themselves. Nothing is charged unless they win. One entry per PayPal account — extra entries from the same account place no hold.",
       inputSchema: {
-        drop: z.string().max(80).describe("Drop slug from list_drops, or the slug in a drop page URL (/d/<slug>)"),
+        drop: z.string().max(200).describe("Drop slug from list_drops, or the drop page URL your person gave you (https://…/d/<slug>)"),
         agent_name: z.string().max(60).optional().describe("Your agent's display name"),
       },
       annotations: { destructiveHint: false, openWorldHint: true },
     },
     async ({ drop, agent_name }) => {
       try {
-        const r = await startEntry(drop, "agent", agent_name ?? "MCP agent");
+        const r = await startEntry(slugFrom(drop), "agent", agent_name ?? "MCP agent");
         const out = {
           entry_ref: r.entryId,
           public_id: r.publicId,
+          title: r.drop.title,
           status: "awaiting_person",
           approve_url: r.approveUrl,
           hold_usd: (r.drop.price_cents + r.drop.ship_hold_cents) / 100,
-          message: "Give this PayPal link to your person. Only they can approve the hold. Nothing is charged unless they win.",
+          // the person must approve before this (PayPal link lifetime or the drop closing, whichever comes first)
+          expires_at: new Date(Math.min(Date.now() + APPROVAL_LINK_MS, r.drop.closes_at)).toISOString(),
+          message:
+            "Give this PayPal link to your person. Only they can approve the hold, and the entry only counts once they do. PayPal places the hold when they approve; they are only charged if they win.",
         };
         return { content: [{ type: "text", text: JSON.stringify(out) }], structuredContent: out };
       } catch (e) {
-        const code = e instanceof HttpError ? e.code : "paypal_unavailable";
+        const code = e instanceof HttpError ? e.code : classify(e).status === 429 ? "rate_limited" : "paypal_unavailable";
         return { isError: true, content: [{ type: "text", text: `enter_drop failed: ${code}` }] };
       }
     },
@@ -83,9 +120,14 @@ function buildServer(): McpServer {
           note: v.note,
           explanation: v.explanation,
           drop: v.drop.slug,
+          title: v.drop.title,
+          drop_status: v.drop.status,
+          draw_at: new Date(v.drop.closesAt).toISOString(),
           hold_usd: usd(v.holdCents),
           captured_usd: usd(v.capturedCents),
           refunded_usd: usd(v.refundedCents),
+          // what PayPal holds per our ledger: CREATED (hold alive), PARTIALLY_CAPTURED / CAPTURED, VOIDED, REFUNDED, or null (no hold)
+          paypal_state: paypalState(v.status, v.holdCents, v.capturedCents),
           shipping: v.shipping,
         };
         return { content: [{ type: "text", text: JSON.stringify(out) }], structuredContent: out };

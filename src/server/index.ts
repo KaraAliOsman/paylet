@@ -34,8 +34,8 @@ import { paypalCheck } from "./paypalcheck";
 import { maskId, toneOf, traceFromData } from "./trace";
 import { handlePayPalWebhook } from "./webhooks";
 import { pendingOps, startWorker } from "./queue";
-import { handleMcp } from "./mcp";
-import { runFanAgent, runSwarm } from "./agent";
+import { handleMcp, paypalState } from "./mcp";
+import { INTERNAL_HEADER, howItWent, internalToken, runFanAgent, runSwarm } from "./agent";
 import { aiConfigured, usageSummary } from "./ai";
 
 const app = new Hono();
@@ -44,10 +44,11 @@ const judgeQuota = new Map<string, { n: number; reset: number }>();
 
 // ---------------------------------------------------------------- tiny per-IP rate limiter
 const buckets = new Map<string, { n: number; reset: number }>();
-/** Client IP. Render sits behind Cloudflare, which overwrites CF-Connecting-IP / True-Client-IP with the real client;
- *  otherwise the LAST X-Forwarded-For hop is the one added by the hosting proxy (earlier hops are client-controlled). */
+/** Client IP (P0-02). Render sits behind Cloudflare, which overwrites CF-Connecting-IP / True-Client-IP with the real
+ *  client; otherwise the LAST X-Forwarded-For hop is the one added by the hosting proxy (earlier hops are
+ *  client-controlled). Loopback calls carry none of them: "local". */
 let ipHeadersLogged = false;
-function clientIp(c: Context): string {
+export function clientIp(c: Context): string {
   if (!ipHeadersLogged && c.req.header("x-forwarded-for")) {
     // once per boot, names only: confirms which proxy headers the host really sends
     ipHeadersLogged = true;
@@ -229,6 +230,32 @@ app.post("/api/agent/chat", async (c) => {
   return c.json(await runFanAgent(clean));
 });
 
+// P2-02: "Ask Wren how it went". Wren calls entry_status; the reply is built from that structured result, not by a model
+app.post("/api/agent/how-it-went", async (c) => {
+  if (!limit(c, "agent-status", 20)) return c.json({ error: "rate_limited" }, 429);
+  const { entryRef } = (await c.req.json().catch(() => ({}))) as { entryRef?: unknown };
+  if (typeof entryRef !== "string" || !entryRef || entryRef.length > 80) throw new HttpError(400, "entry_ref_required");
+  const r = await howItWent(entryRef, (ref) => {
+    if (!getEntry(ref)) return null;
+    const v = participantView(ref);
+    const usd = (cents: number | null) => (cents == null ? null : cents / 100);
+    return {
+      public_id: v.publicId,
+      status: v.status === "captured" && v.shipping ? "shipped" : v.status,
+      title: v.drop.title,
+      drop_status: v.drop.status,
+      draw_at: new Date(v.drop.closesAt).toISOString(),
+      hold_usd: usd(v.holdCents),
+      captured_usd: usd(v.capturedCents),
+      refunded_usd: usd(v.refundedCents),
+      paypal_state: paypalState(v.status, v.holdCents, v.capturedCents),
+      shipping: v.shipping,
+    };
+  });
+  if (!r) throw new HttpError(404, "entry_not_found");
+  return c.json(r);
+});
+
 app.get("/api/evals", (c) => {
   const p = join(process.cwd(), "evals", "results.json");
   if (!existsSync(p)) return c.json({ available: false });
@@ -287,7 +314,8 @@ app.post("/api/seller/:slug/swarm", async (c) => {
   const already = (db.prepare("SELECT COUNT(*) n FROM entries WHERE drop_id = ? AND source = 'agent' AND agent_label LIKE 'scalper-bot-%'").get(d.id) as { n: number }).n;
   if (already >= 30) throw new HttpError(409, "swarm_limit", "This drop already met its scalper swarm.");
   const count = Math.max(1, Math.min(25, n ?? 12, 30 - already));
-  void runSwarm(d.slug, count).catch((e) => emit(d.id, "swarm_error", `Swarm stopped: ${String(e).slice(0, 120)}`, false));
+  // runSwarm retries rate-limited calls and always writes the swarm_done line; this only catches a swarm that cannot start
+  void runSwarm(d.slug, count).catch(() => emit(d.id, "swarm_done", `0 of ${count} agents got a PayPal link (the swarm could not start) · 0 holds.`, false, { tone: "warn" }));
   return c.json({ started: count });
 });
 
@@ -337,8 +365,15 @@ app.post("/api/seller/:slug/draw", async (c) => {
 });
 
 // ---------------------------------------------------------------- MCP endpoint for AI agents
+// Paylet's own agents (Wren, the scalper swarm) sign their loopback calls; that only selects a separate bucket.
+const MCP_INTERNAL_TOKEN = internalToken();
 app.all("/mcp", async (c) => {
-  if (!limit(c, "mcp", 40)) return c.json({ error: "rate_limited" }, 429);
+  const tok = c.req.header(INTERNAL_HEADER);
+  const internal = Boolean(tok && safeEq(tok, MCP_INTERNAL_TOKEN));
+  if (!(internal ? limit(c, "mcp-int", 300) : limit(c, "mcp", 40))) {
+    c.header("Retry-After", "60");
+    return c.json({ jsonrpc: "2.0", error: { code: -32029, message: "rate_limited" }, id: null }, 429);
+  }
   let parsed: unknown;
   if (c.req.method === "POST") {
     parsed = await c.req.json().catch(() => undefined);
