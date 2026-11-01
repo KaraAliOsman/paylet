@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, api, realOrders, timeLeft, usd, type Participant, type PublicDrop } from "../api";
+import { ApiError, api, clock, friendlyError, realOrders, timeLeft, usd, type Participant, type PublicDrop } from "../api";
 import { Art, Hash, PayPalEntryButton, Stat, StatusPill, Ticker } from "../components";
+import { HoldTimeline, timelineInput } from "../hold-timeline";
+import { BotIcon, ClockIcon, ShieldIcon } from "../icons";
+import { approvalExpiresAt } from "../timeline";
 import { Link, navigate } from "../router";
 
 function useDrop(slug: string) {
@@ -140,26 +143,29 @@ export function DropPage({ slug }: { slug: string }) {
   const [entry, setEntry] = useState<{ p: Participant; outcome: string } | null>(null);
   const onEntry = useCallback((p: Participant, outcome: string) => setEntry({ p, outcome }), []);
 
+  const entryId = entry?.p.entryId;
+  const entryDone = entry ? TERMINAL.has(entry.p.status) : true;
   useEffect(() => {
-    if (!entry || ["captured", "voided", "duplicate", "expired", "error"].includes(entry.p.status)) return;
+    if (!entryId || entryDone) return;
     const t = setInterval(async () => {
-      const p = await api<Participant>(`/api/entries/${entry.p.entryId}`);
-      setEntry((prev) => (prev ? { ...prev, p } : prev));
+      const p = await api<Participant>(`/api/entries/${entryId}`).catch(() => null);
+      if (p) setEntry((prev) => (prev && prev.p.entryId === p.entryId ? { ...prev, p } : prev));
     }, 2000);
     return () => clearInterval(t);
-  }, [entry]);
+  }, [entryId, entryDone]);
 
   if (err === "not_found") return <NotFound what="drop" />;
   if (err && !drop) return <p className="err">{err}</p>;
   if (!drop) return <div className="skeleton tall">Loading drop…</div>;
   const open = drop.status === "open" && drop.closesAt > now;
   const hold = drop.priceCents + drop.shipHoldCents;
+  const charge = drop.priceCents + drop.shipActualCents;
   return (
     <div className="drop">
       <section className="card drop-main">
         <Art art={drop.art} size={260} />
         <div className="drop-info">
-          <p className="eyebrow">{drop.kind === "judge" ? "Judge drop · 30 minutes" : "Limited drop"}</p>
+          <p className="eyebrow">{drop.kind === "judge" ? "Judge drop · 30 minutes" : drop.kind === "proof" ? "Proof drop · real PayPal sandbox run" : "Limited drop"}</p>
           <h1>{drop.title}</h1>
           <p className="maker">by {drop.maker}</p>
           <p>{drop.blurb}</p>
@@ -167,35 +173,66 @@ export function DropPage({ slug }: { slug: string }) {
             <Stat label="units" value={drop.units} />
             <Stat label="price" value={usd(drop.priceCents)} />
             <Stat label="hold (incl. max shipping)" value={usd(hold)} />
-            <Stat label={open ? "closes in" : "status"} value={open ? timeLeft(drop.closesAt - now) : drop.status} />
+            <Stat label={open ? "closes in" : "status"} value={open ? timeLeft(drop.closesAt - now) : DROP_STATUS[drop.status] ?? drop.status} />
           </div>
           {open ? (
             entry ? (
-              <div className="entry-box">
-                <StatusPill status={entry.p.status} />
-                <p>
-                  Entry <b>{entry.p.publicId}</b>.{" "}
-                  {entry.outcome === "duplicate"
-                    ? "Paylet checked PayPal's record of who approved: that account already has an entry in this drop."
-                    : "You'll only be charged if you're selected — losers' holds are voided."}
-                </p>
-                <Link href={`/me/${entry.p.entryId}`}>Track this entry →</Link>
+              <div className="entry-box" aria-live="polite">
+                <div className="row gap wrap">
+                  <StatusPill status={entry.p.status} />
+                  <span className="muted small">
+                    Entry <code>{entry.p.publicId}</code>
+                  </span>
+                </div>
+                <HoldTimeline input={timelineInput(entry.p, hold)} />
+                {entry.outcome === "duplicate" && (
+                  <p className="small">Paylet checked PayPal's own record of who approved: that PayPal account already has an entry in this drop, so no second hold was placed.</p>
+                )}
+                <div className="row gap wrap">
+                  <Link href={`/me/${entry.p.entryId}`}>Track this entry →</Link>
+                  {drop.kind === "judge" && (
+                    <button className="linklike" onClick={() => setEntry(null)}>
+                      Try again with the same PayPal account
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
-              <>
+              <div className="ballot">
+                <h2 className="ballot-title">Enter the ballot</h2>
+                <ol className="ballot-steps">
+                  <li>
+                    <span className="ballot-n">1</span>
+                    <span>
+                      Approve a <b>{usd(hold)}</b> hold in PayPal
+                    </span>
+                  </li>
+                  <li>
+                    <span className="ballot-n">2</span>
+                    <span>
+                      Draw at <b>{clock(drop.closesAt)}</b>
+                    </span>
+                  </li>
+                  <li>
+                    <span className="ballot-n">3</span>
+                    <span>
+                      Charged only if you win (<b>{usd(charge)}</b>). Not selected? Hold voided, <b>$0</b>.
+                    </span>
+                  </li>
+                </ol>
                 <PayPalEntryButton slug={drop.slug} onEntry={onEntry} />
-                <Link href={`/agent?drop=${drop.slug}`} className="small">
-                  …or let your AI agent request it (it can't pay — you approve)
-                </Link>
-                <p className="hint">
-                  Approving places a <b>{usd(hold)}</b> hold (price + max shipping). Winners pay the real shipping; everyone else is released. One entry per PayPal
-                  account.
+                <p className="hint small">
+                  One entry per PayPal account. The hold covers the price plus max shipping; a winner pays the real shipping ({usd(drop.shipActualCents)}) and the rest is
+                  released.
                 </p>
-              </>
+                <Link href={`/agent?drop=${drop.slug}`} className="small agent-link">
+                  <BotIcon size={16} /> …or let your AI agent request it (it can't pay: you approve)
+                </Link>
+              </div>
             )
           ) : (
             <div className="entry-box">
-              <p>This drop is closed. </p>
+              <p>{closedCopy(drop.status, drop.closesAt, now)}</p>
               <Link className="btn" href={`/verify/${drop.slug}`}>
                 Verify the draw
               </Link>
@@ -218,6 +255,17 @@ export function DropPage({ slug }: { slug: string }) {
       <Ticker slug={drop.slug} title="Public ledger" />
     </div>
   );
+}
+
+const TERMINAL = new Set(["captured", "voided", "duplicate", "expired", "error", "refunded", "capture_failed", "merged"]);
+
+const DROP_STATUS: Record<string, string> = { open: "open", frozen: "drawing", drawn: "settling", settled: "settled" };
+
+function closedCopy(status: string, closesAt: number, now: number): string {
+  if (status === "open" && closesAt <= now) return "Entries are closed. The draw starts in a moment.";
+  if (status === "frozen") return "Entries are closed. The list is frozen and the draw is waiting for public randomness (drand).";
+  if (status === "drawn") return "Drawn. PayPal is settling: winners are captured, everyone else is voided.";
+  return "This drop is settled. Winners were captured, everyone else's hold was voided.";
 }
 
 // ---------------------------------------------------------------- return from PayPal (agent approval links)
@@ -281,6 +329,8 @@ export function MePage({ entryId }: { entryId: string }) {
   const [missing, setMissing] = useState(false);
   const [appeal, setAppeal] = useState("");
   const [sent, setSent] = useState(false);
+  const [appealErr, setAppealErr] = useState("");
+  const now = useNow();
   useEffect(() => {
     const load = () =>
       api<Participant>(`/api/entries/${entryId}`)
@@ -294,6 +344,8 @@ export function MePage({ entryId }: { entryId: string }) {
   }, [entryId]);
   if (missing && !p) return <NotFound what="entry" />;
   if (!p) return <div className="skeleton tall">Loading…</div>;
+  const expiresAt = approvalExpiresAt(p.timeline?.requestedAt, p.drop.closesAt);
+  const released = p.holdCents != null && p.capturedCents != null ? p.holdCents - p.capturedCents : null;
   return (
     <section className="card narrow me">
       <div className="row gap center">
@@ -304,13 +356,62 @@ export function MePage({ entryId }: { entryId: string }) {
           <p className="muted">by {p.drop.maker}</p>
         </div>
       </div>
-      <StatusPill status={p.status} />
-      {p.source === "agent" && <p className="muted small">Requested by your agent "{p.agentLabel}". Only you could approve it.</p>}
+      <div className="row gap wrap">
+        <StatusPill status={p.status} />
+        {p.payerVerified && (
+          <span className="tag tag-real">
+            <ShieldIcon size={13} /> PayPal-verified payer
+          </span>
+        )}
+      </div>
+
+      {p.status === "awaiting_person" && (
+        <div className="resume">
+          <p>
+            <b>Your hold isn't placed yet.</b> Approve it in PayPal to enter the ballot. You're charged only if you win.
+          </p>
+          {p.approveUrl && expiresAt > now ? (
+            <>
+              <a className="btn btn-paypal" href={p.approveUrl}>
+                Approve in PayPal
+              </a>
+              <span className="muted small">
+                <ClockIcon size={14} /> link expires in {timeLeft(expiresAt - now)}
+              </span>
+            </>
+          ) : (
+            <span className="muted small">{p.approveUrl ? "This approval link has expired. No hold was placed." : "Use the approval link your agent gave you."}</span>
+          )}
+        </div>
+      )}
+
+      <HoldTimeline input={timelineInput(p)} />
+
       <dl className="kv">
         <dt>Hold</dt>
         <dd>{usd(p.holdCents)}</dd>
         <dt>Charged</dt>
         <dd>{p.capturedCents ? usd(p.capturedCents) : "nothing"}</dd>
+        {released != null && released > 0 && p.status === "captured" && (
+          <>
+            <dt>Released</dt>
+            <dd>{usd(released)} of unused shipping</dd>
+          </>
+        )}
+        {p.refundedCents ? (
+          <>
+            <dt>Refunded</dt>
+            <dd>{usd(p.refundedCents)} · you owe nothing</dd>
+          </>
+        ) : null}
+        {p.shipping && (
+          <>
+            <dt>Shipped</dt>
+            <dd>
+              {p.shipping.carrier} <code>{p.shipping.tracking}</code> · also visible in your PayPal account
+            </dd>
+          </>
+        )}
       </dl>
       {p.note && <p className="note">{p.note}</p>}
       {p.explanation && (
@@ -320,21 +421,29 @@ export function MePage({ entryId }: { entryId: string }) {
       )}
       {(p.status === "merged" || p.explanation) && !sent && (
         <div className="appeal">
-          <label>Not the same household? Tell the seller:</label>
-          <textarea value={appeal} onChange={(e) => setAppeal(e.target.value)} placeholder="e.g. We're roommates with separate orders." />
+          <label htmlFor="appeal-text">Not the same household? Tell the seller:</label>
+          <textarea id="appeal-text" value={appeal} onChange={(e) => setAppeal(e.target.value)} placeholder="e.g. We're roommates with separate orders." />
           <button
             className="btn"
             onClick={async () => {
-              await api(`/api/entries/${p.entryId}/appeal`, { method: "POST", json: { message: appeal } });
-              setSent(true);
+              try {
+                await api(`/api/entries/${p.entryId}/appeal`, { method: "POST", json: { message: appeal } });
+                setSent(true);
+              } catch (e) {
+                setAppealErr(friendlyError(e));
+              }
             }}
           >
             Appeal
           </button>
+          {appealErr && <p className="err small">{appealErr}</p>}
         </div>
       )}
-      {sent && <p className="hint">Appeal sent — the seller reviews it before the draw.</p>}
-      <Link href={`/d/${p.drop.slug}`}>Back to the drop</Link>
+      {sent && <p className="hint">Appeal sent. The seller reviews it before the draw.</p>}
+      <div className="row gap wrap">
+        <Link href={`/d/${p.drop.slug}`}>Back to the drop</Link>
+        {["drawn", "settled"].includes(p.drop.status) && <Link href={`/verify/${p.drop.slug}`}>Verify the draw →</Link>}
+      </div>
     </section>
   );
 }

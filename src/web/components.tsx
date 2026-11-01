@@ -102,6 +102,7 @@ const STATUS: Record<string, [string, string]> = {
   capture_failed: ["Payment failed — unit passed to the waitlist", "bad"],
   expired: ["Not approved in time — no hold was placed", "muted"],
   error: ["PayPal could not place the hold", "bad"],
+  refunded: ["Refunded — you owe nothing", "muted"],
 };
 
 export function StatusPill({ status }: { status: string }) {
@@ -199,7 +200,7 @@ export function PayPalEntryButton({ slug, onEntry }: { slug: string; onEntry: (p
         const session = instance.createPayPalOneTimePaymentSession({
           async onApprove(data: { orderId: string }) {
             setState("busy");
-            setMsg("Approved — checking your PayPal account and placing the hold…");
+            setMsg("Approved. Checking your PayPal account and placing the hold…");
             try {
               const r = await api<{ outcome: string; entry: Participant | null }>("/api/entries/finalize", { method: "POST", json: { orderId: data.orderId } });
               setState("ready");
@@ -217,12 +218,12 @@ export function PayPalEntryButton({ slug, onEntry }: { slug: string; onEntry: (p
           },
           onCancel() {
             setState("ready");
-            setMsg("Cancelled — no hold was placed.");
+            setMsg("Cancelled. No hold was placed.");
           },
           onError(err: unknown) {
             console.error(err);
             setState("ready");
-            setMsg("PayPal reported an error. Please try again.");
+            setMsg("PayPal reported an error. Nothing was charged; please try again.");
           },
         });
         if (cancelled || !ref.current) return;
@@ -256,7 +257,8 @@ export function PayPalEntryButton({ slug, onEntry }: { slug: string; onEntry: (p
   return (
     <div className="pp-wrap">
       {state === "loading" && <div className="skeleton">Loading PayPal…</div>}
-      <paypal-button ref={ref as any} type="pay" hidden />
+      {/* No `type`: the plain PayPal wordmark. "Pay with" / "Buy Now" / "Checkout" all contradict "charged only if you win". */}
+      <paypal-button ref={ref as any} hidden />
       {msg && <p className={state === "error" ? "err" : "hint"}>{msg}</p>}
     </div>
   );
