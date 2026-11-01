@@ -12,7 +12,7 @@ const FPS = 30;
 // [from, to, target seconds or null] — from/to are "mark" or "mark+1.2" / "mark-0.5"
 const EDL = {
   "00-intro": { seg: [["start-0.2", "end", null]], vo: [] },
-  "01-home": { seg: [["start-0.3", "end", null]], vo: [["01", "start+0.6"]] },
+  "01-home": { seg: [["start-0.3", "rules-0.1", 10.6], ["rules-0.1", "end", null]], vo: [["01", "start+0.6"]] },
   "02-drop": { cap: "01  A HOLD, NOT A CHARGE", seg: [["start-0.2", "start+7.6", null]], vo: [["02", "start+0.5"]] },
   "03-agent": { cap: "02  AGENTS CAN ASK. PEOPLE APPROVE.",
     seg: [
@@ -58,7 +58,7 @@ const EDL = {
     ],
     vo: [["06a", "start+0.3"], ["06b", "a-ledger+0.2"]],
   },
-  "07-verify": { cap: "06  VERIFY IT YOURSELF", seg: [["start+0.5", "consistent+1.6", null], ["a-start+0.4", "ask+3.2", null]], vo: [["07", "start+0.4"]] },
+  "07-verify": { cap: "06  VERIFY IT YOURSELF", seg: [["rerun-0.9", "consistent+1.6", null], ["a-start+0.4", "ask+3.2", null]], vo: [["07", "start+0.4"]] },
   "08-how": { cap: "07  UNDER THE HOOD", seg: [["start-0.2", "end", null]], vo: [["08", "start+1.0"]] },
   "09-outro": { seg: [["start-0.6", "end", null]], vo: [["09", "start+0.6"]] },
 };
@@ -106,7 +106,8 @@ for (const [name, cfg] of Object.entries(EDL)) {
     const a = at(f);
     const b = at(t);
     if (b - a < 0.05) continue;
-    const speed = target && b - a > target ? (b - a) / target : 1;
+    // a target longer than the span plays it slower (never below 0.75x), a shorter one speeds it up
+    const speed = target ? Math.max(0.75, (b - a) / target) : 1;
     segs.push({ a, b, speed, o });
     o += (b - a) / speed;
   }
@@ -177,9 +178,9 @@ writeFileSync(`${dir}/clips/list.txt`, parts.map((p) => `file '${p.split("/").po
 run(["-f", "concat", "-safe", "0", "-i", `${dir}/clips/list.txt`, "-c", "copy", `${dir}/clips/_joined.mov`]);
 const full = dur(`${dir}/clips/_joined.mov`);
 // pass 1: measure the voice (loudnorm prints its JSON on stderr)
-const pass1 = spawnSync("ffmpeg", ["-hide_banner", "-i", `${dir}/clips/_joined.mov`, "-vn", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json", "-f", "null", "-"], { encoding: "utf8" });
+const pass1 = spawnSync("ffmpeg", ["-hide_banner", "-i", `${dir}/clips/_joined.mov`, "-vn", "-af", "loudnorm=I=-15:TP=-1.5:LRA=11:print_format=json", "-f", "null", "-"], { encoding: "utf8" });
 const measured = JSON.parse(/\{[^{}]*"input_i"[^{}]*\}/.exec(pass1.stderr)?.[0] ?? "{}");
-const voiceNorm = `loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${measured.input_i}:measured_TP=${measured.input_tp}:measured_LRA=${measured.input_lra}:measured_thresh=${measured.input_thresh}:offset=${measured.target_offset}:linear=true`;
+const voiceNorm = `loudnorm=I=-15:TP=-1.5:LRA=11:measured_I=${measured.input_i}:measured_TP=${measured.input_tp}:measured_LRA=${measured.input_lra}:measured_thresh=${measured.input_thresh}:offset=${measured.target_offset}:linear=true`;
 const music = `${dir}/music/bed.mp3`;
 const fadeOut = (full - 1.4).toFixed(2);
 const hasMusic = existsSync(music);
@@ -192,7 +193,7 @@ run([
     ...(hasMusic
       ? [
           // the bed is ~-15 LUFS: -9 dB puts it near -24 LUFS on its own, and the duck takes it to ~-34 under the voice
-          `[1:a]aresample=48000,atrim=0:${full.toFixed(2)},volume=-9dB,afade=t=in:d=1.2,afade=t=out:st=${fadeOut}:d=1.4[bed]`,
+          `[1:a]aresample=48000,atrim=0:${full.toFixed(2)},volume=-8dB,afade=t=in:d=1.2,afade=t=out:st=${fadeOut}:d=1.4[bed]`,
           `[bed][key]sidechaincompress=threshold=0.015:ratio=10:attack=150:release=1200:knee=6[ducked]`,
           `[vo][ducked]amix=inputs=2:normalize=0,alimiter=limit=0.84:level=false,afade=t=out:st=${fadeOut}:d=1.4[aout]`,
         ]
@@ -204,4 +205,4 @@ run([
   "-movflags", "+faststart",
   `${dir}/paylet-demo.mp4`,
 ]);
-console.log(`paylet-demo.mp4: ${full.toFixed(1)} s (voice measured ${measured.input_i} LUFS → -16)`);
+console.log(`paylet-demo.mp4: ${full.toFixed(1)} s (voice measured ${measured.input_i} LUFS → -15)`);
