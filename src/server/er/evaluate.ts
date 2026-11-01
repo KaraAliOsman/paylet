@@ -112,10 +112,20 @@ export interface CassetteCall {
   ms: number;
 }
 export interface CassetteRun {
+  /** Section label: "dev", "heldOut", or a later labelled variant such as "heldOutAfterFix". */
   dataset: string;
   run: number;
   ms: number;
   calls: CassetteCall[];
+  /** Set on runs appended after the first recording. */
+  recordedAt?: string;
+  systemSha?: string;
+}
+
+/** Request keys whose every attempt failed in this run (the chunk the model never answered). */
+export function failedKeys(run: CassetteRun): Set<string> {
+  const ok = new Set(run.calls.filter((c) => c.ok).map((c) => c.key));
+  return new Set(run.calls.filter((c) => !c.ok && !ok.has(c.key)).map((c) => c.key));
 }
 export interface Cassette {
   version: 1;
