@@ -6,7 +6,8 @@ const out = process.argv[3] ?? "docs/img";
 const post = (p: string, key?: string, data?: unknown) =>
   fetch(base + p, { method: "POST", headers: { "content-type": "application/json", ...(key ? { "x-seller-key": key } : {}) }, body: JSON.stringify(data ?? {}) }).then((r) => r.json());
 
-const { slug, sellerKey } = await post("/api/judge-drop");
+// SELLER_ADMIN_KEY (optional) skips the per-IP judge-drop quota
+const { slug, sellerKey } = await post("/api/judge-drop", process.env.SELLER_ADMIN_KEY);
 await post(`/api/seller/${slug}/swarm`, sellerKey, { n: 4 });
 await post(`/api/seller/${slug}/simulate`, sellerKey);
 await new Promise((r) => setTimeout(r, 6000));

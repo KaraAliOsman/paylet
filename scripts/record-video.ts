@@ -98,9 +98,15 @@ async function scene(browser: Browser, name: string, run: (page: Page, ctx: Brow
 
 /** Glide the cursor to the element (ease-out), pause, click. */
 async function glideTo(page: Page, target: Locator, click = true) {
-  await target.scrollIntoViewIfNeeded().catch(() => undefined);
-  const box = await target.boundingBox();
+  // no scrollIntoViewIfNeeded: it waits for the element to stop moving, and the hero card floats forever
+  await target.waitFor({ state: "visible" });
+  let box = await target.boundingBox();
   if (!box) throw new Error("no box");
+  if (box.y < 70 || box.y + box.height > H - 20) {
+    await target.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    await wait(150);
+    box = (await target.boundingBox())!;
+  }
   const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
   await page.mouse.move(x, y, { steps: 28 });
@@ -112,16 +118,21 @@ async function glideTo(page: Page, target: Locator, click = true) {
   }
 }
 
-/** Smooth scroll by `px` (layout px at the 1.5× zoom) over `ms`. */
+/** Smooth scroll by `px` (viewport px) over `ms`, eased, animated inside the page (one round trip, no dropped steps). */
 async function glide(page: Page, px: number, ms: number) {
-  const steps = Math.max(1, Math.round(ms / 50));
-  for (let i = 0; i < steps; i++) {
-    // ease in-out
-    const a = (1 - Math.cos((Math.PI * i) / steps)) / 2;
-    const b = (1 - Math.cos((Math.PI * (i + 1)) / steps)) / 2;
-    await page.mouse.wheel(0, px * (b - a));
-    await wait(16);
-  }
+  await page.evaluate(
+    `new Promise((done) => {
+      const z = parseFloat(document.documentElement.style.zoom) || 1;
+      const from = window.scrollY, by = ${px} / z, t0 = performance.now();
+      const step = (now) => {
+        const k = Math.min(1, (now - t0) / ${ms});
+        const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+        window.scrollTo(0, from + by * e);
+        if (k < 1) requestAnimationFrame(step); else done();
+      };
+      requestAnimationFrame(step);
+    })`,
+  );
 }
 
 async function open(page: Page, path: string, settle = 1200) {
@@ -154,7 +165,8 @@ const OUTRO = `<!doctype html><html><head><meta charset="utf-8">
   <small>PayPal sandbox only · MIT licensed</small>
 </div></body></html>`;
 
-const browser = await chromium.launch();
+// HEADED=1: a real window, so Chrome uses the GPU (the animated hero drops to ~9 fps in software rendering)
+const browser = await chromium.launch(process.env.HEADED ? { headless: false, args: ["--ignore-gpu-blocklist", "--enable-gpu-rasterization", "--window-position=0,0"] } : {});
 // Drop A: the real-money drop (agent + PayPal + duplicate + swarm + real capture). Drop B: scale, AI review, failed payment.
 const A = await post("/api/judge-drop", ADMIN);
 const B = await post("/api/judge-drop", ADMIN);
@@ -165,8 +177,11 @@ await scene(browser, "01-home", async (page) => {
   await open(page, "/", 400);
   mark("start");
   await wait(7500);
+  mark("waited");
   await glideTo(page, page.getByRole("tab", { name: "Not selected" }));
+  mark("tab");
   await wait(3200);
+  mark("scroll");
   await glide(page, 720, 2600);
   mark("flow");
   await wait(2600);

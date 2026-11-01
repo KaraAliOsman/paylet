@@ -29,7 +29,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <header className={`topbar ${onHero ? "topbar-hero" : ""} ${scrolled ? "is-scrolled" : ""}`}>
         <Link href="/" className="brand">
           <BrandMark />
-          <span className="brand-word">Paylet</span>
+          <span className="brand-word">paylet</span>
         </Link>
         <nav aria-label="Main">
           <Link href="/how" className="nav-how">
@@ -57,13 +57,13 @@ export function Shell({ children }: { children: ReactNode }) {
   );
 }
 
-/** The mark: one unit (the dot) inside a PayPal hold (the dashed ring). */
-export function BrandMark({ size = 26 }: { size?: number }) {
+/** The Paylet mark: one unit (the dot) held between two brackets (the PayPal hold). The brackets close on hover. */
+export function BrandMark({ size = 28 }: { size?: number }) {
   return (
     <svg className="brand-mark" width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-      <rect width="32" height="32" rx="9" fill="#0b1026" />
-      <circle cx="16" cy="16" r="8.6" fill="none" stroke="#fff" strokeWidth="2.2" strokeDasharray="3.4 2.35" strokeLinecap="round" />
-      <circle cx="16" cy="16" r="3.6" fill="#ff5a1f" />
+      <path className="bm-l" d="M11.5 5.5H6.5v21h5" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinejoin="miter" />
+      <path className="bm-r" d="M20.5 5.5h5v21h-5" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinejoin="miter" />
+      <circle className="bm-dot" cx="16" cy="16" r="4.2" fill="#f5a400" />
     </svg>
   );
 }
