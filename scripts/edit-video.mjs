@@ -12,7 +12,7 @@ const FPS = 30;
 // [from, to, target seconds or null] — from/to are "mark" or "mark+1.2" / "mark-0.5"
 const EDL = {
   "00-intro": { seg: [["start-0.2", "end", null]], vo: [] },
-  "01-home": { seg: [["start-0.3", "rules-0.1", 10.6], ["rules-0.1", "end", null]], vo: [["01", "start+0.6"]] },
+  "01-home": { seg: [["start-0.3", "rules-0.1", 10.6], ["rules-0.1", "end", 10.4]], vo: [["01", "start+0.6"]] },
   "02-drop": { cap: "01  A HOLD, NOT A CHARGE", seg: [["start-0.2", "start+7.6", null]], vo: [["02", "start+0.5"]] },
   "03-agent": { cap: "02  AGENTS CAN ASK. PEOPLE APPROVE.",
     seg: [
