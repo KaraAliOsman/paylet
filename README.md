@@ -171,20 +171,20 @@ a timeout or a 429 replays the same request and can never charge twice.
 ## Unhappy paths
 | Scenario | What Paylet does | Proven by |
 |---|---|---|
-| Same PayPal account enters again (another tab, `/agent`, or 40 agents) | Order approved, but no `/authorize`: "no hold placed", counted as a blocked duplicate | unit [`flow.test.ts`](tests/flow.test.ts) · real sandbox #1 |
-| An agent requests an entry and nobody approves | No hold ever exists; the request expires at the draw and never enters the ballot | unit (MCP) · `e2e-prod`: 3 agents → 3 PayPal links, 0 holds |
+| Same PayPal account enters again (another tab, `/agent`, or 40 agents) | Order approved, but no `/authorize`: "no hold placed", counted as a blocked duplicate | unit: the duplicate never reaches `/authorize` ([`flow.test.ts`](tests/flow.test.ts)) · real sandbox #1 |
+| An agent requests an entry and nobody approves | No hold ever exists; the request expires at the draw and never enters the ballot | code: `draw()` in [`domain.ts`](src/server/domain.ts) · `e2e-prod`: 3 agents → 3 PayPal links, 0 holds |
 | Buyer cancels in PayPal | No hold is placed, and the return page says so | real sandbox #5 |
-| A winner's capture is declined | GET the authorization, void it if still alive, promote waitlist #1 (hold already in place) | unit [`flow.test.ts`](tests/flow.test.ts) · real sandbox #3 |
+| A winner's capture is declined | GET the authorization, void it if still alive, promote waitlist #1 (hold already in place) | unit: waitlist promotion after a failed capture ([`flow.test.ts`](tests/flow.test.ts)) · real sandbox #3: the authorization ends `VOIDED` · code: capture failure handler in [`domain.ts`](src/server/domain.ts) |
 | Capture comes back `PENDING` | Entry waits; `PAYMENT.CAPTURE.COMPLETED` / `DENIED` webhooks, or the sweeper's GET, settle it | code: webhook routing + sweeper in [`domain.ts`](src/server/domain.ts) |
 | PayPal answers 429, 5xx or times out | Retried with the same `PayPal-Request-Id`, honoring `Retry-After`; configuration errors never consume the waitlist | code: [`queue.ts`](src/server/queue.ts), `classify()` in [`paypal.ts`](src/server/paypal.ts) |
-| Webhook replayed, or unsigned | De-duplicated by `event_id`; unverified signature → 401, nothing changes | unit [`flow.test.ts`](tests/flow.test.ts) |
+| Webhook replayed, or unsigned | De-duplicated by `event_id`; unverified signature → 401, nothing changes | unit: unsigned → 401 ([`flow.test.ts`](tests/flow.test.ts)) · de-duplication: code, the `webhook_events` insert in [`index.ts`](src/server/index.ts) |
 | Approval arrives after the drop closed | No hold; if PayPal authorized in the race, the hold is voided at once | code: `finalize()` and the authorize handler in [`domain.ts`](src/server/domain.ts) |
 | Void on an authorization that is already voided | GET first; `VOIDED` / `PREVIOUSLY_VOIDED` count as success | code: `voidAuthorizationSafe()` in [`paypal.ts`](src/server/paypal.ts) |
 | Seller tries to draw with AI suggestions unreviewed, or with no eligible entries | `409 pending_reviews` / `409 no_eligible_entries`, with a human message | code: `draw()` in [`domain.ts`](src/server/domain.ts) |
 | AI provider down or over budget | Rule-only suggestions with a visible "AI unavailable" warning, never a fake success | code: [`er/resolve.ts`](src/server/er/resolve.ts) |
 | drand unreachable at reveal | Retries, then the next round, with a visible warning; never a silent fallback to the seed alone | code: reveal in [`domain.ts`](src/server/domain.ts) |
 | Maker can't ship | Full refund through PayPal, confirmed by `PAYMENT.CAPTURE.REFUNDED`; the fan sees "Refunded, you owe nothing" | code: refund op in [`domain.ts`](src/server/domain.ts) |
-<!-- Integrator: after merging ws-a, replace "code: …" with the exact test names where a unit test now covers the row. -->
+<!-- Integrator: when the unhappy-path unit tests land, replace "code: …" with the exact test names that cover each row. -->
 
 ## Impact
 **Who it is for:** anyone launching something where demand is bigger than supply and the maker wants it to go to real
