@@ -136,16 +136,17 @@ stateDiagram-v2
 
 ## Proven against the real PayPal sandbox
 Mocked tests prove our logic; these prove PayPal agrees. [`e2e/real-paypal.spec.ts`](e2e/real-paypal.spec.ts) logs in as a
-sandbox buyer **inside PayPal's own window** and checks every outcome with `GET /v2/payments/authorizations/{id}`, not with
-our database. Last run: **5/5 passed on 2026-10-31** against https://paylet.onrender.com ([record](docs/e2e-real/latest.json)).
+sandbox buyer **inside PayPal's own window**, and every hold, capture and void it produces is cross-checked with PayPal
+(`GET /v2/payments/authorizations/{id}`), on top of Paylet's own records. Last recorded run: **5/5 passed on 2026-10-31
+(commit `4e11af4`)** against https://paylet.onrender.com ([record](docs/e2e-real/latest.json)).
 
-| Real scenario | What PayPal says |
-|---|---|
-| JS SDK v6 button → hold; same PayPal account again → "no hold placed" | one authorization, `CREATED`; 1 duplicate blocked |
-| Agent's approval link → person approves → draw → winner captured | `PARTIALLY_CAPTURED` / `CAPTURED` for $44.50 of a $48.00 hold; the other $3.50 is released |
-| Sandbox negative test on a real winner | capture answers `422`; the authorization ends `VOIDED`; the unit passes on |
-| Real entrant loses the draw (with a simulated crowd, AI review and a confirmed network) | `VOIDED`, $0 charged |
-| Buyer cancels inside PayPal | no authorization exists; 0 holds |
+| # | Real scenario | What the test asserts | Checked with |
+|---|---|---|---|
+| 1 | JS SDK v6 button → hold; same PayPal account again → "no hold placed" | the authorization is `CREATED`; Paylet counts 1 hold and 1 blocked duplicate | PayPal + Paylet |
+| 2 | Agent's approval link → person approves → draw → winner captured | the authorization is `PARTIALLY_CAPTURED` / `CAPTURED`; Paylet captured $44.50 of the $48.00 hold | PayPal + Paylet |
+| 3 | Sandbox negative test on the only real entrant (no waitlist) | the capture fails; the authorization ends `VOIDED`, never charged | PayPal + Paylet |
+| 4 | Real entrant + labelled simulated crowd + AI review → draw | whichever way the draw goes, PayPal agrees: `CAPTURED` if the real entrant won, `VOIDED` if not | PayPal + Paylet |
+| 5 | Buyer cancels inside PayPal | the return page says no hold was placed; 0 holds | Paylet |
 
 - [`scripts/paypal-approve.ts`](scripts/paypal-approve.ts) is a reusable recipe for driving the PayPal sandbox approval page
   with Playwright (login, "already logged in", guest-to-login switch, review page), in English or Spanish.

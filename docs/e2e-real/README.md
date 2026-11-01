@@ -1,18 +1,24 @@
 # Real PayPal sandbox end-to-end runs
 
 [`e2e/real-paypal.spec.ts`](../../e2e/real-paypal.spec.ts) drives the real PayPal **sandbox** with no mocks: Playwright
-logs in as a sandbox buyer in PayPal's own approval window, and every outcome is cross-checked against PayPal's records
-with `GET /v2/payments/authorizations/{id}`, not against Paylet's database.
+logs in as a sandbox buyer in PayPal's own approval window. Every hold, capture and void the suite produces is
+cross-checked with PayPal (`GET /v2/payments/authorizations/{id}`); counts such as holds, blocked duplicates and the
+captured amount come from Paylet's seller API.
 
-Latest recorded run: [`latest.json`](./latest.json) (also shown by the README badge).
+Latest recorded run: **5/5 on 2026-10-31, commit `4e11af4`** ([`latest.json`](./latest.json), also shown by the README
+badge). `latest.json` always names the commit the run used, so a newer commit means the record is older than the code.
 
-| # | Scenario | What PayPal must say |
-|---|---|---|
-| 1 | JS SDK v6 button → hold; same PayPal account again → "no hold placed" | one authorization, `CREATED`; Paylet counts 1 duplicate blocked |
-| 2 | Agent (MCP) approval link → person approves → draw → partial capture | `PARTIALLY_CAPTURED` / `CAPTURED`, $44.50 of a $48.00 hold |
-| 3 | Sandbox negative test on a real hold → capture fails | capture answers `422`; the authorization ends `VOIDED` (never charged) |
-| 4 | Real entrant + labelled simulated crowd + AI review + confirmed cluster → draw | loser: `VOIDED`; winner: `CAPTURED` |
-| 5 | Buyer cancels inside PayPal | no authorization exists; 0 holds |
+| # | Scenario | What the test asserts | Checked with |
+|---|---|---|---|
+| 1 | JS SDK v6 button → hold; same PayPal account again → "no hold placed" | the authorization is `CREATED`; Paylet counts 1 hold and 1 blocked duplicate | PayPal + Paylet |
+| 2 | Agent (MCP) approval link → person approves → draw → partial capture | the authorization is `PARTIALLY_CAPTURED` / `CAPTURED`; Paylet captured $44.50 of the $48.00 hold | PayPal + Paylet |
+| 3 | Sandbox negative test on the only real entrant (no waitlist) → capture fails | entry `capture_failed`; the authorization ends `VOIDED` (never charged) | PayPal + Paylet |
+| 4 | Real entrant + labelled simulated crowd + AI review → draw | whichever way the draw goes, PayPal agrees: `CAPTURED` if the real entrant won, `VOIDED` if not | PayPal + Paylet |
+| 5 | Buyer cancels inside PayPal | the return page says no hold was placed; 0 holds | Paylet |
+
+The test titles in `latest.json` are the ones the suite had at `4e11af4`; two of them say more than the test asserts
+(scenario 3 has no waitlist, so no unit passes on; scenario 4 does not confirm a cluster and accepts either outcome).
+The table above is what each test actually checks.
 
 ## Why it runs locally and not in CI
 The PayPal login can show a captcha on shared CI runners, and the sandbox buyer password must never live in GitHub.

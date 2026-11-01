@@ -60,7 +60,7 @@ if (i > 0) {
   const date = (r.stats?.startTime ?? new Date().toISOString()).slice(0, 10);
   const run = {
     suite: "e2e/real-paypal.spec.ts",
-    environment: "PayPal SANDBOX (no mocks): a sandbox buyer logs in and every outcome is cross-checked with GET /v2/payments/authorizations/{id}",
+    environment: "PayPal SANDBOX (no mocks): a sandbox buyer logs in inside PayPal's window; every hold, capture and void is cross-checked with GET /v2/payments/authorizations/{id}",
     baseUrl: process.env.E2E_BASE_URL ?? null,
     commit: sha(),
     date,

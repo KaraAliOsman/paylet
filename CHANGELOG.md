@@ -38,8 +38,8 @@ First public version, built during the PayPal AI Hackathon.
 - Owner key for seller consoles that survives restarts (`735752d`, 21:01).
 - Playwright test of the agent page flow (`25d4b7d`, 21:20).
 - Gallery screenshots from the live demo (`a37ae06`, `c3bafa9`).
-- Real PayPal sandbox e2e suite: buyer login in PayPal's window, every outcome cross-checked with PayPal; judge quota tweak;
-  keep-alive workflow for the free instance (`bc90a0d`, 21:53).
+- Real PayPal sandbox e2e suite: buyer login in PayPal's window, every hold, capture and void cross-checked with PayPal;
+  judge quota tweak; keep-alive workflow for the free instance (`bc90a0d`, 21:53).
 - Deterministic "cancel in PayPal" scenario; **5/5 real sandbox scenarios pass** (`4e11af4`, 21:57).
 
 ### Security / hardening (`6b6021c`, 21:11, from an adversarial review)

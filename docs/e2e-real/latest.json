@@ -1,12 +1,12 @@
 {
   "suite": "e2e/real-paypal.spec.ts",
-  "environment": "PayPal SANDBOX (no mocks): a sandbox buyer logs in and every outcome is cross-checked with GET /v2/payments/authorizations/{id}",
+  "environment": "PayPal SANDBOX (no mocks): a sandbox buyer logs in inside PayPal's window; every hold, capture and void is cross-checked with GET /v2/payments/authorizations/{id}",
   "baseUrl": "https://paylet.onrender.com",
   "commit": "4e11af4",
   "date": "2026-10-31",
   "passed": 5,
   "total": 5,
-  "note": "Recorded by hand from the run that shipped with commit 4e11af4 (durations were not kept). Later runs are written by .github/scripts/badges.mjs --e2e-real.",
+  "note": "Recorded by hand from the run that shipped with commit 4e11af4 (durations were not kept). Later runs are written by .github/scripts/badges.mjs --e2e-real. Titles are the test names at 4e11af4: scenario 3 had no waitlist (no unit passed on) and scenario 4 accepts either outcome without confirming a cluster; docs/e2e-real/README.md lists what each test asserts.",
   "tests": [
     { "title": "JS SDK v6 button: hold placed, then the same PayPal account gets 'no hold placed'", "status": "passed", "durationMs": null, "retries": 0 },
     { "title": "agent link → approve → partial capture of the winner, verified on PayPal", "status": "passed", "durationMs": null, "retries": 0 },
