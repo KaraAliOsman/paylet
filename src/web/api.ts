@@ -191,6 +191,155 @@ export interface AgentChatResponse {
   error?: true;
 }
 
+// ---------------------------------------------------------------- seller console (GET /api/seller/:slug)
+
+export interface Address {
+  line1: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+}
+
+export interface SellerEntry {
+  id: string;
+  publicId: string;
+  source: "human" | "agent" | "simulated" | string;
+  agentLabel: string | null;
+  status: EntryStatus | string;
+  displayName: string | null;
+  name: string | null;
+  address: Address | null;
+  holdCents: number | null;
+  capturedCents: number | null;
+  refundedCents?: number | null;
+  /** masked "…7K2Q" (contract) */
+  authorization?: string | null;
+  /** older servers sent the full id; the UI only ever shows it masked */
+  authorizationId?: string | null;
+  clusterId: string | null;
+  note: string | null;
+  createdAt?: number;
+  payerVerified?: boolean | null;
+  shipping?: { carrier: string; tracking: string } | null;
+}
+
+export interface Cluster {
+  id: string;
+  kind: "household" | "operator";
+  status: "suggested" | "confirmed" | "dismissed";
+  method: "rules" | "ai";
+  confidence: number;
+  evidence: { field: string; detail: string }[];
+  explanation: string;
+  memberIds: string[];
+  /** e.g. "1200 HARBOR BLVD STE 4B 43215", for the address diff */
+  normalizedKey?: string | null;
+}
+
+export interface AiSummary {
+  model: string;
+  ranAt: number | null;
+  uncertainPairs: number;
+  linked: number;
+  keptApartCount: number;
+  keptApart: { a: string; b: string; reason: string; confidence: number }[];
+  degraded: string | null;
+}
+
+export interface AiUsage {
+  calls?: number;
+  today: number;
+  dailyCap: number;
+  model: string;
+  ms?: number;
+}
+
+export interface SellerData {
+  drop: PublicDrop & { negativeTest: boolean };
+  entries: SellerEntry[];
+  clusters: Cluster[];
+  /** v2: the AI review summary; older servers put the usage counters here */
+  ai: AiSummary | AiUsage;
+  usage?: AiUsage;
+}
+
+export const isAiSummary = (a: unknown): a is AiSummary => !!a && typeof a === "object" && "keptApart" in a;
+
+/** Response of POST /api/seller/:slug/analyze (older servers: clusters is a count and there is no degraded/keptApart). */
+export interface AnalyzeResult {
+  clusters: number | unknown[];
+  llmCalls?: number;
+  uncertainPairs?: number;
+  keptApart?: number | unknown[];
+  degraded?: string | boolean | null;
+  reason?: string;
+  ms?: number;
+}
+
+export interface DropReport {
+  units: number;
+  unitsToDistinctPayers: number;
+  capturedCents: number;
+  shippingReleasedCents: number;
+  holdsVoided: number;
+  chargedToLosersCents: number;
+  failedPayments: number;
+  waitlistRecoverySeconds: number | null;
+  agentRequests: number;
+  agentHoldsWithoutPerson: number;
+  networkAccounts: number;
+  networkTickets: number;
+  sameAccountDuplicates: number;
+  payerVerified: number;
+  real: boolean;
+}
+
+export interface JudgeBuyer {
+  label: string;
+  email: string;
+  password: string;
+}
+
+// ---------------------------------------------------------------- seller key: URL fragment (#k=), never the query
+
+const keyStore = (slug: string) => `paylet.k.${slug}`;
+
+/**
+ * The seller key travels in the fragment (`/seller/<slug>#k=…`), which browsers never send to a server, and is kept in
+ * sessionStorage for reloads. Older `?k=` links still work: the key is moved to the fragment and dropped from the query.
+ */
+export function readSellerKey(slug: string): string {
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const query = new URLSearchParams(window.location.search);
+  const k = hash.get("k") ?? query.get("k");
+  if (k) {
+    try {
+      sessionStorage.setItem(keyStore(slug), k);
+    } catch {
+      /* private mode: the fragment still works */
+    }
+    if (query.has("k")) {
+      query.delete("k");
+      const q = query.toString();
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}#k=${encodeURIComponent(k)}`);
+    }
+    return k;
+  }
+  try {
+    const stored = sessionStorage.getItem(keyStore(slug));
+    if (stored) return stored;
+    // the judge page remembers its own drop (same browser)
+    const judge = JSON.parse(localStorage.getItem("paylet.judge") ?? "null") as { slug?: string; sellerKey?: string } | null;
+    if (judge?.slug === slug && judge.sellerKey) return judge.sellerKey;
+  } catch {
+    /* ignore */
+  }
+  return "";
+}
+
+export const sellerHref = (slug: string, key: string) => `/seller/${slug}#k=${encodeURIComponent(key)}`;
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -201,30 +350,43 @@ export class ApiError extends Error {
   }
 }
 
-/** Human copy for the error codes in the contract. */
+/** Human copy for the error codes in the contract (P0-06). Never show a raw code or JSON to a person. */
 const FRIENDLY: Record<string, string> = {
-  seller_key_required: "This seller console needs its private link.",
-  drop_not_found: "That drop isn't here anymore.",
-  entry_not_found: "That entry isn't here anymore.",
-  order_id_required: "Something went wrong confirming your entry. Nothing was charged.",
+  seller_key_required: "This console link is missing its key. Open it from /judge.",
+  drop_not_found: "This drop no longer exists. Start a new one at /judge.",
+  entry_not_found: "That entry isn't here anymore. Nothing was charged.",
+  order_id_required: "This PayPal return link is incomplete. Open your entry page instead.",
   internal_error: "Something went wrong on our side. Nothing was charged.",
-  rate_limited: "Too many requests in a minute. Wait a moment and try again.",
-  pending_reviews: "Review the pending AI suggestions before drawing.",
-  no_eligible_entries: "No eligible entries to draw yet.",
+  rate_limited: "Too many requests. Try again in a minute.",
+  pending_reviews: "Some AI suggestions are still pending. Review them first.",
+  no_eligible_entries: "Nobody in this drop has a PayPal hold yet, so there's nothing to draw.",
   holds_pending: "Some PayPal holds are still being placed. Try again in a few seconds.",
   drop_closed: "This drop is closed.",
   sim_limit: "This drop already has its simulated crowd.",
   swarm_limit: "This drop already met its scalper swarm.",
-  analysis_running: "The AI review is already running.",
+  analysis_running: "The AI review is already running. Give it a few seconds.",
   judge_drop_quota: "You already have several judge drops today. Reuse one of them.",
-  paypal_error: "PayPal didn't accept the request.",
+  paypal_error: "PayPal didn't accept the request. Nothing was charged.",
+  payload_too_large: "That message is too long.",
   not_available: "This server doesn't offer that yet.",
   server_unavailable: "The demo server is waking up or restarting. Try again in a moment.",
 };
 
+/** Friendly copy for an error code (falls back to a generic line, never to the code itself). */
+export function friendly(code: string): string {
+  return FRIENDLY[code] ?? "Something went wrong. Nothing was charged.";
+}
+
 export function friendlyError(e: unknown): string {
-  // a specific message from the server wins (e.g. "3 AI suggestions are waiting for your decision"); bare codes get our copy
-  if (e instanceof ApiError) return e.message && e.message !== e.code ? e.message : (FRIENDLY[e.code] ?? e.message);
+  // our copy for every known code; a server message only for codes we don't know (it is already human copy)
+  if (e instanceof ApiError) return FRIENDLY[e.code] ?? (e.message && e.message !== e.code && !/^HTTP \d+$/.test(e.message) ? e.message : friendly(e.code));
+  if (e instanceof TypeError) return "Couldn't reach Paylet. Check your connection and try again.";
+  return e instanceof Error ? e.message : String(e);
+}
+
+/** One technical line for a <details> under a friendly message ("HTTP 409 · pending_reviews · 2 AI suggestion(s) not reviewed"). */
+export function errorDetails(e: unknown): string {
+  if (e instanceof ApiError) return [`HTTP ${e.status}`, e.code, e.message !== e.code && e.message !== FRIENDLY[e.code] ? e.message : ""].filter(Boolean).join(" · ");
   return e instanceof Error ? e.message : String(e);
 }
 
