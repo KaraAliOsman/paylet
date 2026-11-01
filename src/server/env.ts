@@ -18,7 +18,8 @@ const schema = z.object({
   /** Optional owner key that opens every seller console (survives restarts on ephemeral hosting). */
   SELLER_ADMIN_KEY: z.string().min(16).optional(),
   /** P1-06: code in the Devpost testing instructions that unlocks GET /api/judge-buyers (unset = endpoint 404s). */
-  JUDGE_CODE: z.string().min(6).optional(),
+  // never a boot blocker: an empty or unset code simply keeps the endpoint closed
+  JUDGE_CODE: z.string().optional(),
   /** Sandbox buyer shown to judges with the code (both must be set). Sandbox accounts only, never live ones. */
   BUYER_EMAIL: z.string().optional(),
   BUYER_PASSWORD: z.string().optional(),
