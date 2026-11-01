@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { db, now, tx } from "./db";
 import { env } from "./env";
 import { canonicalList, computeDraw, sha256Hex } from "../shared/draw";
-import { formatUsd } from "../shared/money";
+import { formatUsd, fromPayPal } from "../shared/money";
 import {
   emit,
   getDrop,
@@ -18,7 +18,8 @@ import {
   type EntryRow,
 } from "./models";
 import * as paypal from "./paypal";
-import { enqueue, type Handlers, type OpRow } from "./queue";
+import { enqueue, opCount, pendingOpsFor, type Handlers, type OpRow } from "./queue";
+import type { Trace } from "./trace";
 import { resolve } from "./er/resolve";
 import type { Identity } from "./er/normalize";
 import { syntheticCrowd } from "./simulate";
@@ -92,6 +93,8 @@ export async function ensureShowcase(): Promise<DropRow> {
 export function publicDrop(d: DropRow) {
   const entries = listEntries(d.id);
   const count = (s: (e: EntryRow) => boolean) => entries.filter(s).length;
+  const real = (e: EntryRow) => e.source !== "simulated";
+  const capturedReal = entries.filter((e) => real(e) && (e.status === "captured" || e.status === "refunded"));
   return {
     id: d.id,
     slug: d.slug,
@@ -112,14 +115,23 @@ export function publicDrop(d: DropRow) {
     frozenList: d.status === "open" ? null : d.frozen_list ? (JSON.parse(d.frozen_list) as string[]) : null,
     waitlistSize: d.waitlist_size,
     stats: {
-      requests: count((e) => e.source !== "simulated"),
+      // real-only unless named *Simulated / simulated (contract: PublicDrop.stats)
+      realOrders: count(real),
+      /** @deprecated alias of realOrders, kept for older clients */
+      requests: count(real),
       awaitingPerson: count((e) => e.status === "awaiting_person"),
-      holds: count((e) => e.source !== "simulated" && e.hold_cents != null && e.status !== "duplicate"),
+      holds: count((e) => real(e) && e.hold_cents != null && e.status !== "duplicate"),
       duplicatesBlocked: count((e) => e.status === "duplicate"),
+      agents: count((e) => e.source === "agent"),
+      captured: capturedReal.length,
+      // net of refunds: money PayPal still holds for the maker
+      capturedCents: capturedReal.reduce((s, e) => s + (e.captured_cents ?? 0) - (e.refunded_cents ?? 0), 0),
+      shippingReleasedCents: capturedReal.reduce((s, e) => s + Math.max(0, (e.hold_cents ?? 0) - (e.captured_cents ?? 0)), 0),
+      voided: count((e) => real(e) && e.status === "voided"),
+      refunded: count((e) => real(e) && e.status === "refunded"),
+      failedPayments: count((e) => e.status === "capture_failed"),
       merged: count((e) => e.status === "merged"),
       simulated: count((e) => e.source === "simulated"),
-      agents: count((e) => e.source === "agent"),
-      captured: count((e) => e.source !== "simulated" && e.status === "captured"),
       capturedSimulated: count((e) => e.source === "simulated" && e.status === "captured"),
     },
   };
@@ -141,7 +153,7 @@ export async function startEntry(dropIdOrSlug: string, source: "human" | "agent"
     `INSERT INTO entries(id, public_id, drop_id, source, agent_label, status, created_at, updated_at) VALUES(?, ?, ?, ?, ?, 'awaiting_person', ?, ?)`,
   ).run(entryId, pid, drop.id, source, agentLabel ?? null, now(), now());
   const base = env.PUBLIC_URL.replace(/\/$/, "");
-  const { orderId, approveUrl } = await paypal.createHoldOrder({
+  const { orderId, approveUrl, trace } = await paypal.createHoldOrder({
     dropId: drop.id,
     entryId,
     title: drop.title,
@@ -151,7 +163,7 @@ export async function startEntry(dropIdOrSlug: string, source: "human" | "agent"
     returnUrl: `${base}/return?entry=${entryId}`,
     cancelUrl: `${base}/return?entry=${entryId}&cancelled=1`,
   });
-  updateEntry(entryId, { order_id: orderId });
+  updateEntry(entryId, { order_id: orderId, approve_url: approveUrl ?? null });
   emit(
     drop.id,
     "order_created",
@@ -159,7 +171,7 @@ export async function startEntry(dropIdOrSlug: string, source: "human" | "agent"
       ? `Agent "${agentLabel ?? "unnamed"}" requested entry ${pid} → PayPal approval link issued; agent stops here (it cannot pay).`
       : `Fan opened PayPal for entry ${pid} (hold of ${formatUsd(drop.price_cents + drop.ship_hold_cents)} requested).`,
     true,
-    { orderId },
+    { trace },
   );
   return { entryId, publicId: pid, orderId, approveUrl, drop };
 }
@@ -179,11 +191,14 @@ export async function finalize(orderId: string, opts: { quiet?: boolean } = {}):
   const entry = getEntryByOrder(orderId);
   if (!entry) return { outcome: "unknown_order" };
   if (entry.status !== "awaiting_person") return { outcome: "already", entry };
+  // PayPal declined the funding source at authorize time: the order still reads APPROVED, so background re-checks
+  // must wait for the person to approve again (return URL, JS SDK onApprove or a new CHECKOUT.ORDER.APPROVED webhook).
+  if (opts.quiet && entry.needs_reapproval) return { outcome: "not_approved", entry };
 
   const ident = await paypal.getOrderIdentity(orderId);
   // re-read after the await: the drop may have been drawn meanwhile
   const drop = getDrop(entry.drop_id)!;
-  if (!opts.quiet || ident.status === "APPROVED") emit(drop.id, "order_checked", `GET order for ${entry.public_id}: ${ident.status}`, true);
+  if (!opts.quiet || ident.status === "APPROVED") emit(drop.id, "order_checked", `GET order for ${entry.public_id}: ${ident.status}`, true, { trace: ident.trace });
   if (ident.status !== "APPROVED") return { outcome: "not_approved", entry };
   if (!dropIsOpen(drop)) {
     db.prepare("UPDATE entries SET status = 'expired', note = ?, updated_at = ? WHERE id = ? AND status = 'awaiting_person'").run(
@@ -215,10 +230,11 @@ export async function finalize(orderId: string, opts: { quiet?: boolean } = {}):
     changed = Number(
       db
         .prepare(
-          `UPDATE entries SET payer_hash = ?, account_hash = ?, email_hash = ?, name = ?, display_name = ?, email = ?, address_json = ?, status = 'authorizing', updated_at = ?
+          `UPDATE entries SET payer_hash = ?, account_hash = ?, email_hash = ?, name = ?, display_name = ?, email = ?, address_json = ?, status = 'authorizing',
+             payer_verified = ?, approved_at = ?, needs_reapproval = NULL, updated_at = ?
            WHERE id = ? AND status = 'awaiting_person' AND EXISTS (SELECT 1 FROM drops WHERE id = ? AND status = 'open' AND closes_at > ?)`,
         )
-        .run(...fields, now(), entry.id, drop.id, now()).changes,
+        .run(...fields, payerVerified(ident.accountStatus), now(), now(), entry.id, drop.id, now()).changes,
     );
   } catch (e) {
     if (!String(e).includes("UNIQUE")) throw e;
@@ -247,8 +263,16 @@ export async function finalize(orderId: string, opts: { quiet?: boolean } = {}):
     }
     return { outcome: "already", entry: fresh };
   }
-  enqueue("authorize", `auth:${entry.id}`, entry.id);
+  // a re-approval after a declined funding source needs a fresh PayPal-Request-Id (the first one is spent)
+  const tries = opCount(entry.id, "authorize");
+  enqueue("authorize", tries ? `auth:${entry.id}:${tries + 1}` : `auth:${entry.id}`, entry.id);
   return { outcome: "authorizing", entry: getEntry(entry.id) };
+}
+
+/** PayPal wallet account_status → payer_verified (KYA-lite, P2-16): 1 VERIFIED, 0 UNVERIFIED, null if PayPal did not say. */
+export function payerVerified(accountStatus: string | undefined): number | null {
+  if (!accountStatus) return null;
+  return accountStatus.toUpperCase() === "VERIFIED" ? 1 : 0;
 }
 
 // ---------------------------------------------------------------- simulated crowd
@@ -282,7 +306,7 @@ export function addSimulatedCrowd(dropIdOrSlug: string, seed = Math.floor(Math.r
       t,
     );
   }
-  emit(drop.id, "simulated_crowd", `Added ${crowd.length} SIMULATED entrants (labelled; no PayPal calls) to show allocation at scale.`, false);
+  emit(drop.id, "simulated_crowd", `Added ${crowd.length} simulated entrants (labelled; no PayPal calls) to show allocation at scale.`, false);
   return crowd.length;
 }
 
@@ -425,16 +449,21 @@ function captureAmount(drop: DropRow): number {
   return drop.price_cents + drop.ship_actual_cents; // partial capture: real shipping < shipping held
 }
 
+/** Sandbox negative test through PayPal's official negative testing (PayPal-Mock-Response header).
+ *  Verified against the real sandbox by scripts/proof-negative-testing.ts: the capture answers 422 TRANSACTION_REFUSED
+ *  and the hold stays alive (CREATED), so the app takes the production path: void the live hold, promote the waitlist. */
+export const NEGATIVE_TEST_CODE = "TRANSACTION_REFUSED";
+
 function scheduleCapture(drop: DropRow, e: EntryRow, injectFailure: boolean) {
   if (e.source === "simulated" && injectFailure) {
-    updateEntry(e.id, { status: "capture_failed", note: "Payment failed (SIMULATED negative test). The unit passes to the waitlist." });
-    emit(drop.id, "capture_failed", `SIMULATED negative test: capture for ${e.public_id} declined — promoting the waitlist.`, false);
+    updateEntry(e.id, { status: "capture_failed", settled_at: now(), note: "Payment failed (simulated negative test). The unit passes to the waitlist." });
+    emit(drop.id, "capture_failed", `Simulated negative test: capture for ${e.public_id} declined — promoting the waitlist.`, false);
     void promoteNext(drop.id);
     return;
   }
   if (e.source === "simulated") {
-    updateEntry(e.id, { status: "captured", captured_cents: captureAmount(drop), capture_id: `SIM-CAP-${e.id.slice(-6).toUpperCase()}` });
-    emit(drop.id, "capture_sim", `SIMULATED capture for ${e.public_id} (${formatUsd(captureAmount(drop))}).`, false);
+    updateEntry(e.id, { status: "captured", settled_at: now(), captured_cents: captureAmount(drop), capture_id: `SIM-CAP-${e.id.slice(-6).toUpperCase()}` });
+    emit(drop.id, "capture_sim", `Simulated capture for ${e.public_id} (${formatUsd(captureAmount(drop))}).`, false);
     settleIfDone(drop.id);
     return;
   }
@@ -443,8 +472,8 @@ function scheduleCapture(drop: DropRow, e: EntryRow, injectFailure: boolean) {
 
 function scheduleVoid(drop: DropRow, e: EntryRow, reason: string) {
   if (e.source === "simulated") {
-    updateEntry(e.id, { status: e.status === "merged" ? "merged" : "voided" });
-    emit(drop.id, "void_sim", `SIMULATED hold release for ${e.public_id} (${reason}).`, false);
+    updateEntry(e.id, { status: e.status === "merged" ? "merged" : "voided", settled_at: now() });
+    emit(drop.id, "void_sim", `Simulated hold release for ${e.public_id} (${reason}).`, false);
     return;
   }
   if (!e.authorization_id) return;
@@ -482,19 +511,60 @@ function settleIfDone(dropId: string) {
     updateEntry(e.id, { status: "lost" });
     scheduleVoid(drop, e, "waitlist released after all units were paid");
   }
-  db.prepare("UPDATE drops SET status = 'settled' WHERE id = ?").run(dropId);
+  if (!db.prepare("UPDATE drops SET status = 'settled' WHERE id = ? AND status = 'drawn'").run(dropId).changes) return;
   const cap = entries.filter((e) => e.status === "captured").length;
   emit(dropId, "settled", `Settled: ${cap} unit(s) paid. Every other hold released. Nobody who lost was charged.`, false);
 }
 
+// ---------------------------------------------------------------- guarded transitions
+// Every money state change is a conditional UPDATE, so the capture op, a webhook and the sweeper can race safely:
+// whichever arrives first moves the entry, the others become no-ops (and only write their own ledger line).
+
+/** won → captured (capture op, PAYMENT.CAPTURE.COMPLETED webhook, or the PENDING re-check). */
+function markCaptured(e: EntryRow, cents: number, captureId: string | null | undefined): boolean {
+  const ch = db
+    .prepare(
+      `UPDATE entries SET status = 'captured', capture_id = COALESCE(?, capture_id), captured_cents = ?, settled_at = ?,
+         note = CASE WHEN note LIKE 'Payment pending%' THEN NULL ELSE note END, updated_at = ?
+       WHERE id = ? AND status = 'won'`,
+    )
+    .run(captureId ?? null, cents, now(), now(), e.id).changes;
+  if (!ch && captureId) db.prepare("UPDATE entries SET capture_id = COALESCE(capture_id, ?) WHERE id = ?").run(captureId, e.id);
+  if (ch) settleIfDone(e.drop_id);
+  return ch > 0;
+}
+
+/** won → capture_failed: void the hold if it is still alive (the void op GETs first), then hand the unit on. */
+async function markCaptureFailed(e: EntryRow, note: string): Promise<boolean> {
+  const ch = db.prepare("UPDATE entries SET status = 'capture_failed', note = ?, settled_at = ?, updated_at = ? WHERE id = ? AND status = 'won'").run(note, now(), now(), e.id).changes;
+  if (!ch) return false;
+  if (e.authorization_id && e.source !== "simulated") enqueue("void", `void:${e.authorization_id}`, e.id, { reason: "payment failed" });
+  await promoteNext(e.drop_id);
+  return true;
+}
+
+/** captured → refunded (refund op, PAYMENT.CAPTURE.REFUNDED / REVERSED webhook, or reconciliation). */
+function markRefunded(e: EntryRow, cents: number, refundId: string | null | undefined): boolean {
+  return (
+    db
+      .prepare("UPDATE entries SET status = 'refunded', refunded_cents = ?, refund_id = COALESCE(?, refund_id), note = ?, updated_at = ? WHERE id = ? AND status = 'captured'")
+      .run(cents, refundId ?? null, `Refunded ${formatUsd(cents)}. Nothing is owed.`, now(), e.id).changes > 0
+  );
+}
+
 // ---------------------------------------------------------------- queue handlers
+
+type OpPayload = { injectFailure?: boolean; reason?: string; authorizationId?: string; carrier?: paypal.CarrierCode; tracking?: string };
+
+const DECLINED_NOTE = "PayPal couldn't use that funding source. Approve again to choose another.";
 
 export const handlers: Handlers = {
   async run(op: OpRow) {
     const e = getEntry(op.entry_id);
     if (!e) return;
     const drop = getDrop(e.drop_id)!;
-    const payload = JSON.parse(op.payload) as { injectFailure?: boolean; reason?: string; authorizationId?: string };
+    const payload = JSON.parse(op.payload) as OpPayload;
+    const data = (trace?: Trace) => ({ trace, attempts: op.attempts + 1 });
     if (op.kind === "authorize") {
       // never place a hold for an entry that is no longer waiting for one, or after the drop closed
       if (e.status !== "authorizing") return;
@@ -509,84 +579,242 @@ export const handlers: Handlers = {
       const r = await paypal.authorizeOrder(e.order_id!, op.key);
       if (!r.authorizationId) throw new Error(`authorize returned no authorization (status ${r.status})`);
       const placed = db
-        .prepare("UPDATE entries SET status = 'held', authorization_id = ?, hold_cents = ?, updated_at = ? WHERE id = ? AND status = 'authorizing'")
-        .run(r.authorizationId, drop.price_cents + drop.ship_hold_cents, now(), e.id);
+        .prepare("UPDATE entries SET status = 'held', authorization_id = ?, hold_cents = ?, held_at = ?, note = NULL, updated_at = ? WHERE id = ? AND status = 'authorizing'")
+        .run(r.authorizationId, drop.price_cents + drop.ship_hold_cents, now(), now(), e.id);
       if (!placed.changes || !dropIsOpen(getDrop(drop.id)!)) {
         // the drop was drawn while PayPal was authorizing: release this hold immediately
         updateEntry(e.id, { status: "voided", authorization_id: r.authorizationId, note: "The drop closed while the hold was being placed — released." });
         enqueue("void", `void:${r.authorizationId}`, e.id, { reason: "drop closed during authorization", authorizationId: r.authorizationId });
         return;
       }
-      emit(drop.id, "hold_placed", `Hold placed for ${e.public_id}: ${formatUsd(drop.price_cents + drop.ship_hold_cents)} authorized (${r.status}). Nothing charged yet.`, true, {
-        authorizationId: r.authorizationId,
-      });
+      emit(drop.id, "hold_placed", `Hold placed for ${e.public_id}: ${formatUsd(drop.price_cents + drop.ship_hold_cents)} authorized (${r.status}). Nothing charged yet.`, true, data(r.trace));
     } else if (op.kind === "capture") {
       if (e.status !== "won") return;
-      if (payload.injectFailure) {
-        // Sandbox negative test, clearly labelled in the UI: release the hold first, then attempt the capture.
-        // PayPal answers 422 AUTHORIZATION_VOIDED — the same path a lapsed/declined hold takes in production.
-        await paypal.voidAuthorizationSafe(e.authorization_id!, `negtest:${e.authorization_id}`);
-        emit(drop.id, "negative_test", `SANDBOX NEGATIVE TEST: hold for ${e.public_id} released before capture to reproduce a failed payment.`, true);
-      }
-      const r = await paypal.captureAuthorization(e.authorization_id!, captureAmount(drop), op.key, `PAYLET-${e.id.slice(-10)}-1`);
+      // Negative test (labelled in the UI): PayPal itself declines this capture; the hold stays alive.
+      const mock = payload.injectFailure ? NEGATIVE_TEST_CODE : undefined;
+      const r = await paypal.captureAuthorization(e.authorization_id!, captureAmount(drop), op.key, `PAYLET-${e.id.slice(-10)}-1`, { mock });
       if (r.status === "PENDING") {
         updateEntry(e.id, { capture_id: r.captureId ?? null, note: "Payment pending at PayPal — waiting for confirmation." });
-        emit(drop.id, "capture_pending", `Capture for ${e.public_id} is PENDING at PayPal.`, true);
+        emit(drop.id, "capture_pending", `Capture for ${e.public_id} is PENDING at PayPal: waiting for the PAYMENT.CAPTURE.COMPLETED webhook (re-checked every 2 minutes).`, true, data(r.trace));
         return;
       }
       if (r.status !== "COMPLETED") throw new Error(`CAPTURE_${r.status || "UNKNOWN"}`);
-      updateEntry(e.id, { status: "captured", capture_id: r.captureId ?? null, captured_cents: captureAmount(drop) });
+      const cents = fromPayPal(r.amount) || captureAmount(drop);
       emit(
         drop.id,
         "captured",
-        `Captured ${formatUsd(captureAmount(drop))} from ${e.public_id} (held ${formatUsd(drop.price_cents + drop.ship_hold_cents)} — ${formatUsd(drop.ship_hold_cents - drop.ship_actual_cents)} of unused shipping released).`,
+        `Captured ${formatUsd(cents)} from ${e.public_id} (held ${formatUsd(drop.price_cents + drop.ship_hold_cents)} — ${formatUsd(drop.ship_hold_cents - drop.ship_actual_cents)} of unused shipping released).`,
         true,
-        { captureId: r.captureId },
+        data(r.trace),
       );
-      settleIfDone(drop.id);
+      markCaptured(e, cents, r.captureId);
     } else if (op.kind === "void") {
       const authId = e.authorization_id ?? payload.authorizationId;
       if (!authId) return;
       const r = await paypal.voidAuthorizationSafe(authId, op.key);
-      if (e.status !== "merged" && e.status !== "capture_failed") updateEntry(e.id, { status: "voided" });
-      emit(drop.id, "voided", `Hold released for ${e.public_id} (${payload.reason ?? "not selected"}) — ${r.already ? "already released" : "voided"}, never charged.`, true);
+      if (r.status !== "VOIDED") {
+        // PayPal says the hold was captured: never mark it released
+        emit(drop.id, "void_skipped", `No void for ${e.public_id}: PayPal reports the hold as ${r.status}.`, true, data(r.trace));
+        return;
+      }
+      db.prepare("UPDATE entries SET status = CASE WHEN status IN ('merged','capture_failed') THEN status ELSE 'voided' END, settled_at = COALESCE(settled_at, ?), updated_at = ? WHERE id = ?").run(
+        now(),
+        now(),
+        e.id,
+      );
+      emit(drop.id, "voided", `Hold released for ${e.public_id} (${payload.reason ?? "not selected"}) — ${r.already ? "already released" : "voided"}, never charged.`, true, data(r.trace));
+    } else if (op.kind === "track") {
+      if (!e.capture_id || !e.order_id || !payload.tracking) return;
+      const carrier = payload.carrier ?? "USPS";
+      const r = await paypal.addTracking(e.order_id, e.capture_id, payload.tracking, carrier);
+      updateEntry(e.id, { carrier, tracking_number: payload.tracking, shipped_at: now() });
+      emit(
+        drop.id,
+        "shipped",
+        `Shipped ${e.public_id}: ${carrier} tracking …${payload.tracking.slice(-4)} added to the PayPal order${r.already ? " (already on file)" : "; PayPal shows it to the buyer"}.`,
+        true,
+        data(r.trace),
+      );
+    } else if (op.kind === "refund") {
+      if (e.status !== "captured" || !e.capture_id) return;
+      const reason = payload.reason ?? "the item could not be shipped";
+      const r = await paypal.refundCapture(e.capture_id, op.key, `Refund from ${drop.maker}: ${reason}.`);
+      if (r.status === "COMPLETED") {
+        const cents = r.amountCents || e.captured_cents || 0;
+        markRefunded(e, cents, r.refundId);
+        emit(drop.id, "refunded", `Refunded ${formatUsd(cents)} to ${e.public_id} (${reason}). The buyer owes nothing.`, true, data(r.trace));
+      } else if (r.status === "PENDING") {
+        updateEntry(e.id, { refund_id: r.refundId ?? null, note: "Refund pending at PayPal." });
+        emit(drop.id, "refund_pending", `Refund for ${e.public_id} is PENDING at PayPal: waiting for the PAYMENT.CAPTURE.REFUNDED webhook.`, true, data(r.trace));
+      } else {
+        throw new Error(`REFUND_${r.status || "UNKNOWN"}`);
+      }
     }
   },
   async onTerminal(op, f) {
     const e = getEntry(op.entry_id);
     if (!e) return;
+    const payload = JSON.parse(op.payload) as OpPayload;
+    const data = { trace: f.trace, attempts: op.attempts + 1 };
     if (op.kind === "authorize") {
+      if (f.issue === "INSTRUMENT_DECLINED") {
+        // No hold exists. The order's payer-action link stays valid: the person approves again with another funding source.
+        const back = db
+          .prepare(
+            "UPDATE entries SET status = 'awaiting_person', needs_reapproval = 1, payer_hash = NULL, account_hash = NULL, email_hash = NULL, note = ?, updated_at = ? WHERE id = ? AND status = 'authorizing'",
+          )
+          .run(DECLINED_NOTE, now(), e.id);
+        if (back.changes) emit(e.drop_id, "authorize_declined", `PayPal declined the funding source for ${e.public_id} (${f.status} INSTRUMENT_DECLINED): no hold placed. The person can approve again with another one.`, true, data);
+        return;
+      }
       updateEntry(e.id, { status: "error", note: `PayPal could not place the hold (${f.issue}).` });
-      emit(e.drop_id, "authorize_failed", `Hold failed for ${e.public_id}: ${f.status} ${f.issue}.`, true);
+      emit(e.drop_id, "authorize_failed", `Hold failed for ${e.public_id}: ${f.status} ${f.issue}.`, true, data);
     } else if (op.kind === "capture") {
       if (f.cls === "CONFIG") {
         // our credentials/permissions are broken: do NOT burn through the waitlist — retry later
         db.prepare("UPDATE ops SET status = 'pending', attempts = 0, next_at = ? WHERE key = ?").run(now() + 10 * 60_000, op.key);
-        emit(e.drop_id, "capture_blocked", `Capture for ${e.public_id} blocked by a configuration error (${f.status} ${f.issue}); retrying in 10 minutes.`, true);
+        emit(e.drop_id, "capture_blocked", `Capture for ${e.public_id} blocked by a configuration error (${f.status} ${f.issue}); retrying in 10 minutes.`, true, data);
         return;
       }
       // reconcile with PayPal before declaring the payment failed
+      let holdStatus = "";
       try {
         const a = await paypal.getAuthorization(e.authorization_id!);
+        holdStatus = a.status;
         if (a.status === "CAPTURED" || a.status === "PARTIALLY_CAPTURED") {
-          const drop = getDrop(e.drop_id)!;
-          updateEntry(e.id, { status: "captured", captured_cents: captureAmount(drop) });
-          emit(e.drop_id, "captured", `Capture for ${e.public_id} confirmed by reconciliation with PayPal.`, true);
-          settleIfDone(e.drop_id);
+          emit(e.drop_id, "captured", `Capture for ${e.public_id} confirmed by reconciliation with PayPal (${a.status}).`, true, { trace: a.trace });
+          markCaptured(e, captureAmount(getDrop(e.drop_id)!), null);
           return;
         }
-        if (a.status === "CREATED" || a.status === "PENDING") enqueue("void", `void:${e.authorization_id}`, e.id, { reason: "payment failed" });
       } catch {
-        /* reconciliation is best-effort; the sweeper re-arms failed voids */
+        /* reconciliation is best-effort; the void op GETs again before voiding */
       }
-      updateEntry(e.id, { status: "capture_failed", note: `Payment failed (${f.issue}). The unit passes to the waitlist.` });
-      emit(e.drop_id, "capture_failed", `Capture failed for ${e.public_id}: PayPal ${f.status} ${f.issue}. Promoting waitlist.`, true);
-      await promoteNext(e.drop_id);
+      const alive = holdStatus === "CREATED" || holdStatus === "PENDING" ? ` PayPal still shows the hold as ${holdStatus}: voiding it` : " Voiding the hold";
+      if (payload.injectFailure) {
+        emit(e.drop_id, "negative_test", `PayPal sandbox negative test (PayPal-Mock-Response: ${NEGATIVE_TEST_CODE}) → ${f.status} ${f.issue} for ${e.public_id}.${alive} and passing the unit to the waitlist.`, true, data);
+      } else {
+        emit(e.drop_id, "capture_failed", `Capture failed for ${e.public_id}: PayPal ${f.status} ${f.issue}.${alive} and promoting the waitlist.`, true, data);
+      }
+      await markCaptureFailed(e, payload.injectFailure ? `Payment failed (PayPal sandbox negative test: ${f.issue}). The unit passes to the waitlist.` : `Payment failed (${f.issue}). The unit passes to the waitlist.`);
+    } else if (op.kind === "track") {
+      emit(e.drop_id, "track_failed", `PayPal did not accept the tracking for ${e.public_id}: ${f.status} ${f.issue}. The seller can try again.`, true, data);
+    } else if (op.kind === "refund") {
+      // refunded elsewhere (e.g. from the PayPal dashboard)? reconcile before reporting a failure
+      try {
+        if (e.capture_id) {
+          const c = await paypal.getCapture(e.capture_id);
+          if (c.status === "REFUNDED" && markRefunded(e, e.captured_cents ?? 0, null)) {
+            emit(e.drop_id, "refunded", `Refund for ${e.public_id} confirmed by PayPal (capture REFUNDED).`, true, { trace: c.trace });
+            return;
+          }
+        }
+      } catch {
+        /* best-effort */
+      }
+      emit(e.drop_id, "refund_failed", `Refund for ${e.public_id} failed: ${f.status} ${f.issue}. The payment stays captured.`, true, data);
     } else {
-      emit(e.drop_id, "void_failed", `Void failed for ${e.public_id}: ${f.status} ${f.issue} (the sweeper will retry).`, true);
+      emit(e.drop_id, "void_failed", `Void failed for ${e.public_id}: ${f.status} ${f.issue} (the sweeper will retry).`, true, data);
     }
   },
 };
+
+// ---------------------------------------------------------------- webhooks (routed after signature verification + de-duplication)
+
+export interface WebhookEvent {
+  id?: string;
+  event_type?: string;
+  resource?: Record<string, unknown>;
+}
+
+/** Every PayPal id a webhook resource points at: its own id, related ids, `links` (refund → capture) and disputes. */
+function webhookIds(r: Record<string, unknown> | undefined): string[] {
+  if (!r) return [];
+  const ids = new Set<string>();
+  const add = (v: unknown) => {
+    if (typeof v === "string" && /^[A-Za-z0-9-]{6,64}$/.test(v)) ids.add(v);
+  };
+  add(r.id);
+  const rel = ((r.supplementary_data as { related_ids?: Record<string, unknown> } | undefined)?.related_ids ?? {}) as Record<string, unknown>;
+  add(rel.order_id);
+  add(rel.authorization_id);
+  add(rel.capture_id);
+  for (const l of Array.isArray(r.links) ? (r.links as { href?: unknown }[]) : []) {
+    const m = typeof l?.href === "string" ? l.href.match(/\/v2\/(?:payments\/(?:captures|authorizations|refunds)|checkout\/orders)\/([A-Za-z0-9-]+)/) : null;
+    if (m) add(m[1]);
+  }
+  for (const t of Array.isArray(r.disputed_transactions) ? (r.disputed_transactions as { seller_transaction_id?: unknown }[]) : []) add(t?.seller_transaction_id);
+  return [...ids].slice(0, 12);
+}
+
+export function entryForWebhook(evt: WebhookEvent): EntryRow | undefined {
+  const ids = webhookIds(evt.resource);
+  if (!ids.length) return undefined;
+  const q = ids.map(() => "?").join(",");
+  return db
+    .prepare(`SELECT * FROM entries WHERE source <> 'simulated' AND (order_id IN (${q}) OR authorization_id IN (${q}) OR capture_id IN (${q}) OR refund_id IN (${q})) LIMIT 1`)
+    .get(...ids, ...ids, ...ids, ...ids) as EntryRow | undefined;
+}
+
+const FINALIZE_WORDS: Record<FinalizeOutcome, string> = {
+  authorizing: "approved, placing the hold",
+  duplicate: "same PayPal account as an existing entry, no hold placed",
+  not_approved: "not approved yet",
+  closed: "approved after the drop closed, no hold placed",
+  already: "already handled",
+  unknown_order: "unknown order",
+};
+
+/** P1-05: verified webhooks change state. Every transition is guarded by the entry's current status. */
+export async function routeWebhook(evt: WebhookEvent): Promise<{ entry?: EntryRow; outcome: string }> {
+  const type = evt.event_type ?? "";
+  const r = evt.resource ?? {};
+  const rid = typeof r.id === "string" ? r.id : null;
+  const amountCents = fromPayPal((r.amount as { value?: string } | undefined)?.value);
+  if (type === "CHECKOUT.ORDER.APPROVED") {
+    if (!rid) return { outcome: "ignored" };
+    const out = await finalize(rid);
+    return { entry: out.entry, outcome: FINALIZE_WORDS[out.outcome] };
+  }
+  const e = entryForWebhook(evt);
+  if (!e) return { outcome: "no matching entry" };
+  const drop = getDrop(e.drop_id)!;
+  switch (type) {
+    case "PAYMENT.CAPTURE.COMPLETED":
+      if (markCaptured(e, amountCents || captureAmount(drop), rid)) return { entry: e, outcome: "captured" };
+      return { entry: e, outcome: e.status === "captured" || e.status === "refunded" ? "capture confirmed" : `no change (${e.status})` };
+    case "PAYMENT.CAPTURE.PENDING":
+      if (e.status === "won" && !e.capture_id && rid) updateEntry(e.id, { capture_id: rid, note: "Payment pending at PayPal — waiting for confirmation." });
+      return { entry: e, outcome: "capture pending at PayPal" };
+    case "PAYMENT.CAPTURE.DENIED":
+      if (rid && !e.capture_id) db.prepare("UPDATE entries SET capture_id = ? WHERE id = ? AND capture_id IS NULL").run(rid, e.id);
+      if (await markCaptureFailed(e, "Payment denied by PayPal. The unit passes to the waitlist.")) return { entry: e, outcome: "payment denied, hold voided, waitlist promoted" };
+      return { entry: e, outcome: `no change (${e.status})` };
+    case "PAYMENT.CAPTURE.REFUNDED":
+    case "PAYMENT.CAPTURE.REVERSED": {
+      if (e.status === "refunded") return { entry: e, outcome: "refund confirmed" };
+      if (e.status !== "captured") return { entry: e, outcome: `no change (${e.status})` };
+      if (amountCents && e.captured_cents && amountCents < e.captured_cents) {
+        updateEntry(e.id, { refunded_cents: amountCents, refund_id: rid, note: `Partially refunded (${formatUsd(amountCents)}).` });
+        return { entry: e, outcome: `partially refunded ${formatUsd(amountCents)}` };
+      }
+      markRefunded(e, amountCents || e.captured_cents || 0, rid);
+      return { entry: e, outcome: type === "PAYMENT.CAPTURE.REVERSED" ? "payment reversed, marked refunded" : "refunded" };
+    }
+    case "PAYMENT.AUTHORIZATION.VOIDED": {
+      // merged / capture_failed keep their status (they explain why); anything still counting on the hold loses it
+      const ch = db
+        .prepare("UPDATE entries SET status = 'voided', settled_at = COALESCE(settled_at, ?), updated_at = ? WHERE id = ? AND status IN ('held','lost','waitlist')")
+        .run(now(), now(), e.id).changes;
+      return { entry: e, outcome: ch ? "hold voided" : e.status === "voided" ? "void confirmed" : `hold voided (entry stays ${e.status})` };
+    }
+    case "PAYMENT.AUTHORIZATION.CREATED":
+      return { entry: e, outcome: "hold confirmed" };
+    case "CUSTOMER.DISPUTE.CREATED":
+      return { entry: e, outcome: "dispute opened; the seller answers it in PayPal" };
+    default:
+      return { entry: e, outcome: "logged" };
+  }
+}
 
 // ---------------------------------------------------------------- sweeper
 
@@ -594,7 +822,7 @@ export const handlers: Handlers = {
 export async function sweep(): Promise<void> {
   const stale = db
     .prepare(
-      "SELECT * FROM entries WHERE status = 'awaiting_person' AND order_id IS NOT NULL AND created_at < ? AND created_at > ? AND updated_at < ? ORDER BY updated_at LIMIT 3",
+      "SELECT * FROM entries WHERE status = 'awaiting_person' AND needs_reapproval IS NULL AND order_id IS NOT NULL AND created_at < ? AND created_at > ? AND updated_at < ? ORDER BY updated_at LIMIT 3",
     )
     // each pending order is re-checked at most every 2 minutes, for 45 minutes (keeps us far below sandbox rate limits)
     .all(now() - 20_000, now() - 45 * 60_000, now() - 120_000) as unknown as EntryRow[];
@@ -606,6 +834,7 @@ export async function sweep(): Promise<void> {
       console.warn("sweep", e.id, paypal.classify(err).issue);
     }
   }
+  await reconcilePendingCaptures();
   // Any real hold still "held" in a drop that is no longer open is outside the ballot: release it.
   const strays = db
     .prepare("SELECT e.* FROM entries e JOIN drops d ON d.id = e.drop_id WHERE e.status = 'held' AND e.source <> 'simulated' AND d.status <> 'open' LIMIT 5")
@@ -629,6 +858,93 @@ export async function sweep(): Promise<void> {
   }
 }
 
+/** P1-05: a capture PayPal answered PENDING leaves its winner in `won`. If no webhook settles it within 2 minutes,
+ *  ask PayPal (GET /v2/payments/captures/{id}) every 2 minutes: COMPLETED → captured, DECLINED/FAILED → waitlist. */
+export async function reconcilePendingCaptures(): Promise<void> {
+  const pending = db
+    .prepare("SELECT * FROM entries WHERE status = 'won' AND capture_id IS NOT NULL AND source <> 'simulated' AND updated_at < ? ORDER BY updated_at LIMIT 3")
+    .all(now() - 120_000) as unknown as EntryRow[];
+  for (const e of pending) {
+    try {
+      db.prepare("UPDATE entries SET updated_at = ? WHERE id = ?").run(now(), e.id);
+      const c = await paypal.getCapture(e.capture_id!);
+      if (c.status === "COMPLETED") {
+        emit(e.drop_id, "captured", `Re-checked with PayPal: the pending capture for ${e.public_id} is COMPLETED (${formatUsd(c.amountCents)}).`, true, { trace: c.trace });
+        markCaptured(e, c.amountCents || captureAmount(getDrop(e.drop_id)!), e.capture_id);
+      } else if (c.status === "DECLINED" || c.status === "FAILED") {
+        emit(e.drop_id, "capture_failed", `Re-checked with PayPal: the pending capture for ${e.public_id} is ${c.status}. Voiding the hold and promoting the waitlist.`, true, { trace: c.trace });
+        await markCaptureFailed(e, `Payment ${c.status.toLowerCase()} at PayPal. The unit passes to the waitlist.`);
+      }
+    } catch (err) {
+      console.warn("sweep capture", e.id, paypal.classify(err).issue);
+    }
+  }
+}
+
+// ---------------------------------------------------------------- after the sale: tracking and refunds (P2-01)
+
+export const CARRIER_CODES = ["USPS", "UPS", "FEDEX", "OTHER"] as const;
+
+function entryOfDrop(dropId: string, entryId: string): EntryRow {
+  const e = getEntry(entryId);
+  if (!e || e.drop_id !== dropId) throw new HttpError(404, "entry_not_found");
+  return e;
+}
+
+/** A USPS-style demo tracking number (22 digits) for the "Mark shipped" prefill. */
+export function demoTrackingNumber(): string {
+  return `9400100000${String(Date.now()).slice(-8)}${String(Math.floor(Math.random() * 1e4)).padStart(4, "0")}`;
+}
+
+/** Seller marks a captured entry shipped: the tracking number is added to the PayPal order (async, via the queue). */
+export function shipEntry(dropId: string, entryId: string, input: { carrier?: unknown; tracking?: unknown }) {
+  const e = entryOfDrop(dropId, entryId);
+  const carrier = String(input.carrier ?? "USPS").toUpperCase() as (typeof CARRIER_CODES)[number];
+  if (!CARRIER_CODES.includes(carrier)) throw new HttpError(400, "bad_carrier", "Carrier must be USPS, UPS, FEDEX or OTHER.");
+  const tracking = (typeof input.tracking === "string" && input.tracking.trim() ? input.tracking : demoTrackingNumber()).replace(/[\s-]/g, "").toUpperCase();
+  if (!/^[A-Z0-9]{6,40}$/.test(tracking)) throw new HttpError(400, "bad_tracking", "A tracking number is 6 to 40 letters or digits.");
+  if (e.status !== "captured") throw new HttpError(409, "not_captured", "Only a paid (captured) entry can be marked shipped.");
+  if (e.tracking_number) {
+    if (e.tracking_number === tracking) return;
+    throw new HttpError(409, "already_shipped", "This entry already has a tracking number.");
+  }
+  if (pendingOpsFor(e.id).includes("track")) return;
+  const drop = getDrop(dropId)!;
+  if (e.source === "simulated") {
+    updateEntry(e.id, { carrier, tracking_number: tracking, shipped_at: now() });
+    emit(drop.id, "shipped_sim", `Simulated: ${e.public_id} marked shipped (${carrier} …${tracking.slice(-4)}; no PayPal call).`, false);
+    return;
+  }
+  if (!e.capture_id || !e.order_id) throw new HttpError(409, "not_captured", "Only a paid (captured) entry can be marked shipped.");
+  const n = opCount(e.id, "track");
+  enqueue("track", n ? `track:${e.capture_id}:${n + 1}` : `track:${e.capture_id}`, e.id, { carrier, tracking });
+}
+
+/** Seller refunds a captured entry in full (async, via the queue; PayPal-Request-Id = refund:<captureId>). */
+export function refundEntry(dropId: string, entryId: string, reason?: unknown) {
+  const e = entryOfDrop(dropId, entryId);
+  if (e.status === "refunded") return;
+  if (e.status !== "captured") throw new HttpError(409, "not_captured", "Only a paid (captured) entry can be refunded.");
+  // the reason is public (ledger) and goes to the buyer: plain words only
+  const why =
+    (typeof reason === "string" ? reason : "")
+      .replace(/[^\p{L}\p{N} .,'!?()-]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 120) || "the maker could not ship";
+  const drop = getDrop(dropId)!;
+  if (e.source === "simulated") {
+    const cents = e.captured_cents ?? 0;
+    markRefunded(e, cents, null);
+    emit(drop.id, "refund_sim", `Simulated refund of ${formatUsd(cents)} to ${e.public_id} (${why}; no PayPal call).`, false);
+    return;
+  }
+  if (!e.capture_id) throw new HttpError(409, "not_captured", "Only a paid (captured) entry can be refunded.");
+  if (pendingOpsFor(e.id).includes("refund")) return;
+  const n = opCount(e.id, "refund");
+  enqueue("refund", n ? `refund:${e.capture_id}:${n + 1}` : `refund:${e.capture_id}`, e.id, { reason: why });
+}
+
 // ---------------------------------------------------------------- participant & appeals
 
 export function participantView(entryId: string) {
@@ -643,8 +959,14 @@ export function participantView(entryId: string) {
     status: e.status,
     holdCents: e.hold_cents,
     capturedCents: e.captured_cents,
+    refundedCents: e.refunded_cents,
     note: e.note,
     explanation: e.explanation,
+    // only while the person still has to approve (lets /me resume the approval)
+    approveUrl: e.status === "awaiting_person" ? e.approve_url : null,
+    payerVerified: e.payer_verified == null ? null : e.payer_verified === 1,
+    shipping: e.tracking_number ? { carrier: e.carrier ?? "OTHER", tracking: e.tracking_number } : null,
+    timeline: { requestedAt: e.created_at, approvedAt: e.approved_at, heldAt: e.held_at, drawAt: d.drawn_at, settledAt: e.settled_at },
     drop: { slug: d.slug, title: d.title, maker: d.maker, status: d.status, closesAt: d.closes_at, units: d.units, art: d.art },
   };
 }

@@ -66,14 +66,28 @@ function buildServer(): McpServer {
     "entry_status",
     {
       title: "Check an entry",
-      description: "Check the status of an entry you requested (awaiting_person, held, duplicate, won, captured, voided…).",
-      inputSchema: { entry_ref: z.string() },
+      description:
+        "Check the status of an entry you requested: awaiting_person, held, duplicate, won, captured, shipped (captured and on its way, with tracking), refunded, voided…",
+      inputSchema: { entry_ref: z.string().max(80) },
       annotations: { readOnlyHint: true },
     },
     async ({ entry_ref }) => {
       try {
         const v = participantView(entry_ref);
-        const out = { entry_ref, public_id: v.publicId, status: v.status, note: v.note, explanation: v.explanation, drop: v.drop.slug };
+        const usd = (cents: number | null) => (cents == null ? null : cents / 100);
+        const out = {
+          entry_ref,
+          public_id: v.publicId,
+          // "shipped" is a captured entry the maker has handed to a carrier (tracking is also in the person's PayPal account)
+          status: v.status === "captured" && v.shipping ? "shipped" : v.status,
+          note: v.note,
+          explanation: v.explanation,
+          drop: v.drop.slug,
+          hold_usd: usd(v.holdCents),
+          captured_usd: usd(v.capturedCents),
+          refunded_usd: usd(v.refundedCents),
+          shipping: v.shipping,
+        };
         return { content: [{ type: "text", text: JSON.stringify(out) }], structuredContent: out };
       } catch {
         return { isError: true, content: [{ type: "text", text: "entry_not_found" }] };
