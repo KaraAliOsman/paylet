@@ -53,6 +53,7 @@ for (const vp of VIEWPORTS) {
       await mockDrop(page, { status: "open", stage: "mid", clusters: cl, ai: { ...aiSummary, degraded: "The model timed out after 25 s." } });
       await page.goto(`/seller/${SLUG}#k=${KEY}`);
       await expect(page.getByTestId("ai-degraded")).toBeVisible();
+      await parts(page, vp.name, "degraded", { banner: "[data-testid=ai-degraded]", stepper: ".stepper-card" });
       await page.getByTestId("step-draw").click();
       await expect(page.getByTestId("draw-copy")).toBeVisible();
       await shot(page, "console-draw-confirm", vp.name, false);

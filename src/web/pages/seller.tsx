@@ -341,8 +341,11 @@ export function SellerPage({ slug }: { slug: string }) {
         </div>
         {aiDegraded && (
           <div className="alert alert-warn alert-row" role="status" data-testid="ai-degraded">
-            <AlertIcon size={16} /> <b>AI unavailable. Showing rule-only suggestions.</b>
-            <span className="muted small"> {aiDegraded}</span>
+            <AlertIcon size={16} />
+            <span className="alert-text">
+              <b>AI unavailable. Showing rule-only suggestions.</b>
+              <small>{aiDegraded}</small>
+            </span>
             {open && (
               <button className="btn btn-sm" onClick={analyze} disabled={!!busy}>
                 Retry

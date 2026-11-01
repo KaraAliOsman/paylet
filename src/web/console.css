@@ -9,8 +9,9 @@
 .empty { padding: 6px 0; }
 .badge { display: inline-flex; align-items: center; gap: 4px; }
 .alert-warn { background: #fdf0dc; border-color: #f3d9a8; color: #6b4a00; }
-.alert-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
-.alert-row .btn { margin-left: auto; }
+.alert-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; }
+.alert-text { display: grid; gap: 2px; min-width: 0; }
+.alert-text small { font-size: 12.5px; opacity: 0.85; overflow-wrap: anywhere; }
 @keyframes pulse { 50% { opacity: 0.35; } }
 
 /* ---------------------------------------------------------------- ledger: trace chips, folded simulated rows, no jumps */
@@ -186,7 +187,7 @@ td .auth { display: block; font: 11px/1.4 ui-monospace, "SF Mono", Consolas, mon
 .entries .table-wrap { max-height: 440px; }
 .entries table { min-width: 620px; }
 .cluster-actions { display: flex; gap: 6px; flex-wrap: wrap; flex: none; }
-@media (max-width: 600px) { .cluster-actions { flex-basis: 100%; } }
+@media (max-width: 600px) { .cluster-actions { flex-basis: 100%; } .cluster-actions .btn { flex: 1 1 auto; padding-inline: 8px; } }
 
 /* ---------------------------------------------------------------- /judge (P1-06) */
 .judge-intro { max-width: 780px; margin: 8px 0 16px; }
