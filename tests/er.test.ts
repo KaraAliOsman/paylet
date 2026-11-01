@@ -216,7 +216,53 @@ describe("resolve: large components", () => {
     expect(chunks.flat().sort()).toEqual(building.map((b) => b.label).sort());
     // every same-apartment pair (rule-certain link) is reviewed together
     for (let i = 0; i < 14; i += 2) expect(chunks.some((c) => c.includes(building[i].label!) && c.includes(building[i + 1].label!))).toBe(true);
-    expect(r.degraded).toBeNull();
-    expect(r.unreviewedPairs).toBeGreaterThan(0); // cross-chunk pairs are honestly counted as not reviewed
+    // cross-chunk pairs are counted as not reviewed, and said out loud: never a silent partial review
+    expect(r.unreviewedPairs).toBeGreaterThan(0);
+    expect(r.degraded).toBe(
+      `The AI reviewed ${r.uncertainPairs - r.unreviewedPairs} of ${r.uncertainPairs} uncertain pairs: the other ${r.unreviewedPairs} sit in a look-alike group too large to review in one call and stay unmerged. Rule-certain clusters are unaffected.`,
+    );
   });
+
+  it("reports split pairs next to a failed call", async () => {
+    const names = ["Iris Chen", "Noah Silva", "Maya Okafor", "Leo Brennan", "Ana Petrov", "Omar Fischer"];
+    const building: Identity[] = names.map((name, i) => ident(`ent_${i}`, `E-${String(i).padStart(4, "0")}`, name, "500 Tower Ave", `Apt ${i + 1}`, "97209"));
+    let calls = 0;
+    const r = await resolve(building, {
+      useLlm: true,
+      chunkSize: 3,
+      adjudicator: async (req) => {
+        if (++calls <= 2) throw new Error("AI HTTP 500"); // first chunk fails twice
+        const ids = parse(req).entries.map((e) => e.id);
+        return { groups: ids.map((id) => ({ member_ids: [id], verdict: "distinct", confidence: 0.9, evidence: [], explanation: "" })), kept_apart: [] };
+      },
+    });
+    expect(r.uncertainPairs).toBe(15);
+    expect(r.unreviewedPairs).toBe(12); // 3 in the failed chunk + 9 across the two chunks
+    expect(r.degraded).toBe(
+      "The AI reviewer could not answer for 1 of 2 groups: 3 uncertain pairs were not reviewed and stay unmerged. Another 9 look-alike pairs sit in a group too large to review in one call and stay unmerged. Rule-certain clusters are unaffected.",
+    );
+  });
+
+  it("stays fast and honest on a 300-entry building", async () => {
+    const first = ["Iris", "Noah", "Maya", "Leo", "Ana", "Omar", "Grace", "Kenji", "Elena", "Diego", "Hana", "Felix", "Zoe", "Ravi", "Uma", "Bruno", "Talia", "Yusuf", "Wendy", "Pavel"];
+    const last = ["Chen", "Silva", "Okafor", "Brennan", "Petrov", "Fischer", "Rossi", "Walsh", "Kaur", "Moreau", "Novak", "Abara", "Delgado", "Haddad", "Lindqvist"];
+    const building: Identity[] = Array.from({ length: 300 }, (_, i) =>
+      ident(`ent_${i}`, `E-${String(i).padStart(4, "0")}`, `${first[i % 20]} ${last[Math.floor(i / 20)]}`, "1 Tower Plaza", `Apt ${i + 1}`, "10001"),
+    );
+    const t = Date.now();
+    const r = await resolve(building, {
+      useLlm: true,
+      adjudicator: async (req) => ({
+        groups: parse(req).entries.map((e) => ({ member_ids: [e.id], verdict: "distinct", confidence: 0.9, evidence: [], explanation: "" })),
+        kept_apart: [],
+      }),
+    });
+    expect(Date.now() - t).toBeLessThan(10_000); // it took over a minute with the old edge-sorting split
+    expect(r.llmCalls).toBe(25);
+    expect(r.unreviewedPairs).toBeGreaterThan(40_000);
+    const n = (k: number) => k.toLocaleString("en-US");
+    expect(r.degraded).toBe(
+      `The AI reviewed ${n(r.uncertainPairs - r.unreviewedPairs)} of ${n(r.uncertainPairs)} uncertain pairs: the other ${n(r.unreviewedPairs)} sit in a look-alike group too large to review in one call and stay unmerged. Rule-certain clusters are unaffected.`,
+    );
+  }, 30_000);
 });

@@ -3,20 +3,56 @@
 // No env, db or network imports here: replay must run on a clean checkout.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { basename, join } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { LabeledIdentity } from "../simulate";
-import { allPairs, exactBaseline, prepare, rulesBaseline, type PairScore } from "./rules";
-import { resolve, SYSTEM, type AdjudicationRequest, type Adjudicator, type ResolveResult } from "./resolve";
+import * as currentRules from "./rules";
+import type { PairScore } from "./rules";
+import * as currentResolve from "./resolve";
+import type { AdjudicationRequest, Adjudicator, ResolveResult } from "./resolve";
 
-/** The frozen "system": normalisation + rules + the adjudication prompt and logic. */
+/** The "system" under evaluation: normalisation + rules + the adjudication prompt and logic. */
 export const SYSTEM_FILES = ["src/server/er/normalize.ts", "src/server/er/rules.ts", "src/server/er/resolve.ts"];
+
+/**
+ * Where each system version lives. "current" is the live code; "frozen" is a byte-identical copy of the files as they
+ * were frozen before the held-out set was generated (see evals/systems/README.md). The blind section runs "frozen".
+ */
+export const SYSTEM_DIRS = { current: "src/server/er", frozen: "evals/systems/frozen" } as const;
+export type SystemId = keyof typeof SYSTEM_DIRS;
 
 /** Line endings normalised to LF, so hashes match whatever git's autocrlf did to the checkout. */
 export const lf = (s: string) => s.replace(/\r\n/g, "\n");
 
-export function systemSha(root = "."): string {
+/** SHA-256 over the three system files of `dir`, each prefixed by its canonical path (same hash for a faithful copy). */
+export function systemShaOf(dir: string = SYSTEM_DIRS.current, root = "."): string {
   const h = createHash("sha256");
-  for (const f of SYSTEM_FILES) h.update(`${f}\n`).update(lf(readFileSync(`${root}/${f}`, "utf8")));
+  for (const f of SYSTEM_FILES) h.update(`${f}\n`).update(lf(readFileSync(join(root, dir, basename(f)), "utf8")));
   return h.digest("hex");
+}
+/** @deprecated use systemShaOf */
+export const systemSha = (root = ".") => systemShaOf(SYSTEM_DIRS.current, root);
+
+export interface ErSystem {
+  id: SystemId;
+  sha: string;
+  /** The adjudication system prompt of this version. */
+  SYSTEM: string;
+  resolve: typeof currentResolve.resolve;
+  prepare: typeof currentRules.prepare;
+  allPairs: typeof currentRules.allPairs;
+  exactBaseline: typeof currentRules.exactBaseline;
+  rulesBaseline: typeof currentRules.rulesBaseline;
+}
+
+/** Loads one system version. "frozen" is imported from its own files at runtime (no network, no env). */
+export async function loadSystem(id: SystemId, root = process.cwd()): Promise<ErSystem> {
+  const sha = systemShaOf(SYSTEM_DIRS[id], root);
+  if (id === "current") return { id, sha, ...currentRules, ...currentResolve };
+  const url = (f: string) => pathToFileURL(join(root, SYSTEM_DIRS[id], f)).href;
+  const rules = (await import(url("rules.ts"))) as typeof currentRules;
+  const res = (await import(url("resolve.ts"))) as typeof currentResolve;
+  return { id, sha, SYSTEM: res.SYSTEM, resolve: res.resolve, prepare: rules.prepare, allPairs: rules.allPairs, exactBaseline: rules.exactBaseline, rulesBaseline: rules.rulesBaseline };
 }
 
 export const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -92,12 +128,12 @@ export function stat(xs: number[]): Stat {
   return { mean, sd, min: n ? Math.min(...xs) : 0, max: n ? Math.max(...xs) : 0 };
 }
 
-export function baselines(data: LabeledIdentity[], truth: Set<string>) {
+export function baselines(data: LabeledIdentity[], truth: Set<string>, system: Pick<ErSystem, "exactBaseline" | "rulesBaseline"> = currentRules) {
   let t = Date.now();
-  const exact = score(data, truth, closure(data, exactBaseline(data)));
+  const exact = score(data, truth, closure(data, system.exactBaseline(data)));
   const exactMs = Date.now() - t;
   t = Date.now();
-  const rules = score(data, truth, closure(data, rulesBaseline(data, 0.6)));
+  const rules = score(data, truth, closure(data, system.rulesBaseline(data, 0.6)));
   const rulesMs = Date.now() - t;
   return { exact: { ...exact, ms: exactMs }, rules: { ...rules, ms: rulesMs } };
 }
@@ -195,9 +231,9 @@ export interface RunOutcome {
   ms: number;
 }
 
-export async function runPaylet(data: LabeledIdentity[], truth: Set<string>, adjudicator: Adjudicator): Promise<RunOutcome> {
+export async function runPaylet(data: LabeledIdentity[], truth: Set<string>, adjudicator: Adjudicator, system: Pick<ErSystem, "resolve"> = currentResolve): Promise<RunOutcome> {
   const t = Date.now();
-  const result = await resolve(data, { useLlm: true, adjudicator });
+  const result = await system.resolve(data, { useLlm: true, adjudicator });
   const ms = Date.now() - t;
   return { metrics: score(data, truth, closure(data, result.links)), result, llmCalls: result.llmCalls, ms };
 }
@@ -218,9 +254,9 @@ export interface Bridge {
  * For a false merge, the direct links that joined two different true groups ("bridges"). Fixing a bridge removes
  * every false pair it created through the transitive closure.
  */
-export function bridges(data: LabeledIdentity[], result: ResolveResult): Bridge[] {
+export function bridges(data: LabeledIdentity[], result: ResolveResult, system: Pick<ErSystem, "allPairs" | "prepare"> = currentRules): Bridge[] {
   const groupOf = new Map(data.map((d) => [d.id, d.group]));
-  const pairs = new Map<string, PairScore>(allPairs(prepare(data)).map((p) => [pairKey(p.a, p.b), p]));
+  const pairs = new Map<string, PairScore>(system.allPairs(system.prepare(data)).map((p) => [pairKey(p.a, p.b), p]));
   const out = new Map<string, Bridge>();
   for (const [a, b] of result.links) {
     if (groupOf.get(a) === groupOf.get(b)) continue;
@@ -242,4 +278,4 @@ export function bridges(data: LabeledIdentity[], result: ResolveResult): Bridge[
   return [...out.values()];
 }
 
-export { SYSTEM };
+export const SYSTEM = currentResolve.SYSTEM;

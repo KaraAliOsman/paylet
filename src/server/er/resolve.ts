@@ -3,7 +3,8 @@
 //
 // The model only ever sees public labels (never internal entry ids), and its answer is validated with zod.
 // A failed or invalid answer for one group of entries is retried once and then skipped: the other groups are
-// still reviewed, the skipped pairs simply stay unmerged, and `degraded` says so in plain words.
+// still reviewed, the skipped pairs simply stay unmerged, and `degraded` says so in plain words. The same applies to
+// pairs that a look-alike group too large for one call splits across calls.
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { Identity } from "./normalize";
@@ -37,9 +38,12 @@ export interface ResolveResult {
   uncertainPairs: number;
   /** Uncertain pairs the model reviewed and kept apart, closest calls first (highest rule score, then confidence). */
   keptApart: KeptApart[];
-  /** Uncertain pairs the model could not review (AI failure) — they stay unmerged. */
+  /**
+   * Uncertain pairs the model never saw together — because a call failed, or because their look-alike group was too
+   * large for one call and the two entries landed in different calls. They stay unmerged. (All of them when useLlm is off.)
+   */
   unreviewedPairs: number;
-  /** Plain-language note when the AI review was incomplete; null when every uncertain pair was reviewed. */
+  /** Plain-language note whenever unreviewedPairs > 0 with the AI on (failure or split group); null only when the AI saw every uncertain pair. */
   degraded: string | null;
   /** @deprecated short technical reason, kept for older callers; use `degraded`. */
   aiDegraded?: string;
@@ -285,27 +289,40 @@ function isFatal(e: unknown): boolean {
   return name === "BudgetExceeded" || /budget reached|not configured/i.test(msg);
 }
 
-/** Best-first traversal of a component (highest rule score edge next), so splitting it keeps close pairs together. */
+/**
+ * Best-first traversal of a component (the unvisited entry with the strongest rule-score edge to the visited ones
+ * comes next; ties go to the edge seen first), so splitting it keeps close pairs together. O(V² + E): a 300-entry
+ * building takes milliseconds, not the minute an edge-sorting frontier took.
+ */
 function strongestFirst(comp: string[], scored: PairScore[]): string[] {
   const inComp = new Set(comp);
   const adj = new Map<string, { to: string; score: number }[]>();
   for (const p of scored) {
     if (!inComp.has(p.a) || !inComp.has(p.b)) continue;
-    adj.set(p.a, [...(adj.get(p.a) ?? []), { to: p.b, score: p.score }]);
-    adj.set(p.b, [...(adj.get(p.b) ?? []), { to: p.a, score: p.score }]);
+    if (!adj.has(p.a)) adj.set(p.a, []);
+    if (!adj.has(p.b)) adj.set(p.b, []);
+    adj.get(p.a)!.push({ to: p.b, score: p.score });
+    adj.get(p.b)!.push({ to: p.a, score: p.score });
   }
   const order: string[] = [];
   const seen = new Set<string>();
+  let seq = 0;
   for (const start of comp) {
     if (seen.has(start)) continue;
-    const frontier = [{ to: start, score: Infinity }];
-    while (frontier.length) {
-      frontier.sort((x, y) => y.score - x.score);
-      const { to } = frontier.shift()!;
-      if (seen.has(to)) continue;
-      seen.add(to);
-      order.push(to);
-      for (const e of adj.get(to) ?? []) if (!seen.has(e.to)) frontier.push(e);
+    // unvisited neighbours of the visited part: best edge score, and when that score was first offered
+    const best = new Map<string, { score: number; seq: number }>([[start, { score: Infinity, seq: seq++ }]]);
+    while (best.size) {
+      let next = "";
+      let top = { score: -Infinity, seq: Infinity };
+      for (const [id, b] of best) if (b.score > top.score || (b.score === top.score && b.seq < top.seq)) [next, top] = [id, b];
+      best.delete(next);
+      seen.add(next);
+      order.push(next);
+      for (const e of adj.get(next) ?? []) {
+        if (seen.has(e.to)) continue;
+        const cur = best.get(e.to);
+        if (!cur || e.score > cur.score) best.set(e.to, { score: e.score, seq: seq++ });
+      }
     }
   }
   return order;
@@ -486,13 +503,18 @@ export async function resolve(list: Identity[], opts: ResolveOptions = { useLlm:
   keptApart.sort((x, y) => y.score - x.score || y.confidence - x.confidence);
 
   // ------------------------------------------------ degraded mode (plain words; technical detail in aiDegraded)
+  // Two ways a pair goes unreviewed: its call failed, or its group was too large for one call and the two entries
+  // landed in different calls. Both leave the pair unmerged, and both must be said out loud.
   const failed = outcomes.filter((o) => !o.answer);
+  const failedPairs = uncertain.filter((u) => failed.some((o) => o.chunk.includes(u.a) && o.chunk.includes(u.b))).length;
+  const splitPairs = opts.useLlm ? unreviewed.size - failedPairs : 0;
+  const n = (k: number) => k.toLocaleString("en-US");
+  const pl = (k: number, one: string, many: string) => (k === 1 ? one : many);
   let degraded: string | null = null;
   let aiDegraded: string | undefined;
   if (opts.useLlm && failed.length) {
     aiDegraded = failed[0].error ?? "unknown error";
-    const n = uncertain.filter((u) => failed.some((o) => o.chunk.includes(u.a) && o.chunk.includes(u.b))).length;
-    const pairsTxt = `${n} uncertain pair${n === 1 ? "" : "s"} ${n === 1 ? "was" : "were"} not reviewed and stay${n === 1 ? "s" : ""} unmerged`;
+    const pairsTxt = `${n(failedPairs)} uncertain ${pl(failedPairs, "pair was", "pairs were")} not reviewed and ${pl(failedPairs, "stays", "stay")} unmerged`;
     const why = /budget reached/i.test(aiDegraded)
       ? "The daily AI budget is used up"
       : /not configured/i.test(aiDegraded)
@@ -500,7 +522,14 @@ export async function resolve(list: Identity[], opts: ResolveOptions = { useLlm:
         : failed.length === outcomes.length
           ? "The AI reviewer is unavailable right now"
           : `The AI reviewer could not answer for ${failed.length} of ${outcomes.length} groups`;
-    degraded = `${why}: ${pairsTxt}. Rule-certain clusters are unaffected.`;
+    const split = splitPairs
+      ? ` Another ${n(splitPairs)} look-alike ${pl(splitPairs, "pair sits", "pairs sit")} in a group too large to review in one call and ${pl(splitPairs, "stays", "stay")} unmerged.`
+      : "";
+    degraded = `${why}: ${pairsTxt}.${split} Rule-certain clusters are unaffected.`;
+  } else if (splitPairs) {
+    degraded =
+      `The AI reviewed ${n(uncertain.length - splitPairs)} of ${n(uncertain.length)} uncertain pairs: the other ${n(splitPairs)} ` +
+      `${pl(splitPairs, "sits", "sit")} in a look-alike group too large to review in one call and ${pl(splitPairs, "stays", "stay")} unmerged. Rule-certain clusters are unaffected.`;
   }
 
   return {
