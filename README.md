@@ -354,3 +354,6 @@ anyone can re-run**.
 
 ## License
 MIT, see [LICENSE](LICENSE). Third-party notices in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Product photos (demo drops only), [Unsplash License](https://unsplash.com/license): stoneware cup by
+[Adam Rasheed](https://unsplash.com/photos/dpmUrwiS4q4), keyboard and keycaps by [Jay Zhang](https://unsplash.com/photos/ZByWaPXD2fU).

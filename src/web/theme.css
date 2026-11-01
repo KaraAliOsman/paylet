@@ -1017,3 +1017,6 @@ a { text-decoration-color: rgba(17, 17, 16, 0.25); }
   .hx-held::before, .hx-held::after, .held-tag { animation: none; }
 }
 @media (max-width: 1000px) { .held-tag { left: auto; right: 0; top: auto; bottom: calc(100% + 0.08em); border-radius: 7px 7px 0 7px; } }
+
+/* real product photography */
+.art-photo { display: block; object-fit: cover; background: var(--surface-2); }

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { loadCoreSdkScript } from "@paypal/paypal-js/sdk-v6";
 import { api, friendlyError, type Participant } from "./api";
 import { Link, navigate, usePath } from "./router";
+import emberPhoto from "./assets/ember.jpg";
+import tidepoolPhoto from "./assets/tidepool.jpg";
 
 declare module "react" {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -68,7 +70,14 @@ export function BrandMark({ size = 28 }: { size?: number }) {
   );
 }
 
-// ---------------------------------------------------------------- generated product art (no stock images, no third-party marks)
+// ---------------------------------------------------------------- product images
+// Real product photography for the two demo products (Unsplash License; credits in README); any other drop gets the
+// generated artwork below.
+
+const PHOTOS: Record<string, { src: string; alt: string }> = {
+  ember: { src: emberPhoto, alt: "Ember Glaze Mug: a wheel-thrown stoneware cup, white glaze with a red ember brush mark" },
+  tidepool: { src: tidepoolPhoto, alt: "Tidepool keycap set: off-white keycaps with mint, coral and blue modifiers" },
+};
 
 const ARTS: Record<string, [string, string, string]> = {
   tidepool: ["#0f4c5c", "#5fb3b3", "#f6c86a"],
@@ -77,6 +86,21 @@ const ARTS: Record<string, [string, string, string]> = {
 };
 
 export function Art({ art, size = 220 }: { art: string; size?: number }) {
+  const photo = PHOTOS[art];
+  if (photo) {
+    return (
+      <img
+        className="art art-photo"
+        src={photo.src}
+        alt={photo.alt}
+        width={size}
+        height={size}
+        loading={size > 120 ? "eager" : "lazy"}
+        decoding="async"
+        style={{ borderRadius: Math.max(8, Math.round(size * 0.12)) }}
+      />
+    );
+  }
   const [a, b, c] = ARTS[art] ?? ARTS.default;
   const keys = art === "ember" ? 1 : 6;
   return (

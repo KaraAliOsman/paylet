@@ -2,7 +2,7 @@
 // Each scene: video segments between marks (slow waits are sped up to a target length), voice cues placed at a mark (never
 // overlapping the previous cue), the last frame held until the voice ends. Then all scenes are joined.
 //   node scripts/edit-video.mjs [videoDir]        (videoDir defaults to ../entrega/video; needs ffmpeg on PATH)
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const dir = process.argv[2] ?? "../entrega/video";
@@ -86,7 +86,7 @@ const parts = [];
 let total = 0;
 for (const [name, cfg] of Object.entries(EDL)) {
   const raw = `${dir}/raw/${name}.webm`;
-  const out = `${dir}/clips/${name}.mp4`;
+  const out = `${dir}/clips/${name}.mov`;
   if (only && !only.includes(name.slice(0, 2))) {
     if (existsSync(out)) parts.push(out);
     continue;
@@ -122,14 +122,14 @@ for (const [name, cfg] of Object.entries(EDL)) {
   const cues = cfg.vo.map(([id, expr]) => {
     const want = map(at(expr));
     const start = Math.max(want, end > 0 ? end + 0.3 : 0);
-    const len = dur(`${dir}/vo/${id}.mp3`);
+    const len = dur(`${dir}/vo/${id}.wav`);
     end = start + len;
     return { id, want: +want.toFixed(2), start: +start.toFixed(2), len: +len.toFixed(2) };
   });
   const length = Math.max(o, end + 0.9);
   const hold = length - o;
 
-  const inputs = ["-i", raw, ...cues.flatMap((c) => ["-i", `${dir}/vo/${c.id}.mp3`])];
+  const inputs = ["-i", raw, ...cues.flatMap((c) => ["-i", `${dir}/vo/${c.id}.wav`])];
   const pre = [];
   let src = "[0:v]";
   if (cfg.blur?.length) {
@@ -148,15 +148,15 @@ for (const [name, cfg] of Object.entries(EDL)) {
   const vcat = `${segs.map((_, i) => `[v${i}]`).join("")}concat=n=${segs.length}:v=1:a=0,tpad=stop_mode=clone:stop_duration=${hold.toFixed(3)}${caption(cfg.cap)},format=yuv420p[vout]`;
   const a = cues.map((c, i) => `[${i + 1}:a]aresample=48000,adelay=${Math.round(c.start * 1000)}:all=1[a${i}]`);
   const amix = cues.length
-    ? `${cues.map((_, i) => `[a${i}]`).join("")}amix=inputs=${cues.length}:normalize=0,apad,atrim=0:${length.toFixed(3)},loudnorm=I=-16:TP=-1.5:LRA=9[aout]`
-    : `anullsrc=r=48000:cl=stereo,atrim=0:${length.toFixed(3)}[aout]`;
+    ? `${cues.map((_, i) => `[a${i}]`).join("")}amix=inputs=${cues.length}:normalize=0,apad,atrim=0:${length.toFixed(3)},aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo[aout]`
+    : `anullsrc=r=48000:cl=stereo,atrim=0:${length.toFixed(3)},aformat=sample_fmts=s16:sample_rates=48000:channel_layouts=stereo[aout]`;
   run([
     ...inputs,
     "-filter_complex",
     [...pre, ...v, vcat, ...a, amix].join(";"),
     "-map", "[vout]", "-map", "[aout]",
     "-c:v", "libx264", "-preset", "slow", "-crf", "17", "-r", String(FPS), "-pix_fmt", "yuv420p",
-    "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
+    "-c:a", "pcm_s16le", "-ar", "48000",
     "-t", length.toFixed(3),
     out,
   ]);
@@ -169,32 +169,39 @@ for (const [name, cfg] of Object.entries(EDL)) {
   );
 }
 
-// join; then the music bed (ElevenLabs Music, instrumental) ducks under the voice with a sidechain compressor,
-// fades in and out, and the whole mix is normalised to YouTube's -14 LUFS
+// join (lossless audio until the very end), then mix like a broadcast edit:
+//  - the voice is levelled with a two-pass, LINEAR loudnorm to -16 LUFS (one constant gain: no pumping);
+//  - the music bed sits at a fixed level and dips ~10 dB under the voice through a slow sidechain (no breathing);
+//  - a true-peak limiter at -1.5 dBTP, then AAC 256k. Final loudness lands around -15/-16 LUFS (YouTube adds no gain).
 writeFileSync(`${dir}/clips/list.txt`, parts.map((p) => `file '${p.split("/").pop()}'`).join("\n"));
-run(["-f", "concat", "-safe", "0", "-i", `${dir}/clips/list.txt`, "-c", "copy", `${dir}/clips/_joined.mp4`]);
-const full = dur(`${dir}/clips/_joined.mp4`);
+run(["-f", "concat", "-safe", "0", "-i", `${dir}/clips/list.txt`, "-c", "copy", `${dir}/clips/_joined.mov`]);
+const full = dur(`${dir}/clips/_joined.mov`);
+// pass 1: measure the voice (loudnorm prints its JSON on stderr)
+const pass1 = spawnSync("ffmpeg", ["-hide_banner", "-i", `${dir}/clips/_joined.mov`, "-vn", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json", "-f", "null", "-"], { encoding: "utf8" });
+const measured = JSON.parse(/\{[^{}]*"input_i"[^{}]*\}/.exec(pass1.stderr)?.[0] ?? "{}");
+const voiceNorm = `loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${measured.input_i}:measured_TP=${measured.input_tp}:measured_LRA=${measured.input_lra}:measured_thresh=${measured.input_thresh}:offset=${measured.target_offset}:linear=true`;
 const music = `${dir}/music/bed.mp3`;
-const fadeOut = (full - 1.2).toFixed(2);
-const audio = existsSync(music)
-  ? [
-      "-filter_complex",
-      [
-        `[0:a]asplit=2[vo][key]`,
-        `[1:a]aresample=48000,atrim=0:${full.toFixed(2)},volume=0.30,afade=t=in:d=1.5,afade=t=out:st=${fadeOut}:d=1.2[bed]`,
-        `[bed][key]sidechaincompress=threshold=0.02:ratio=6:attack=40:release=600:makeup=1[ducked]`,
-        `[vo][ducked]amix=inputs=2:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11,afade=t=out:st=${fadeOut}:d=1.2[aout]`,
-        `[0:v]fade=t=in:st=0:d=0.4,fade=t=out:st=${(full - 0.7).toFixed(2)}:d=0.7[vout]`,
-      ].join(";"),
-      "-map", "[vout]", "-map", "[aout]",
-    ]
-  : ["-vf", `fade=t=in:st=0:d=0.4,fade=t=out:st=${(full - 0.7).toFixed(2)}:d=0.7`, "-af", `loudnorm=I=-14:TP=-1.5:LRA=11,afade=t=out:st=${fadeOut}:d=1.2`];
+const fadeOut = (full - 1.4).toFixed(2);
+const hasMusic = existsSync(music);
 run([
-  "-i", `${dir}/clips/_joined.mp4`,
-  ...(existsSync(music) ? ["-i", music] : []),
-  ...audio,
-  "-c:v", "libx264", "-preset", "slow", "-crf", "17", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
+  "-i", `${dir}/clips/_joined.mov`,
+  ...(hasMusic ? ["-i", music] : []),
+  "-filter_complex",
+  [
+    `[0:a]${voiceNorm},aresample=48000${hasMusic ? ",asplit=2[vo][key]" : "[vo]"}`,
+    ...(hasMusic
+      ? [
+          // the bed is ~-15 LUFS: -9 dB puts it near -24 LUFS on its own, and the duck takes it to ~-34 under the voice
+          `[1:a]aresample=48000,atrim=0:${full.toFixed(2)},volume=-9dB,afade=t=in:d=1.2,afade=t=out:st=${fadeOut}:d=1.4[bed]`,
+          `[bed][key]sidechaincompress=threshold=0.015:ratio=10:attack=150:release=1200:knee=6[ducked]`,
+          `[vo][ducked]amix=inputs=2:normalize=0,alimiter=limit=0.84:level=false,afade=t=out:st=${fadeOut}:d=1.4[aout]`,
+        ]
+      : [`[vo]alimiter=limit=0.84:level=false[aout]`]),
+    `[0:v]fade=t=in:st=0:d=0.4,fade=t=out:st=${(full - 0.7).toFixed(2)}:d=0.7[vout]`,
+  ].join(";"),
+  "-map", "[vout]", "-map", "[aout]",
+  "-c:v", "libx264", "-preset", "slow", "-crf", "17", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "256k", "-ar", "48000",
   "-movflags", "+faststart",
   `${dir}/paylet-demo.mp4`,
 ]);
-console.log(`paylet-demo.mp4: ${full.toFixed(1)} s`);
+console.log(`paylet-demo.mp4: ${full.toFixed(1)} s (voice measured ${measured.input_i} LUFS → -16)`);
