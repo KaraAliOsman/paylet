@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { loadCoreSdkScript } from "@paypal/paypal-js/sdk-v6";
-import { api, type Participant } from "./api";
+import { api, friendlyError, type Participant } from "./api";
 import { Link, navigate } from "./router";
 
 declare module "react" {
@@ -103,7 +103,7 @@ const STATUS: Record<string, [string, string]> = {
   voided: ["Not selected — hold released, never charged", "muted"],
   captured: ["You got one! Paid & confirmed", "win"],
   capture_failed: ["Payment failed — unit passed to the waitlist", "bad"],
-  expired: ["Not approved in time — no hold was placed", "muted"],
+  expired: ["No person approved: no hold placed", "muted"],
   error: ["PayPal could not place the hold", "bad"],
   refunded: ["Refunded — you owe nothing", "muted"],
 };
@@ -168,7 +168,7 @@ export function PayPalEntryButton({ slug, onEntry }: { slug: string; onEntry: (p
             } catch (e) {
               setState("ready");
               if (lastEntryId) navigate(`/me/${lastEntryId}`);
-              else setMsg(`Could not confirm your entry: ${e instanceof Error ? e.message : e}. Nothing was charged.`);
+              else setMsg(`Couldn't confirm your entry. ${friendlyError(e)}`);
             }
           },
           onCancel() {
@@ -194,14 +194,14 @@ export function PayPalEntryButton({ slug, onEntry }: { slug: string; onEntry: (p
             await session.start({ presentationMode: "auto" }, orderPromise);
           } catch (e) {
             console.error(e);
-            setMsg(e instanceof Error ? e.message : "Could not open PayPal");
+            setMsg("Couldn't open PayPal. Nothing was charged; try again.");
           }
         };
         setState("ready");
       } catch (e) {
         console.error(e);
         setState("error");
-        setMsg(e instanceof Error ? e.message : "PayPal failed to load");
+        setMsg("PayPal didn't load in this browser. Reload the page, or let your AI agent request the entry.");
       }
     })();
     return () => {

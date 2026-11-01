@@ -15,7 +15,7 @@ function useDrop(slug: string) {
     const load = () =>
       api<PublicDrop>(`/api/drops/${slug}`)
         .then((d) => alive && setDrop(d))
-        .catch((e) => alive && setErr(e instanceof ApiError && e.status === 404 ? "not_found" : String(e.message ?? e)));
+        .catch((e) => alive && setErr(e instanceof ApiError && e.status === 404 ? "not_found" : friendlyError(e)));
     void load();
     const t = setInterval(load, 3000);
     return () => {
@@ -184,7 +184,7 @@ export function ReturnPage({ entryId, cancelled }: { entryId: string; cancelled:
     }
     api<{ outcome: string; entry: Participant }>("/api/entries/finalize", { method: "POST", json: { entryId } })
       .then(() => navigate(`/me/${entryId}`))
-      .catch((e) => setMsg(`Could not finalize: ${e.message}`));
+      .catch((e) => setMsg(`Couldn't confirm your entry. ${friendlyError(e)}`));
   }, [entryId, cancelled]);
   return (
     <section className="card narrow">

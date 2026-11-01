@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { api, apiOptional, clock, nf, usd, type GlobalStats, type ProofInfo, type PublicDrop } from "../api";
 import { Art } from "../components";
-import { ArrowIcon, BotIcon, CheckIcon, DiceIcon, ShieldIcon, UserIcon } from "../icons";
+import { ArrowIcon, BotIcon, CheckIcon, DiceIcon, PlayIcon, ShieldIcon, UserIcon } from "../icons";
 import { Link } from "../router";
 
 /** YouTube link of the demo video; the link shows up on the home page once this is set. */
@@ -69,7 +69,7 @@ export function Home() {
           </div>
           {VIDEO_URL && (
             <a className="video-link" href={VIDEO_URL} target="_blank" rel="noopener">
-              ▶ Watch the demo video
+              <PlayIcon size={15} /> Watch the demo video
             </a>
           )}
           <LiveCounters stats={stats} />

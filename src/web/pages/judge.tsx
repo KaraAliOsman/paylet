@@ -67,10 +67,15 @@ function initialDrop(): JudgeDrop | null {
   return store.get<JudgeDrop>(JUDGE_KEY);
 }
 
+/** ?code= unlocks the sandbox buyers; it is remembered in this browser and dropped from the visible URL. */
 function initialCode(): string {
-  const c = new URLSearchParams(window.location.search).get("code");
+  const q = new URLSearchParams(window.location.search);
+  const c = q.get("code");
   if (c) {
     store.set(CODE_KEY, c);
+    q.delete("code");
+    const qs = q.toString();
+    window.history.replaceState({}, "", `/judge${qs ? `?${qs}` : ""}${window.location.hash}`);
     return c;
   }
   return store.get<string>(CODE_KEY) ?? "";

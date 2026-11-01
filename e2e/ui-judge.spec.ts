@@ -83,6 +83,7 @@ test("sandbox buyers only with ?code=; passwords hidden until asked; a wrong cod
   });
   await page.goto("/judge?code=GOOD");
   await expect(page.getByTestId("buyer")).toHaveCount(2);
+  expect(new URL(page.url()).search).toBe(""); // the code is remembered, not left in the address bar
   const a = page.getByTestId("buyer").first();
   await expect(a).toContainText("a@example.sandbox");
   await expect(a).not.toContainText("pw-a-0000");
