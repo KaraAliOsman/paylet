@@ -281,7 +281,7 @@ app.all("/mcp", async (c) => {
 app.post("/webhooks/paypal", async (c) => {
   const raw = await c.req.text();
   const webhookId = env.PAYPAL_WEBHOOK_ID || getSetting("webhook_id") || "";
-  const ok = await verifyWebhookSignature(c.req.raw.headers, raw, webhookId).catch(() => false);
+  const ok = (await verifyWebhookSignature(c.req.raw.headers, raw, webhookId).catch(() => undefined))?.verified === true;
   let evt: { id?: string; event_type?: string; resource?: { id?: string; supplementary_data?: { related_ids?: { order_id?: string } } } } = {};
   try {
     evt = JSON.parse(raw);
@@ -323,10 +323,10 @@ async function boot() {
   console.log(`[paylet] showcase seller console: ${link}`);
   if (!env.PAYPAL_WEBHOOK_ID) {
     try {
-      const wid = await ensureWebhook(env.PUBLIC_URL);
+      const { id: wid, patched } = await ensureWebhook(env.PUBLIC_URL);
       if (wid) {
         setSetting("webhook_id", wid);
-        console.log("[paylet] PayPal webhook registered:", wid);
+        console.log("[paylet] PayPal webhook registered:", wid, patched.length ? `(added events: ${patched.join(", ")})` : "");
       }
     } catch (e) {
       console.warn("[paylet] webhook registration skipped:", String(e).slice(0, 160));
