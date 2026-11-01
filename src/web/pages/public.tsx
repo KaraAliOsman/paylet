@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, api, timeLeft, usd, type Participant, type PublicDrop } from "../api";
+import { ApiError, api, realOrders, timeLeft, usd, type Participant, type PublicDrop } from "../api";
 import { Art, Hash, PayPalEntryButton, Stat, StatusPill, Ticker } from "../components";
 import { Link, navigate } from "../router";
 
@@ -204,7 +204,7 @@ export function DropPage({ slug }: { slug: string }) {
         </div>
       </section>
       <section className="stats wide">
-        <Stat label="entry requests (real)" value={drop.stats.requests} />
+        <Stat label="entry requests (real)" value={realOrders(drop.stats)} />
         <Stat label="via AI agents" value={drop.stats.agents} />
         <Stat label="PayPal holds (real)" value={drop.stats.holds} tone="good" />
         <Stat label="same-account duplicates (no hold)" value={drop.stats.duplicatesBlocked} tone="warn" />
@@ -244,18 +244,33 @@ export function ReturnPage({ entryId, cancelled }: { entryId: string; cancelled:
 
 // ---------------------------------------------------------------- participant view
 
-export function NotFound({ what }: { what: string }) {
+export function NotFound({ what }: { what: "drop" | "entry" | "page" }) {
   return (
-    <section className="card narrow">
-      <h2>That {what} isn't here anymore</h2>
-      <p>The public demo runs on free hosting and resets its data after it sleeps. Nothing was charged.</p>
-      <div className="row gap">
-        <Link className="btn btn-primary" href="/judge">
+    <section className="card narrow not-found" aria-labelledby="nf-title">
+      <p className="eyebrow">{what === "page" ? "404" : "Gone"}</p>
+      {what === "page" ? (
+        <>
+          <h2 id="nf-title">There's no page here</h2>
+          <p>The link may be mistyped. Everything in the demo starts from one of these:</p>
+        </>
+      ) : (
+        <>
+          <h2 id="nf-title">That {what} isn't here anymore</h2>
+          <p>The public demo runs on free hosting and its data resets when it restarts. Nothing was charged.</p>
+        </>
+      )}
+      <div className="row gap wrap">
+        <Link className="btn btn-primary" href="/judge?fresh=1">
           Start a fresh judge drop
         </Link>
         <Link className="btn" href="/">
           Home
         </Link>
+        {what === "page" && (
+          <Link className="btn" href="/how">
+            How it works
+          </Link>
+        )}
       </div>
     </section>
   );

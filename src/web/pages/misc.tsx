@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ApiError, api, usd } from "../api";
+import { ApiError, api, friendlyError, usd } from "../api";
 import { Hash } from "../components";
 import { Link } from "../router";
 import { canonicalList, computeDraw, sha256Hex } from "../../shared/draw";
@@ -256,23 +256,69 @@ export function EvalsPage() {
 
 // ---------------------------------------------------------------- Judge mode
 
+const JUDGE_KEY = "paylet.judge";
+
 export function JudgePage() {
-  // keep the judge's links across navigation and reloads (URL first, then localStorage)
+  // keep the judge's links across navigation and reloads (URL first, then localStorage); /judge?fresh=1 starts over
   const [res, setRes] = useState<{ slug: string; sellerKey: string } | null>(() => {
     const q = new URLSearchParams(window.location.search);
+    if (q.get("fresh") === "1") {
+      localStorage.removeItem(JUDGE_KEY);
+      window.history.replaceState({}, "", "/judge");
+      return null;
+    }
     if (q.get("d") && q.get("k")) return { slug: q.get("d")!, sellerKey: q.get("k")! };
     try {
-      return JSON.parse(localStorage.getItem("paylet.judge") ?? "null");
+      return JSON.parse(localStorage.getItem(JUDGE_KEY) ?? "null");
     } catch {
       return null;
     }
   });
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  // a restored drop may be gone (the demo restarted) or already finished: say so instead of handing out dead links
+  const [restored, setRestored] = useState<"gone" | "finished" | null>(null);
+  useEffect(() => {
+    if (!res) return;
+    let alive = true;
+    api<{ status: string }>(`/api/drops/${res.slug}`)
+      .then((d) => alive && setRestored(d.status === "drawn" || d.status === "settled" ? "finished" : null))
+      .catch((e) => {
+        if (!alive || !(e instanceof ApiError && e.status === 404)) return;
+        localStorage.removeItem(JUDGE_KEY);
+        window.history.replaceState({}, "", "/judge");
+        setRes(null);
+        setRestored("gone");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [res]);
   return (
     <section className="card narrow judge">
       <p className="eyebrow">Judge mode</p>
       <h2>Try to scalp us</h2>
+      {restored === "gone" && (
+        <p className="alert" role="status">
+          Your previous drop is gone (the demo restarted). Start a new one below.
+        </p>
+      )}
+      {restored === "finished" && res && (
+        <p className="alert alert-ok" role="status">
+          Your drop is settled → <Link href={`/verify/${res.slug}`}>Verify the draw</Link> ·{" "}
+          <button
+            className="linklike"
+            onClick={() => {
+              localStorage.removeItem(JUDGE_KEY);
+              window.history.replaceState({}, "", "/judge");
+              setRestored(null);
+              setRes(null);
+            }}
+          >
+            Start another
+          </button>
+        </p>
+      )}
       <ol>
         <li>Start your own 30-minute drop (2 units). You get its fan page and its seller console.</li>
         <li>Enter with a PayPal sandbox buyer account (credentials are in the Devpost testing instructions).</li>
@@ -288,11 +334,12 @@ export function JudgePage() {
             setBusy(true);
             try {
               const r = await api<{ slug: string; sellerKey: string }>("/api/judge-drop", { method: "POST" });
-              localStorage.setItem("paylet.judge", JSON.stringify(r));
+              localStorage.setItem(JUDGE_KEY, JSON.stringify(r));
+              setRestored(null);
               window.history.replaceState({}, "", `/judge?d=${r.slug}&k=${r.sellerKey}`);
               setRes(r);
             } catch (e) {
-              setErr(e instanceof Error ? e.message : String(e));
+              setErr(friendlyError(e));
             } finally {
               setBusy(false);
             }
@@ -317,8 +364,9 @@ export function JudgePage() {
           <button
             className="btn btn-sm"
             onClick={() => {
-              localStorage.removeItem("paylet.judge");
+              localStorage.removeItem(JUDGE_KEY);
               window.history.replaceState({}, "", "/judge");
+              setRestored(null);
               setRes(null);
             }}
           >
