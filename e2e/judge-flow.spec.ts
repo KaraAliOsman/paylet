@@ -39,3 +39,14 @@ test("fan page renders the PayPal v6 button", async ({ page }) => {
   await expect(page.locator("paypal-button")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/One entry per PayPal/)).toBeVisible();
 });
+
+test("fan's AI agent requests an entry over MCP and stops at the PayPal approval", async ({ page, request }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const { slug } = await (await request.post("/api/judge-drop")).json();
+  await page.goto(`/agent?drop=${slug}`);
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText(/Your agent stopped here/)).toBeVisible({ timeout: 120_000 });
+  await expect(page.getByRole("link", { name: /Review & approve in PayPal/ })).toHaveAttribute("href", /sandbox\.paypal\.com/);
+  expect(errors).toEqual([]);
+});
