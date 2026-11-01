@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, usd } from "../api";
+import { ApiError, api, usd } from "../api";
 import { Hash } from "../components";
 import { Link } from "../router";
 import { canonicalList, computeDraw, sha256Hex } from "../../shared/draw";
@@ -18,7 +18,10 @@ export function AgentPage() {
   const [turns, setTurns] = useState<Turn[]>([
     { role: "assistant", content: "Hi, I'm Wren — your shopping assistant. I can find limited drops on Paylet and request an entry for you. I can't pay: you'll approve any hold yourself in PayPal." },
   ]);
-  const [input, setInput] = useState("Can you get me into the Tidepool keycap drop?");
+  const [input, setInput] = useState(() => {
+    const d = new URLSearchParams(window.location.search).get("drop");
+    return d ? `Please enter me in the Paylet drop with slug "${d}".` : "Can you get me into the Tidepool keycap drop?";
+  });
   const [busy, setBusy] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => end.current?.scrollIntoView({ behavior: "smooth" }), [turns.length]);
@@ -120,9 +123,12 @@ interface VerifyData {
 
 export function VerifyPage({ slug }: { slug: string }) {
   const [d, setD] = useState<VerifyData | null>(null);
+  const [missing, setMissing] = useState(false);
   const [res, setRes] = useState<{ seedOk: boolean; listOk: boolean; winners: string[]; waitlist: string[] } | null>(null);
   useEffect(() => {
-    void api<VerifyData>(`/api/drops/${slug}/verify`).then(setD);
+    void api<VerifyData>(`/api/drops/${slug}/verify`)
+      .then(setD)
+      .catch((e) => e instanceof ApiError && e.status === 404 && setMissing(true));
   }, [slug]);
   const run = async () => {
     if (!d?.seed || !d.frozenList) return;
@@ -131,6 +137,7 @@ export function VerifyPage({ slug }: { slug: string }) {
     const r = await computeDraw(d.seed, d.frozenList, d.units, d.waitlistSize);
     setRes({ seedOk, listOk, winners: r.winners, waitlist: r.waitlist });
   };
+  if (missing) return <section className="card narrow"><h2>Drop not found</h2><p>The public demo resets its data after it sleeps. <Link href="/judge">Start a fresh judge drop</Link>.</p></section>;
   if (!d) return <div className="skeleton tall">Loading…</div>;
   const actual = new Set(d.outcome.map((o) => o.publicId));
   return (
@@ -247,7 +254,16 @@ export function EvalsPage() {
 // ---------------------------------------------------------------- Judge mode
 
 export function JudgePage() {
-  const [res, setRes] = useState<{ slug: string; sellerKey: string } | null>(null);
+  // keep the judge's links across navigation and reloads (URL first, then localStorage)
+  const [res, setRes] = useState<{ slug: string; sellerKey: string } | null>(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("d") && q.get("k")) return { slug: q.get("d")!, sellerKey: q.get("k")! };
+    try {
+      return JSON.parse(localStorage.getItem("paylet.judge") ?? "null");
+    } catch {
+      return null;
+    }
+  });
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   return (
@@ -255,7 +271,7 @@ export function JudgePage() {
       <p className="eyebrow">Judge mode</p>
       <h2>Try to scalp us</h2>
       <ol>
-        <li>Start a private 30-minute drop (2 units). You get its fan page and its seller console.</li>
+        <li>Start your own 30-minute drop (2 units). You get its fan page and its seller console.</li>
         <li>Enter with a PayPal sandbox buyer account (credentials are in the Devpost testing instructions).</li>
         <li>Try again with the same account — in another tab, or through an AI agent via MCP. Watch "no hold placed".</li>
         <li>In the seller console: add the simulated crowd, run the AI review, confirm a cluster, then Close & draw.</li>
@@ -268,7 +284,10 @@ export function JudgePage() {
           onClick={async () => {
             setBusy(true);
             try {
-              setRes(await api<{ slug: string; sellerKey: string }>("/api/judge-drop", { method: "POST" }));
+              const r = await api<{ slug: string; sellerKey: string }>("/api/judge-drop", { method: "POST" });
+              localStorage.setItem("paylet.judge", JSON.stringify(r));
+              window.history.replaceState({}, "", `/judge?d=${r.slug}&k=${r.sellerKey}`);
+              setRes(r);
             } catch (e) {
               setErr(e instanceof Error ? e.message : String(e));
             } finally {
@@ -289,6 +308,19 @@ export function JudgePage() {
           <Link className="btn" href={`/verify/${res.slug}`}>
             Verify page
           </Link>
+          <Link className="btn" href={`/agent?drop=${res.slug}`}>
+            Enter via AI agent
+          </Link>
+          <button
+            className="btn btn-sm"
+            onClick={() => {
+              localStorage.removeItem("paylet.judge");
+              window.history.replaceState({}, "", "/judge");
+              setRes(null);
+            }}
+          >
+            New drop
+          </button>
         </div>
       )}
       {err && <p className="err">{err}</p>}

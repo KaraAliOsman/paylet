@@ -19,7 +19,10 @@ function buildServer(): McpServer {
       annotations: { readOnlyHint: true },
     },
     async () => {
-      const drops = db.prepare("SELECT * FROM drops WHERE status = 'open' AND closes_at > ? ORDER BY created_at DESC LIMIT 10").all(now()) as unknown as DropRow[];
+      // showcase drops first, then recent judge drops (each judge can also pass the slug from their drop page URL)
+      const drops = db
+        .prepare("SELECT * FROM drops WHERE status = 'open' AND closes_at > ? ORDER BY CASE kind WHEN 'showcase' THEN 0 ELSE 1 END, created_at DESC LIMIT 10")
+        .all(now()) as unknown as DropRow[];
       const list = drops.map((d) => {
         const p = publicDrop(d);
         return { drop: p.slug, title: p.title, maker: p.maker, price_usd: p.priceCents / 100, hold_usd: (p.priceCents + p.shipHoldCents) / 100, units: p.units, closes_at: new Date(p.closesAt).toISOString() };
@@ -35,7 +38,7 @@ function buildServer(): McpServer {
       description:
         "Request a Paylet entry in a drop for the person you act for. You CANNOT pay or approve: this returns a PayPal approval link that the person must open and approve themselves. Nothing is charged unless they win. One entry per PayPal account — extra entries from the same account place no hold.",
       inputSchema: {
-        drop: z.string().describe("Drop slug from list_drops"),
+        drop: z.string().max(80).describe("Drop slug from list_drops, or the slug in a drop page URL (/d/<slug>)"),
         agent_name: z.string().max(60).optional().describe("Your agent's display name"),
       },
       annotations: { destructiveHint: false, openWorldHint: true },
@@ -82,9 +85,9 @@ function buildServer(): McpServer {
 }
 
 /** Stateless Streamable HTTP: a fresh server + transport per request. */
-export async function handleMcp(req: Request): Promise<Response> {
+export async function handleMcp(req: Request, parsedBody?: unknown): Promise<Response> {
   const server = buildServer();
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   await server.connect(transport);
-  return transport.handleRequest(req);
+  return parsedBody === undefined ? transport.handleRequest(req) : transport.handleRequest(req, { parsedBody });
 }

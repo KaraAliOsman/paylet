@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { loadCoreSdkScript } from "@paypal/paypal-js/sdk-v6";
 import { api, type EventRow, type Participant } from "./api";
-import { Link } from "./router";
+import { Link, navigate } from "./router";
 
 declare module "react" {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -195,14 +195,25 @@ export function PayPalEntryButton({ slug, onEntry }: { slug: string; onEntry: (p
         const instance = await sdk();
         const methods = await instance.findEligibleMethods({ currencyCode: "USD" });
         if (!methods.isEligible("paypal")) throw new Error("PayPal is not eligible in this browser");
+        let lastEntryId: string | null = null;
         const session = instance.createPayPalOneTimePaymentSession({
           async onApprove(data: { orderId: string }) {
             setState("busy");
             setMsg("Approved — checking your PayPal account and placing the hold…");
-            const r = await api<{ outcome: string; entry: Participant }>("/api/entries/finalize", { method: "POST", json: { orderId: data.orderId } });
-            setState("ready");
-            setMsg("");
-            onEntry(r.entry, r.outcome);
+            try {
+              const r = await api<{ outcome: string; entry: Participant | null }>("/api/entries/finalize", { method: "POST", json: { orderId: data.orderId } });
+              setState("ready");
+              if (!r.entry) {
+                setMsg("This demo server was reset since you opened the page — reload and try again (nothing was charged).");
+                return;
+              }
+              setMsg("");
+              onEntry(r.entry, r.outcome);
+            } catch (e) {
+              setState("ready");
+              if (lastEntryId) navigate(`/me/${lastEntryId}`);
+              else setMsg(`Could not confirm your entry: ${e instanceof Error ? e.message : e}. Nothing was charged.`);
+            }
           },
           onCancel() {
             setState("ready");
@@ -219,7 +230,10 @@ export function PayPalEntryButton({ slug, onEntry }: { slug: string; onEntry: (p
         el.removeAttribute("hidden");
         el.onclick = async () => {
           setMsg("");
-          const orderPromise = api<{ orderId: string }>(`/api/drops/${slug}/entries`, { method: "POST" }).then((r) => ({ orderId: r.orderId }));
+          const orderPromise = api<{ orderId: string; entryId: string }>(`/api/drops/${slug}/entries`, { method: "POST" }).then((r) => {
+            lastEntryId = r.entryId;
+            return { orderId: r.orderId };
+          });
           try {
             await session.start({ presentationMode: "auto" }, orderPromise);
           } catch (e) {

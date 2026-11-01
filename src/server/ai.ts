@@ -22,10 +22,19 @@ export function aiConfigured(): boolean {
   return Boolean(env.AI_API_KEY);
 }
 
-function callsToday(): number {
+function dayStart(): number {
   const start = new Date();
   start.setUTCHours(0, 0, 0, 0);
-  return (db.prepare("SELECT COUNT(*) n FROM llm_usage WHERE ts >= ?").get(start.getTime()) as { n: number }).n;
+  return start.getTime();
+}
+function callsToday(purpose?: string): number {
+  return purpose
+    ? (db.prepare("SELECT COUNT(*) n FROM llm_usage WHERE ts >= ? AND purpose = ?").get(dayStart(), purpose) as { n: number }).n
+    : (db.prepare("SELECT COUNT(*) n FROM llm_usage WHERE ts >= ?").get(dayStart()) as { n: number }).n;
+}
+/** The public chat agent can never starve the seller-facing entity resolution. */
+function capFor(purpose: string): number {
+  return purpose === "fan_agent" ? Math.floor(env.AI_DAILY_CALL_LIMIT * 0.4) : env.AI_DAILY_CALL_LIMIT;
 }
 
 export function usageSummary() {
@@ -41,7 +50,6 @@ export async function chat(
   opts: { tools?: ToolDef[]; jsonSchema?: { name: string; schema: Record<string, unknown> }; maxTokens?: number; temperature?: number } = {},
 ): Promise<ChatMessage> {
   if (!aiConfigured()) throw new Error("AI_API_KEY not configured");
-  if (callsToday() >= env.AI_DAILY_CALL_LIMIT) throw new BudgetExceeded("daily AI budget reached");
   const t0 = Date.now();
   const body: Record<string, unknown> = {
     model: env.AI_MODEL,
@@ -54,6 +62,9 @@ export async function chat(
 
   let lastErr: unknown;
   for (let attempt = 0; attempt < 3; attempt++) {
+    // reserve the budget synchronously (no await between check and insert), one row per attempt
+    if (callsToday(purpose) >= capFor(purpose) || callsToday() >= env.AI_DAILY_CALL_LIMIT) throw new BudgetExceeded("daily AI budget reached");
+    const rowId = db.prepare("INSERT INTO llm_usage(ts, purpose, ms) VALUES(?, ?, 0)").run(now(), purpose).lastInsertRowid;
     try {
       const res = await fetch(`${env.AI_BASE_URL.replace(/\/$/, "")}/chat/completions`, {
         method: "POST",
@@ -64,12 +75,11 @@ export async function chat(
       if (res.status === 429 || res.status >= 500) throw new Error(`AI HTTP ${res.status}`);
       const j = (await res.json()) as any;
       if (!res.ok) throw new Error(`AI HTTP ${res.status}: ${JSON.stringify(j).slice(0, 200)}`);
-      db.prepare("INSERT INTO llm_usage(ts, purpose, prompt_tokens, completion_tokens, ms) VALUES(?, ?, ?, ?, ?)").run(
-        now(),
-        purpose,
+      db.prepare("UPDATE llm_usage SET prompt_tokens = ?, completion_tokens = ?, ms = ? WHERE id = ?").run(
         j.usage?.prompt_tokens ?? null,
         j.usage?.completion_tokens ?? null,
         Date.now() - t0,
+        rowId,
       );
       return j.choices[0].message as ChatMessage;
     } catch (e) {

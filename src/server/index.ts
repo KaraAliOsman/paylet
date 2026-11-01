@@ -1,6 +1,8 @@
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono, type Context } from "hono";
+import { bodyLimit } from "hono/body-limit";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { db, getSetting, now, setSetting } from "./db";
@@ -31,10 +33,18 @@ import { aiConfigured, usageSummary } from "./ai";
 
 const app = new Hono();
 
+const judgeQuota = new Map<string, { n: number; reset: number }>();
+
 // ---------------------------------------------------------------- tiny per-IP rate limiter
 const buckets = new Map<string, { n: number; reset: number }>();
+/** Client IP: the LAST X-Forwarded-For hop is the one added by the hosting proxy (earlier hops are client-controlled). */
+function clientIp(c: Context): string {
+  const hops = (c.req.header("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  return hops.at(-1) ?? "local";
+}
 function limit(c: Context, key: string, perMinute: number): boolean {
-  const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  const ip = clientIp(c);
+  if (buckets.size > 20_000) for (const [k, v] of buckets) if (v.reset < Date.now()) buckets.delete(k);
   const k = `${key}:${ip}`;
   const b = buckets.get(k);
   const t = Date.now();
@@ -53,6 +63,10 @@ app.onError((err, c) => {
   if (f.status) return c.json({ error: "paypal_error", issue: f.issue, debug_id: f.debugId }, 502);
   return c.json({ error: "internal_error" }, 500);
 });
+
+app.use("/api/*", bodyLimit({ maxSize: 64 * 1024, onError: (c) => c.json({ error: "payload_too_large" }, 413) }));
+app.use("/webhooks/*", bodyLimit({ maxSize: 64 * 1024, onError: (c) => c.json({ error: "payload_too_large" }, 413) }));
+app.use("/mcp", bodyLimit({ maxSize: 64 * 1024, onError: (c) => c.json({ error: "payload_too_large" }, 413) }));
 
 app.use("*", async (c, next) => {
   await next();
@@ -135,8 +149,12 @@ app.post("/api/entries/:id/appeal", async (c) => {
 
 app.post("/api/judge-drop", async (c) => {
   if (!limit(c, "judge", 4)) return c.json({ error: "rate_limited" }, 429);
+  const ip = clientIp(c);
+  const mine = judgeQuota.get(ip);
+  if (mine && mine.reset > Date.now() && mine.n >= 5) return c.json({ error: "judge_drop_quota", message: "You already have several judge drops today — reuse one of them." }, 429);
   const today = (db.prepare("SELECT COUNT(*) n FROM drops WHERE kind = 'judge' AND created_at > ?").get(now() - 86_400_000) as { n: number }).n;
-  if (today > 60) return c.json({ error: "judge_drop_quota" }, 429);
+  if (today > 150) return c.json({ error: "judge_drop_quota" }, 429);
+  judgeQuota.set(ip, { n: (mine && mine.reset > Date.now() ? mine.n : 0) + 1, reset: mine && mine.reset > Date.now() ? mine.reset : Date.now() + 86_400_000 });
   const d = await createDrop({
     title: "Ember Glaze Mug",
     maker: "Juniper Street Ceramics",
@@ -170,10 +188,15 @@ app.get("/api/evals", (c) => {
 app.get("/api/ai/usage", (c) => c.json(usageSummary()));
 
 // ---------------------------------------------------------------- seller console (per-drop secret key)
+function safeEq(a: string, b: string): boolean {
+  const h = (x: string) => createHash("sha256").update(x).digest();
+  return timingSafeEqual(h(a), h(b));
+}
 function seller(c: Context): DropRow {
   const d = mustDrop(c.req.param("slug")!);
-  const key = c.req.header("x-seller-key") ?? c.req.query("k");
-  if (!key || (key !== d.seller_token && !(env.SELLER_ADMIN_KEY && key === env.SELLER_ADMIN_KEY))) throw new HttpError(403, "seller_key_required");
+  const key = c.req.header("x-seller-key") ?? c.req.query("k") ?? "";
+  const ok = key && (safeEq(key, d.seller_token) || (env.SELLER_ADMIN_KEY ? safeEq(key, env.SELLER_ADMIN_KEY) : false));
+  if (!ok) throw new HttpError(403, "seller_key_required");
   return d;
 }
 
@@ -206,7 +229,9 @@ app.post("/api/seller/:slug/simulate", (c) => {
 app.post("/api/seller/:slug/swarm", async (c) => {
   const d = seller(c);
   const { n } = (await c.req.json().catch(() => ({}))) as { n?: number };
-  const count = Math.max(1, Math.min(25, n ?? 12));
+  const already = (db.prepare("SELECT COUNT(*) n FROM entries WHERE drop_id = ? AND source = 'agent' AND agent_label LIKE 'scalper-bot-%'").get(d.id) as { n: number }).n;
+  if (already >= 30) throw new HttpError(409, "swarm_limit", "This drop already met its scalper swarm.");
+  const count = Math.max(1, Math.min(25, n ?? 12, 30 - already));
   void runSwarm(d.slug, count).catch((e) => emit(d.id, "swarm_error", `Swarm stopped: ${String(e).slice(0, 120)}`, false));
   return c.json({ started: count });
 });
@@ -218,10 +243,10 @@ app.post("/api/seller/:slug/analyze", async (c) => {
 });
 
 app.post("/api/seller/:slug/clusters/:id", async (c) => {
-  seller(c);
   const { decision } = (await c.req.json().catch(() => ({}))) as { decision?: string };
   if (decision !== "confirmed" && decision !== "dismissed") throw new HttpError(400, "bad_decision");
-  decideCluster(c.req.param("id")!, decision);
+  const d = seller(c);
+  decideCluster(d.id, c.req.param("id")!, decision);
   return c.json({ ok: true });
 });
 
@@ -240,8 +265,14 @@ app.post("/api/seller/:slug/draw", async (c) => {
 
 // ---------------------------------------------------------------- MCP endpoint for AI agents
 app.all("/mcp", async (c) => {
-  if (!limit(c, "mcp", 90)) return c.json({ error: "rate_limited" }, 429);
-  return handleMcp(c.req.raw);
+  if (!limit(c, "mcp", 40)) return c.json({ error: "rate_limited" }, 429);
+  let parsed: unknown;
+  if (c.req.method === "POST") {
+    parsed = await c.req.json().catch(() => undefined);
+    // JSON-RPC batches would bypass the per-request rate limit
+    if (Array.isArray(parsed)) return c.json({ jsonrpc: "2.0", error: { code: -32600, message: "batch requests are not supported" }, id: null }, 400);
+  }
+  return handleMcp(c.req.raw, parsed);
 });
 
 // ---------------------------------------------------------------- PayPal webhooks (signature-verified)
@@ -302,6 +333,19 @@ async function boot() {
   startWorker(handlers);
   setInterval(() => void sweep().catch((e) => console.warn("sweep", String(e))), 15_000);
   setInterval(() => void ensureShowcase().catch(() => undefined), 60_000);
+  // Free hosting sleeps after 15 idle minutes and loses its disk. While a judge drop is open, holds exist or PayPal
+  // ops are pending, ping our own public URL so the drop can finish and settle (no 24/7 keep-alive otherwise).
+  if (env.PUBLIC_URL.startsWith("https://")) {
+    setInterval(() => {
+      const busy =
+        pendingOps() > 0 ||
+        (db.prepare("SELECT COUNT(*) n FROM drops WHERE kind = 'judge' AND status = 'open'").get() as { n: number }).n > 0 ||
+        (db.prepare("SELECT COUNT(*) n FROM entries e JOIN drops d ON d.id = e.drop_id WHERE e.source <> 'simulated' AND e.status IN ('held','won','authorizing') AND d.kind = 'judge'").get() as { n: number }).n > 0;
+      if (busy) void fetch(`${env.PUBLIC_URL.replace(/\/$/, "")}/api/health`, { signal: AbortSignal.timeout(10_000) }).catch(() => undefined);
+    }, 9 * 60_000);
+  }
+  const fresh = (db.prepare("SELECT COUNT(*) n FROM drops").get() as { n: number }).n <= 1;
+  if (fresh) console.warn("[paylet] started with an empty database (ephemeral hosting reset); earlier drops are gone.");
 }
 
 if (process.env.PAYLET_NO_LISTEN !== "1") {

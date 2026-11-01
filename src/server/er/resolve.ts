@@ -19,6 +19,7 @@ export interface ResolveResult {
   links: [string, string][];
   llmCalls: number;
   uncertainPairs: number;
+  aiDegraded?: string;
 }
 
 interface LlmGroup {
@@ -105,6 +106,7 @@ export async function resolve(list: Identity[], opts: { useLlm: boolean } = { us
   const evidenceByPair = new Map<string, PairScore>(pairs.map((p) => [`${p.a}|${p.b}`, p]));
   const aiGroups: { ids: string[]; g: LlmGroup }[] = [];
   let llmCalls = 0;
+  let aiDegraded: string | undefined;
 
   if (opts.useLlm && uncertain.length) {
     // Components over all non-trivial pairs, adjudicated one component at a time (max 12 members per call).
@@ -113,21 +115,28 @@ export async function resolve(list: Identity[], opts: { useLlm: boolean } = { us
       [...certain, ...uncertain].map((p) => [p.a, p.b] as [string, string]),
     ).filter((c) => c.some((id) => uncertain.some((u) => u.a === id || u.b === id)));
 
-    for (const comp of comps) {
+    outer: for (const comp of comps) {
       for (let i = 0; i < comp.length; i += 12) {
         const chunk = comp.slice(i, i + 12);
         const signals = pairs
           .filter((p) => chunk.includes(p.a) && chunk.includes(p.b))
           .map((p) => ({ a: p.a, b: p.b, rule_score: p.score, signals: p.signals.map((s) => s.detail) }));
-        const res = await chatJson<{ groups: LlmGroup[] }>(
-          "er_adjudicate",
-          [
-            { role: "system", content: SYSTEM },
-            { role: "user", content: JSON.stringify({ entries: chunk.map((id) => view(byId.get(id)!)), deterministic_signals: signals }) },
-          ],
-          "er_groups",
-          LLM_SCHEMA,
-        );
+        let res: { groups: LlmGroup[] };
+        try {
+          res = await chatJson<{ groups: LlmGroup[] }>(
+            "er_adjudicate",
+            [
+              { role: "system", content: SYSTEM },
+              { role: "user", content: JSON.stringify({ entries: chunk.map((id) => view(byId.get(id)!)), deterministic_signals: signals }) },
+            ],
+            "er_groups",
+            LLM_SCHEMA,
+          );
+        } catch (e) {
+          // conservative fallback: fuzzy pairs stay unmerged, rule-certain clusters are still suggested
+          aiDegraded = String(e instanceof Error ? e.message : e).slice(0, 120);
+          break outer;
+        }
         llmCalls++;
         for (const g of res.groups ?? []) {
           const ids = g.member_ids.filter((id) => chunk.includes(id));
@@ -171,5 +180,5 @@ export async function resolve(list: Identity[], opts: { useLlm: boolean } = { us
     };
   });
   void evidenceByPair;
-  return { clusters, links, llmCalls, uncertainPairs: uncertain.length };
+  return { clusters, links, llmCalls, uncertainPairs: uncertain.length, aiDegraded };
 }

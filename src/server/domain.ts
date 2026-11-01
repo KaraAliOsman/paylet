@@ -112,14 +112,15 @@ export function publicDrop(d: DropRow) {
     frozenList: d.status === "open" ? null : d.frozen_list ? (JSON.parse(d.frozen_list) as string[]) : null,
     waitlistSize: d.waitlist_size,
     stats: {
-      requests: entries.length,
+      requests: count((e) => e.source !== "simulated"),
       awaitingPerson: count((e) => e.status === "awaiting_person"),
-      holds: count((e) => e.hold_cents != null && e.status !== "duplicate"),
+      holds: count((e) => e.source !== "simulated" && e.hold_cents != null && e.status !== "duplicate"),
       duplicatesBlocked: count((e) => e.status === "duplicate"),
       merged: count((e) => e.status === "merged"),
       simulated: count((e) => e.source === "simulated"),
       agents: count((e) => e.source === "agent"),
-      captured: count((e) => e.status === "captured"),
+      captured: count((e) => e.source !== "simulated" && e.status === "captured"),
+      capturedSimulated: count((e) => e.source === "simulated" && e.status === "captured"),
     },
   };
 }
@@ -171,55 +172,80 @@ export class HttpError extends Error {
 
 export type FinalizeOutcome = "authorizing" | "duplicate" | "not_approved" | "closed" | "already" | "unknown_order";
 
-/** Called after the person approves in PayPal (button onApprove, agent return URL, webhook, or sweeper). */
-export async function finalize(orderId: string): Promise<{ outcome: FinalizeOutcome; entry?: EntryRow }> {
+/** Called after the person approves in PayPal (button onApprove, agent return URL, webhook, or sweeper).
+ *  Every state change is a conditional UPDATE, so concurrent callers and a concurrent draw can never
+ *  move an entry backwards or create a hold outside the ballot. */
+export async function finalize(orderId: string, opts: { quiet?: boolean } = {}): Promise<{ outcome: FinalizeOutcome; entry?: EntryRow }> {
   const entry = getEntryByOrder(orderId);
   if (!entry) return { outcome: "unknown_order" };
   if (entry.status !== "awaiting_person") return { outcome: "already", entry };
-  const drop = getDrop(entry.drop_id)!;
 
   const ident = await paypal.getOrderIdentity(orderId);
-  emit(drop.id, "order_checked", `GET order for ${entry.public_id}: ${ident.status}`, true);
+  // re-read after the await: the drop may have been drawn meanwhile
+  const drop = getDrop(entry.drop_id)!;
+  if (!opts.quiet || ident.status === "APPROVED") emit(drop.id, "order_checked", `GET order for ${entry.public_id}: ${ident.status}`, true);
   if (ident.status !== "APPROVED") return { outcome: "not_approved", entry };
   if (!dropIsOpen(drop)) {
-    updateEntry(entry.id, { status: "expired", note: "approved after the drop closed — no hold placed" });
+    db.prepare("UPDATE entries SET status = 'expired', note = ?, updated_at = ? WHERE id = ? AND status = 'awaiting_person'").run(
+      "Approved after the drop closed — no hold was placed.",
+      now(),
+      entry.id,
+    );
     return { outcome: "closed", entry: getEntry(entry.id) };
   }
 
   const anchor = ident.payerId ?? ident.accountId;
   if (!anchor) {
-    updateEntry(entry.id, { status: "error", note: "PayPal returned no payer id" });
+    db.prepare("UPDATE entries SET status = 'error', note = ?, updated_at = ? WHERE id = ? AND status = 'awaiting_person'").run("PayPal returned no payer id", now(), entry.id);
     return { outcome: "not_approved", entry: getEntry(entry.id) };
   }
-  const payerHash = hmac(`payer:${anchor}`);
-  const identity = {
-    payer_hash: payerHash,
-    account_hash: ident.accountId ? hmac(`acct:${ident.accountId}`) : null,
-    email_hash: ident.email ? hmac(`email:${ident.email.toLowerCase()}`) : null,
-    name: ident.name ?? null,
-    display_name: ident.name ? `${ident.name.split(" ")[0]} ${(ident.name.split(" ")[1] ?? "").slice(0, 1)}.`.trim() : null,
-    email: ident.email ?? null,
-    address_json: ident.address ? JSON.stringify(ident.address) : null,
-  };
+  const name = ident.name ?? null;
+  const fields = [
+    hmac(`payer:${anchor}`),
+    ident.accountId ? hmac(`acct:${ident.accountId}`) : null,
+    ident.email ? hmac(`email:${ident.email.toLowerCase()}`) : null,
+    name,
+    name ? `${name.split(" ")[0]} ${(name.split(" ")[1] ?? "").slice(0, 1)}.`.trim() : null,
+    ident.email ?? null,
+    ident.address ? JSON.stringify(ident.address) : null,
+  ] as const;
 
+  let changed = 0;
   try {
-    tx(() => {
-      updateEntry(entry.id, { ...identity, status: "authorizing" });
-    });
+    changed = Number(
+      db
+        .prepare(
+          `UPDATE entries SET payer_hash = ?, account_hash = ?, email_hash = ?, name = ?, display_name = ?, email = ?, address_json = ?, status = 'authorizing', updated_at = ?
+           WHERE id = ? AND status = 'awaiting_person' AND EXISTS (SELECT 1 FROM drops WHERE id = ? AND status = 'open' AND closes_at > ?)`,
+        )
+        .run(...fields, now(), entry.id, drop.id, now()).changes,
+    );
   } catch (e) {
-    if (String(e).includes("UNIQUE")) {
-      updateEntry(entry.id, {
-        ...identity,
-        payer_hash: null,
-        status: "duplicate",
-        note: "This PayPal account already holds an entry in this drop — no hold placed.",
-      });
-      // keep the hash for analytics without violating the unique index
-      db.prepare("UPDATE entries SET account_hash = ? WHERE id = ?").run(identity.account_hash, entry.id);
+    if (!String(e).includes("UNIQUE")) throw e;
+    const dup = db
+      .prepare(
+        `UPDATE entries SET account_hash = ?, email_hash = ?, name = ?, display_name = ?, email = ?, address_json = ?, status = 'duplicate', note = ?, updated_at = ?
+         WHERE id = ? AND status = 'awaiting_person'`,
+      )
+      .run(fields[1], fields[2], fields[3], fields[4], fields[5], fields[6], "This PayPal account already holds an entry in this drop — no hold placed.", now(), entry.id);
+    if (dup.changes) {
       emit(drop.id, "duplicate_blocked", `Entry ${entry.public_id}: same PayPal account as an existing entry → no hold placed.`, true, { source: entry.source });
       return { outcome: "duplicate", entry: getEntry(entry.id) };
     }
-    throw e;
+    return { outcome: "already", entry: getEntry(entry.id) };
+  }
+  if (!changed) {
+    // someone else finalized it, or the drop closed between our checks
+    const fresh = getEntry(entry.id)!;
+    if (fresh.status === "awaiting_person") {
+      db.prepare("UPDATE entries SET status = 'expired', note = ?, updated_at = ? WHERE id = ? AND status = 'awaiting_person'").run(
+        "Approved after the drop closed — no hold was placed.",
+        now(),
+        entry.id,
+      );
+      return { outcome: "closed", entry: getEntry(entry.id) };
+    }
+    return { outcome: "already", entry: fresh };
   }
   enqueue("authorize", `auth:${entry.id}`, entry.id);
   return { outcome: "authorizing", entry: getEntry(entry.id) };
@@ -231,6 +257,8 @@ export function addSimulatedCrowd(dropIdOrSlug: string, seed = Math.floor(Math.r
   const drop = getDrop(dropIdOrSlug);
   if (!drop) throw new HttpError(404, "drop_not_found");
   if (!dropIsOpen(drop)) throw new HttpError(409, "drop_closed");
+  const sims = (db.prepare("SELECT COUNT(*) n FROM entries WHERE drop_id = ? AND source = 'simulated'").get(drop.id) as { n: number }).n;
+  if (sims >= 60) throw new HttpError(409, "sim_limit", "This drop already has its simulated crowd.");
   const crowd = syntheticCrowd(seed, { fans: 12, networks: 1, netSize: 6, households: 1, neighbors: 1, namesakes: 1 }, `sim${seed}`);
   const t = now();
   for (const [i, p] of crowd.entries()) {
@@ -273,13 +301,23 @@ function identityOf(e: EntryRow): Identity | null {
   };
 }
 
+const analyzing = new Set<string>();
+
 export async function analyzeDrop(dropIdOrSlug: string) {
   const drop = getDrop(dropIdOrSlug);
   if (!drop) throw new HttpError(404, "drop_not_found");
+  if (analyzing.has(drop.id)) throw new HttpError(409, "analysis_running", "An AI review is already running for this drop.");
   const entries = listEntries(drop.id).filter((e) => e.status === "held" || e.status === "authorizing");
+  if (entries.length > 300) throw new HttpError(413, "too_many_entries");
   const identities = entries.map(identityOf).filter((x): x is Identity => !!x);
   const t0 = Date.now();
-  const result = await resolve(identities, { useLlm: true });
+  analyzing.add(drop.id);
+  let result;
+  try {
+    result = await resolve(identities, { useLlm: true });
+  } finally {
+    analyzing.delete(drop.id);
+  }
   const ms = Date.now() - t0;
   tx(() => {
     // replace previous suggestions (keep seller decisions)
@@ -296,16 +334,18 @@ export async function analyzeDrop(dropIdOrSlug: string) {
   emit(
     drop.id,
     "er_done",
-    `Entity resolution: ${identities.length} entries, ${result.uncertainPairs} fuzzy pairs sent to the AI (${result.llmCalls} call${result.llmCalls === 1 ? "" : "s"}), ${result.clusters.length} cluster(s) suggested in ${(ms / 1000).toFixed(1)}s. Seller must confirm.`,
+    `Entity resolution: ${identities.length} entries, ${result.uncertainPairs} fuzzy pairs sent to the AI (${result.llmCalls} call${result.llmCalls === 1 ? "" : "s"}), ${result.clusters.length} cluster(s) suggested in ${(ms / 1000).toFixed(1)}s.${result.aiDegraded ? ` AI unavailable (${result.aiDegraded}) — rules-only suggestions.` : ""} Seller must confirm.`,
     false,
   );
   return { ...result, ms };
 }
 
-export function decideCluster(clusterId: string, decision: "confirmed" | "dismissed") {
-  const c = db.prepare("SELECT * FROM clusters WHERE id = ?").get(clusterId) as ClusterRow | undefined;
+export function decideCluster(dropId: string, clusterId: string, decision: "confirmed" | "dismissed") {
+  const c = db.prepare("SELECT * FROM clusters WHERE id = ? AND drop_id = ?").get(clusterId, dropId) as ClusterRow | undefined;
   if (!c) throw new HttpError(404, "cluster_not_found");
-  db.prepare("UPDATE clusters SET status = ? WHERE id = ?").run(decision, clusterId);
+  const d = getDrop(dropId)!;
+  if (d.status !== "open") throw new HttpError(409, "drop_closed");
+  db.prepare("UPDATE clusters SET status = ? WHERE id = ? AND drop_id = ?").run(decision, clusterId, dropId);
   const ids = JSON.parse(c.member_ids) as string[];
   emit(c.drop_id, "cluster_" + decision, `Seller ${decision} a ${c.kind} cluster of ${ids.length} PayPal accounts.`, false);
 }
@@ -327,6 +367,9 @@ export async function draw(dropIdOrSlug: string) {
   const pendingAuth = listEntries(drop.id).filter((e) => e.status === "authorizing").length;
   if (pendingAuth) throw new HttpError(409, "holds_pending", `${pendingAuth} hold(s) still being placed — try again in a few seconds`);
 
+  // Close the drop atomically BEFORE any await, so no finalize() can slip a new hold in afterwards.
+  const closed = db.prepare("UPDATE drops SET status = 'drawn', drawn_at = ? WHERE id = ? AND status = 'open'").run(now(), drop.id);
+  if (!closed.changes) throw new HttpError(409, "already_drawn");
   const entries = listEntries(drop.id);
   const held = entries.filter((e) => e.status === "held");
   // Confirmed clusters: one allocation per cluster (earliest entry keeps its place).
@@ -342,7 +385,8 @@ export async function draw(dropIdOrSlug: string) {
       updateEntry(m.id, {
         status: "merged",
         cluster_id: c.id,
-        explanation: `${c.explanation} One allocation per ${c.kind === "operator" ? "operation" : "household"} — your hold is released.`,
+        // templated on purpose: the fan never sees free-form model text or other people's details
+        explanation: `The seller confirmed that this PayPal account belongs to the same ${c.kind === "operator" ? "shipping operation" : "household"} as ${members.length - 1} other entr${members.length - 1 === 1 ? "y" : "ies"} (shared delivery address). One allocation per ${c.kind === "operator" ? "operation" : "household"} — your hold is released, nothing was charged.`,
       });
     }
     if (members[0]) updateEntry(members[0].id, { cluster_id: c.id });
@@ -353,12 +397,7 @@ export async function draw(dropIdOrSlug: string) {
   const result = await computeDraw(drop.seed, ids, drop.units, drop.waitlist_size);
   const byPid = new Map(eligible.map((e) => [e.public_id, e]));
 
-  db.prepare("UPDATE drops SET status = 'drawn', frozen_hash = ?, frozen_list = ?, drawn_at = ? WHERE id = ?").run(
-    frozenHash,
-    JSON.stringify([...ids].sort()),
-    now(),
-    drop.id,
-  );
+  db.prepare("UPDATE drops SET frozen_hash = ?, frozen_list = ? WHERE id = ?").run(frozenHash, JSON.stringify([...ids].sort()), drop.id);
   emit(drop.id, "draw", `Draw: list of ${ids.length} eligible entries frozen (hash ${frozenHash.slice(0, 12)}…), seed revealed. ${result.winners.length} winner(s), ${result.waitlist.length} on waitlist.`, false, {
     frozenHash,
     seed: drop.seed,
@@ -370,13 +409,10 @@ export async function draw(dropIdOrSlug: string) {
   const losers = eligible.filter((e) => !result.winners.includes(e.public_id) && !result.waitlist.includes(e.public_id));
   for (const e of losers) updateEntry(e.id, { status: "lost" });
   // 2) … then move money.
-  let failInjected = false;
-  for (const pid of result.winners) {
-    const e = getEntry(byPid.get(pid)!.id)!;
-    const inject = drop.negative_test === 1 && !failInjected && e.source !== "simulated";
-    if (inject) failInjected = true;
-    scheduleCapture(drop, e, inject);
-  }
+  // Sandbox negative test: one winner's payment fails so the waitlist hand-off is visible. Prefer a SIMULATED winner
+  // (so a real person's hold is captured normally); only if every winner is real does a real hold get the PayPal 422.
+  const failPid = drop.negative_test === 1 ? (result.winners.find((p) => byPid.get(p)!.source === "simulated") ?? result.winners[0]) : null;
+  for (const pid of result.winners) scheduleCapture(drop, getEntry(byPid.get(pid)!.id)!, pid === failPid);
   for (const e of losers) scheduleVoid(drop, getEntry(e.id)!, "not selected");
   for (const idm of mergedIds) scheduleVoid(drop, getEntry(idm)!, "merged into a confirmed cluster");
   // Pending approvals that never completed simply expire (no hold exists).
@@ -389,6 +425,12 @@ function captureAmount(drop: DropRow): number {
 }
 
 function scheduleCapture(drop: DropRow, e: EntryRow, injectFailure: boolean) {
+  if (e.source === "simulated" && injectFailure) {
+    updateEntry(e.id, { status: "capture_failed", note: "Payment failed (SIMULATED negative test). The unit passes to the waitlist." });
+    emit(drop.id, "capture_failed", `SIMULATED negative test: capture for ${e.public_id} declined — promoting the waitlist.`, false);
+    void promoteNext(drop.id);
+    return;
+  }
   if (e.source === "simulated") {
     updateEntry(e.id, { status: "captured", captured_cents: captureAmount(drop), capture_id: `SIM-CAP-${e.id.slice(-6).toUpperCase()}` });
     emit(drop.id, "capture_sim", `SIMULATED capture for ${e.public_id} (${formatUsd(captureAmount(drop))}).`, false);
@@ -446,14 +488,34 @@ export const handlers: Handlers = {
     const e = getEntry(op.entry_id);
     if (!e) return;
     const drop = getDrop(e.drop_id)!;
-    const payload = JSON.parse(op.payload) as { injectFailure?: boolean; reason?: string };
+    const payload = JSON.parse(op.payload) as { injectFailure?: boolean; reason?: string; authorizationId?: string };
     if (op.kind === "authorize") {
+      // never place a hold for an entry that is no longer waiting for one, or after the drop closed
+      if (e.status !== "authorizing") return;
+      if (!dropIsOpen(drop)) {
+        db.prepare("UPDATE entries SET status = 'expired', note = ?, updated_at = ? WHERE id = ? AND status = 'authorizing'").run(
+          "The drop closed before the hold was placed — nothing was charged.",
+          now(),
+          e.id,
+        );
+        return;
+      }
       const r = await paypal.authorizeOrder(e.order_id!, op.key);
-      updateEntry(e.id, { status: "held", authorization_id: r.authorizationId ?? null, hold_cents: drop.price_cents + drop.ship_hold_cents });
+      if (!r.authorizationId) throw new Error(`authorize returned no authorization (status ${r.status})`);
+      const placed = db
+        .prepare("UPDATE entries SET status = 'held', authorization_id = ?, hold_cents = ?, updated_at = ? WHERE id = ? AND status = 'authorizing'")
+        .run(r.authorizationId, drop.price_cents + drop.ship_hold_cents, now(), e.id);
+      if (!placed.changes || !dropIsOpen(getDrop(drop.id)!)) {
+        // the drop was drawn while PayPal was authorizing: release this hold immediately
+        updateEntry(e.id, { status: "voided", authorization_id: r.authorizationId, note: "The drop closed while the hold was being placed — released." });
+        enqueue("void", `void:${r.authorizationId}`, e.id, { reason: "drop closed during authorization", authorizationId: r.authorizationId });
+        return;
+      }
       emit(drop.id, "hold_placed", `Hold placed for ${e.public_id}: ${formatUsd(drop.price_cents + drop.ship_hold_cents)} authorized (${r.status}). Nothing charged yet.`, true, {
         authorizationId: r.authorizationId,
       });
     } else if (op.kind === "capture") {
+      if (e.status !== "won") return;
       if (payload.injectFailure) {
         // Sandbox negative test, clearly labelled in the UI: release the hold first, then attempt the capture.
         // PayPal answers 422 AUTHORIZATION_VOIDED — the same path a lapsed/declined hold takes in production.
@@ -461,6 +523,12 @@ export const handlers: Handlers = {
         emit(drop.id, "negative_test", `SANDBOX NEGATIVE TEST: hold for ${e.public_id} released before capture to reproduce a failed payment.`, true);
       }
       const r = await paypal.captureAuthorization(e.authorization_id!, captureAmount(drop), op.key, `PAYLET-${e.id.slice(-10)}-1`);
+      if (r.status === "PENDING") {
+        updateEntry(e.id, { capture_id: r.captureId ?? null, note: "Payment pending at PayPal — waiting for confirmation." });
+        emit(drop.id, "capture_pending", `Capture for ${e.public_id} is PENDING at PayPal.`, true);
+        return;
+      }
+      if (r.status !== "COMPLETED") throw new Error(`CAPTURE_${r.status || "UNKNOWN"}`);
       updateEntry(e.id, { status: "captured", capture_id: r.captureId ?? null, captured_cents: captureAmount(drop) });
       emit(
         drop.id,
@@ -471,23 +539,45 @@ export const handlers: Handlers = {
       );
       settleIfDone(drop.id);
     } else if (op.kind === "void") {
-      const r = await paypal.voidAuthorizationSafe(e.authorization_id!, op.key);
-      if (e.status !== "merged") updateEntry(e.id, { status: "voided" });
+      const authId = e.authorization_id ?? payload.authorizationId;
+      if (!authId) return;
+      const r = await paypal.voidAuthorizationSafe(authId, op.key);
+      if (e.status !== "merged" && e.status !== "capture_failed") updateEntry(e.id, { status: "voided" });
       emit(drop.id, "voided", `Hold released for ${e.public_id} (${payload.reason ?? "not selected"}) — ${r.already ? "already released" : "voided"}, never charged.`, true);
     }
   },
-  onTerminal(op, f) {
+  async onTerminal(op, f) {
     const e = getEntry(op.entry_id);
     if (!e) return;
     if (op.kind === "authorize") {
       updateEntry(e.id, { status: "error", note: `PayPal could not place the hold (${f.issue}).` });
       emit(e.drop_id, "authorize_failed", `Hold failed for ${e.public_id}: ${f.status} ${f.issue}.`, true);
     } else if (op.kind === "capture") {
+      if (f.cls === "CONFIG") {
+        // our credentials/permissions are broken: do NOT burn through the waitlist — retry later
+        db.prepare("UPDATE ops SET status = 'pending', attempts = 0, next_at = ? WHERE key = ?").run(now() + 10 * 60_000, op.key);
+        emit(e.drop_id, "capture_blocked", `Capture for ${e.public_id} blocked by a configuration error (${f.status} ${f.issue}); retrying in 10 minutes.`, true);
+        return;
+      }
+      // reconcile with PayPal before declaring the payment failed
+      try {
+        const a = await paypal.getAuthorization(e.authorization_id!);
+        if (a.status === "CAPTURED" || a.status === "PARTIALLY_CAPTURED") {
+          const drop = getDrop(e.drop_id)!;
+          updateEntry(e.id, { status: "captured", captured_cents: captureAmount(drop) });
+          emit(e.drop_id, "captured", `Capture for ${e.public_id} confirmed by reconciliation with PayPal.`, true);
+          settleIfDone(e.drop_id);
+          return;
+        }
+        if (a.status === "CREATED" || a.status === "PENDING") enqueue("void", `void:${e.authorization_id}`, e.id, { reason: "payment failed" });
+      } catch {
+        /* reconciliation is best-effort; the sweeper re-arms failed voids */
+      }
       updateEntry(e.id, { status: "capture_failed", note: `Payment failed (${f.issue}). The unit passes to the waitlist.` });
       emit(e.drop_id, "capture_failed", `Capture failed for ${e.public_id}: PayPal ${f.status} ${f.issue}. Promoting waitlist.`, true);
-      void promoteNext(e.drop_id);
+      await promoteNext(e.drop_id);
     } else {
-      emit(e.drop_id, "void_failed", `Void failed for ${e.public_id}: ${f.status} ${f.issue} (hold will lapse on its own).`, true);
+      emit(e.drop_id, "void_failed", `Void failed for ${e.public_id}: ${f.status} ${f.issue} (the sweeper will retry).`, true);
     }
   },
 };
@@ -505,11 +595,23 @@ export async function sweep(): Promise<void> {
   for (const e of stale) {
     try {
       db.prepare("UPDATE entries SET updated_at = ? WHERE id = ?").run(now(), e.id);
-      await finalize(e.order_id!);
+      await finalize(e.order_id!, { quiet: true });
     } catch (err) {
       console.warn("sweep", e.id, paypal.classify(err).issue);
     }
   }
+  // Any real hold still "held" in a drop that is no longer open is outside the ballot: release it.
+  const strays = db
+    .prepare("SELECT e.* FROM entries e JOIN drops d ON d.id = e.drop_id WHERE e.status = 'held' AND e.source <> 'simulated' AND d.status <> 'open' LIMIT 5")
+    .all() as unknown as EntryRow[];
+  for (const e of strays) {
+    updateEntry(e.id, { status: "lost", note: "Hold placed outside the ballot — released." });
+    scheduleVoid(getDrop(e.drop_id)!, getEntry(e.id)!, "outside the ballot");
+  }
+  // Re-arm voids that failed terminally (voidAuthorizationSafe GETs first, so this is idempotent).
+  db.prepare(
+    "UPDATE ops SET status = 'pending', attempts = 0, next_at = ? WHERE key IN (SELECT key FROM ops WHERE kind = 'void' AND status = 'failed' AND updated_at < ? AND created_at > ? ORDER BY updated_at LIMIT 3)",
+  ).run(now(), now() - 10 * 60_000, now() - 28 * 86_400_000);
   // Expire open drops past their close time (judge drops close after 30 min).
   const expired = db.prepare("SELECT id FROM drops WHERE status = 'open' AND closes_at < ?").all(now()) as { id: string }[];
   for (const d of expired) {

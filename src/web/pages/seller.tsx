@@ -104,12 +104,13 @@ export function SellerPage({ slug, sellerKey }: { slug: string; sellerKey: strin
       </section>
 
       <section className="stats wide">
-        <Stat label="entry requests" value={drop.stats.requests} />
+        <Stat label="entry requests (real)" value={drop.stats.requests} />
         <Stat label="awaiting a person" value={drop.stats.awaitingPerson} />
-        <Stat label="PayPal holds" value={drop.stats.holds} tone="good" />
+        <Stat label="PayPal holds (real)" value={drop.stats.holds} tone="good" />
+        <Stat label="simulated entrants" value={drop.stats.simulated} />
         <Stat label="same-account duplicates (no hold)" value={drop.stats.duplicatesBlocked} tone="warn" />
         <Stat label="merged" value={drop.stats.merged} tone="warn" />
-        <Stat label="captured" value={drop.stats.captured} tone="good" />
+        <Stat label="captured (real)" value={drop.stats.captured} tone="good" />
       </section>
 
       <section className="card actions">

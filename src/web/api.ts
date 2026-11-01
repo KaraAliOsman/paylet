@@ -17,7 +17,7 @@ export interface PublicDrop {
   frozenHash: string | null;
   waitlistSize: number;
   negativeTest?: boolean;
-  stats: { requests: number; awaitingPerson: number; holds: number; duplicatesBlocked: number; merged: number; simulated: number; agents: number; captured: number };
+  stats: { requests: number; awaitingPerson: number; holds: number; duplicatesBlocked: number; merged: number; simulated: number; agents: number; captured: number; capturedSimulated?: number };
 }
 
 export interface Participant {

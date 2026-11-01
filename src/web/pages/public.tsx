@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, timeLeft, usd, type Participant, type PublicDrop } from "../api";
+import { ApiError, api, timeLeft, usd, type Participant, type PublicDrop } from "../api";
 import { Art, Hash, PayPalEntryButton, Stat, StatusPill, Ticker } from "../components";
 import { Link, navigate } from "../router";
 
@@ -11,7 +11,7 @@ function useDrop(slug: string) {
     const load = () =>
       api<PublicDrop>(`/api/drops/${slug}`)
         .then((d) => alive && setDrop(d))
-        .catch((e) => alive && setErr(String(e.message ?? e)));
+        .catch((e) => alive && setErr(e instanceof ApiError && e.status === 404 ? "not_found" : String(e.message ?? e)));
     void load();
     const t = setInterval(load, 3000);
     return () => {
@@ -107,7 +107,7 @@ export function Home() {
         </div>
         <div className="card">
           <h3>Judges: try to scalp us</h3>
-          <p>Spin up a private 30-minute drop with its own seller console, then try to get two units with one PayPal account.</p>
+          <p>Spin up your own 30-minute drop with its own seller console, then try to get two units with one PayPal account.</p>
           <Link className="btn btn-primary" href="/judge">
             Start a judge drop
           </Link>
@@ -121,7 +121,7 @@ export function Home() {
             {data.past.map((d) => (
               <li key={d.id}>
                 <Link href={`/verify/${d.slug}`}>
-                  {d.title} — {d.stats.captured}/{d.units} paid · {d.stats.duplicatesBlocked} duplicates blocked · {d.stats.merged} merged — re-run the draw
+                  {d.title} — {d.stats.captured + (d.stats.capturedSimulated ?? 0)}/{d.units} paid · {d.stats.duplicatesBlocked} duplicates blocked · {d.stats.merged} merged — re-run the draw
                 </Link>
               </li>
             ))}
@@ -149,7 +149,8 @@ export function DropPage({ slug }: { slug: string }) {
     return () => clearInterval(t);
   }, [entry]);
 
-  if (err) return <p className="err">{err}</p>;
+  if (err === "not_found") return <NotFound what="drop" />;
+  if (err && !drop) return <p className="err">{err}</p>;
   if (!drop) return <div className="skeleton tall">Loading drop…</div>;
   const open = drop.status === "open" && drop.closesAt > now;
   const hold = drop.priceCents + drop.shipHoldCents;
@@ -183,6 +184,9 @@ export function DropPage({ slug }: { slug: string }) {
             ) : (
               <>
                 <PayPalEntryButton slug={drop.slug} onEntry={onEntry} />
+                <Link href={`/agent?drop=${drop.slug}`} className="small">
+                  …or let your AI agent request it (it can't pay — you approve)
+                </Link>
                 <p className="hint">
                   Approving places a <b>{usd(hold)}</b> hold (price + max shipping). Winners pay the real shipping; everyone else is released. One entry per PayPal
                   account.
@@ -200,11 +204,12 @@ export function DropPage({ slug }: { slug: string }) {
         </div>
       </section>
       <section className="stats wide">
-        <Stat label="entry requests" value={drop.stats.requests} />
-        <Stat label="agent requests" value={drop.stats.agents} />
-        <Stat label="PayPal holds" value={drop.stats.holds} tone="good" />
-        <Stat label="duplicate accounts blocked" value={drop.stats.duplicatesBlocked} tone="warn" />
+        <Stat label="entry requests (real)" value={drop.stats.requests} />
+        <Stat label="via AI agents" value={drop.stats.agents} />
+        <Stat label="PayPal holds (real)" value={drop.stats.holds} tone="good" />
+        <Stat label="same-account duplicates (no hold)" value={drop.stats.duplicatesBlocked} tone="warn" />
         <Stat label="merged by household/network" value={drop.stats.merged} tone="warn" />
+        {drop.stats.simulated > 0 && <Stat label="simulated entrants (no PayPal call)" value={drop.stats.simulated} />}
       </section>
       <div className="commit card">
         <Hash label="Seed commitment (SHA-256)" value={drop.seedHash} />
@@ -239,16 +244,40 @@ export function ReturnPage({ entryId, cancelled }: { entryId: string; cancelled:
 
 // ---------------------------------------------------------------- participant view
 
+export function NotFound({ what }: { what: string }) {
+  return (
+    <section className="card narrow">
+      <h2>That {what} isn't here anymore</h2>
+      <p>The public demo runs on free hosting and resets its data after it sleeps. Nothing was charged.</p>
+      <div className="row gap">
+        <Link className="btn btn-primary" href="/judge">
+          Start a fresh judge drop
+        </Link>
+        <Link className="btn" href="/">
+          Home
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 export function MePage({ entryId }: { entryId: string }) {
   const [p, setP] = useState<Participant | null>(null);
+  const [missing, setMissing] = useState(false);
   const [appeal, setAppeal] = useState("");
   const [sent, setSent] = useState(false);
   useEffect(() => {
-    const load = () => api<Participant>(`/api/entries/${entryId}`).then(setP).catch(() => undefined);
+    const load = () =>
+      api<Participant>(`/api/entries/${entryId}`)
+        .then(setP)
+        .catch((e) => {
+          if (e instanceof ApiError && e.status === 404) setMissing(true);
+        });
     void load();
     const t = setInterval(load, 2500);
     return () => clearInterval(t);
   }, [entryId]);
+  if (missing && !p) return <NotFound what="entry" />;
   if (!p) return <div className="skeleton tall">Loading…</div>;
   return (
     <section className="card narrow me">

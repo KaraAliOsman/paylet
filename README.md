@@ -10,6 +10,7 @@ fails, the next waitlisted fan, whose hold already exists, gets the unit.
 
 > 🔗 **Live demo:** https://paylet.onrender.com · **Judges:** open [`/judge`](https://paylet.onrender.com/judge) ("Try to scalp us")
 > 🎬 **Video:** see the Devpost submission · PayPal **sandbox only** — no real money moves.
+> ⏱️ Free hosting: the first request after idle takes ~1 min, and the demo database resets when the instance sleeps (judge drops are created on demand, so this never blocks testing).
 
 ![Paylet seller console](docs/img/seller.png)
 
@@ -72,11 +73,13 @@ job is to remove the false merges that would cost a real fan their chance (13 �
 `pnpm evals`. Details: [`docs/EVALS.md`](docs/EVALS.md).
 
 ## Try it (judges)
-1. Open **https://paylet.onrender.com/judge** → *Start my judge drop* (private, 30 minutes, 2 units).
+1. Open **https://paylet.onrender.com/judge** → *Start my judge drop* (your own 30-minute drop, 2 units).
 2. On the fan page click **PayPal** and log in with the **sandbox buyer account from the Devpost testing instructions**.
 3. Try again with the same account (another tab, or `/agent`) → **"no hold placed"**.
 4. In the seller console: *Unleash scalper agents* (real sandbox orders via MCP), *Add simulated crowd* (labelled),
-   *Find households & networks (AI)*, confirm a cluster, toggle the **sandbox negative test**, then **Close & draw**.
+   *Find households & networks (AI)*, confirm a cluster, then **Close & draw**. The **sandbox negative test** (on by default) makes one
+   winner's payment fail — a simulated winner if there is one — so you can watch the waitlist take over; turn it off to see your own
+   hold captured.
 5. Open the verify page and **re-run the draw in your browser**.
 
 Connect your own MCP client: `https://paylet.onrender.com/mcp` (Streamable HTTP).
@@ -118,7 +121,7 @@ first-class but cannot pay**, AI decisions are **measured and seller-confirmed**
 * **What this does NOT guarantee:** a PayPal account is not proof of a unique human; the seller is trusted not to collude
   (the frozen-list hash makes after-the-fact edits detectable, not impossible); simulated entrants exist only to show scale
   and are labelled everywhere; the "negative test" voids a hold before capturing to reproduce a failed payment in sandbox.
-* PII: payer ids and emails are stored as HMACs; shipping addresses are only shown to the drop's seller.
+* PII: the PayPal payer id (the allocation key) is stored only as an HMAC. Name, email and shipping address are stored to detect households and are shown only to the drop's seller; the fan-facing explanation is a template that never includes other people's details. Fuzzy cases are sent to the LLM provider for adjudication (sandbox data only in this demo).
 
 ## License
 MIT — see [LICENSE](LICENSE). Third-party notices in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

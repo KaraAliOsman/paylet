@@ -26,7 +26,7 @@ export function enqueue(kind: OpKind, key: string, entryId: string, payload: Rec
 
 export interface Handlers {
   run(op: OpRow): Promise<void>;
-  onTerminal(op: OpRow, failure: PayPalFailure): void;
+  onTerminal(op: OpRow, failure: PayPalFailure): void | Promise<void>;
 }
 
 const PER_MINUTE = Number(process.env.PAYPAL_OPS_PER_MINUTE ?? 40);
@@ -76,7 +76,7 @@ export async function tick(h: Handlers): Promise<boolean> {
     } else {
       db.prepare("UPDATE ops SET status = 'failed', last_error = ?, updated_at = ? WHERE key = ?").run(`${f.status} ${f.issue}: ${f.description} debug=${f.debugId ?? "-"}`.slice(0, 500), now(), op.key);
       try {
-        h.onTerminal(op, f);
+        await h.onTerminal(op, f);
       } catch (err) {
         console.error("onTerminal failed", err);
       }
