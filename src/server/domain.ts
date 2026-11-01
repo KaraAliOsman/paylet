@@ -292,6 +292,7 @@ function identityOf(e: EntryRow): Identity | null {
   if (!e.address_json) return null;
   return {
     id: e.id,
+    label: e.public_id,
     name: e.name ?? "",
     email: e.email,
     address: JSON.parse(e.address_json),
@@ -472,6 +473,11 @@ function settleIfDone(dropId: string) {
   if (drop.status !== "drawn") return;
   const unresolvedWinners = entries.filter((e) => e.status === "won").length;
   if (unresolvedWinners > 0) return;
+  // a failed capture whose waitlist promotion is still in flight: not settled yet
+  const paid = entries.filter((e) => e.status === "captured").length;
+  const failed = entries.filter((e) => e.status === "capture_failed").length;
+  const waiting = entries.filter((e) => e.status === "waitlist").length;
+  if (failed > 0 && paid < drop.units && waiting > 0) return;
   for (const e of entries.filter((x) => x.status === "waitlist")) {
     updateEntry(e.id, { status: "lost" });
     scheduleVoid(drop, e, "waitlist released after all units were paid");

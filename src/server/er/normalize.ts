@@ -19,6 +19,8 @@ export interface Identity {
   /** "human" | "agent" | "simulated" */
   source?: string;
   agentLabel?: string | null;
+  /** Public label shown to the seller (and to the model instead of internal ids). */
+  label?: string;
 }
 
 export interface NormAddress {

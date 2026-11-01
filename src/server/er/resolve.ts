@@ -81,7 +81,7 @@ function mailboxToken(email: string): string {
 
 function view(p: Prepared) {
   return {
-    id: p.id,
+    id: p.raw.label ?? p.id,
     name: p.raw.name,
     street: p.addr.street,
     unit: p.addr.unit || null,
@@ -118,9 +118,11 @@ export async function resolve(list: Identity[], opts: { useLlm: boolean } = { us
     outer: for (const comp of comps) {
       for (let i = 0; i < comp.length; i += 12) {
         const chunk = comp.slice(i, i + 12);
+        const lbl = (id: string) => byId.get(id)!.raw.label ?? id;
+        const fromLabel = new Map(chunk.map((id) => [lbl(id), id]));
         const signals = pairs
           .filter((p) => chunk.includes(p.a) && chunk.includes(p.b))
-          .map((p) => ({ a: p.a, b: p.b, rule_score: p.score, signals: p.signals.map((s) => s.detail) }));
+          .map((p) => ({ a: lbl(p.a), b: lbl(p.b), rule_score: p.score, signals: p.signals.map((s) => s.detail) }));
         let res: { groups: LlmGroup[] };
         try {
           res = await chatJson<{ groups: LlmGroup[] }>(
@@ -139,7 +141,7 @@ export async function resolve(list: Identity[], opts: { useLlm: boolean } = { us
         }
         llmCalls++;
         for (const g of res.groups ?? []) {
-          const ids = g.member_ids.filter((id) => chunk.includes(id));
+          const ids = g.member_ids.map((m) => fromLabel.get(m) ?? m).filter((id) => chunk.includes(id));
           if (ids.length < 2 || g.verdict === "distinct" || g.confidence < 0.6) continue;
           aiGroups.push({ ids, g });
           for (let k = 1; k < ids.length; k++) links.push([ids[0], ids[k]]);

@@ -110,6 +110,17 @@ describe("allocation flow", () => {
     expect(captured[0].captured_cents).toBe(drop.price_cents + drop.ship_actual_cents);
   });
 
+  it("negative test on a simulated winner promotes the waitlist before settling (no early settle race)", async () => {
+    const drop = await domain.createDrop({ ...domain.SHOWCASE, units: 2, negativeTest: true });
+    domain.addSimulatedCrowd(drop.slug, 4242);
+    await domain.draw(drop.id);
+    await drain();
+    const after = models.listEntries(drop.id);
+    expect(after.filter((e) => e.status === "capture_failed")).toHaveLength(1);
+    expect(after.filter((e) => e.status === "captured")).toHaveLength(2);
+    expect(models.getDrop(drop.id)!.status).toBe("settled");
+  });
+
   it("rejects unsigned webhooks and requires the seller key", async () => {
     const res = await appMod.app.request("/webhooks/paypal", { method: "POST", body: JSON.stringify({ id: "WH-1", event_type: "PAYMENT.CAPTURE.COMPLETED" }) });
     expect(res.status).toBe(401);
