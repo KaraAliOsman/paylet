@@ -47,7 +47,15 @@ export function usageSummary() {
 export async function chat(
   purpose: string,
   messages: ChatMessage[],
-  opts: { tools?: ToolDef[]; jsonSchema?: { name: string; schema: Record<string, unknown> }; maxTokens?: number; temperature?: number } = {},
+  opts: {
+    tools?: ToolDef[];
+    jsonSchema?: { name: string; schema: Record<string, unknown> };
+    maxTokens?: number;
+    temperature?: number;
+    /** per-attempt timeout (default 90 s) and number of attempts (default 3): interactive callers pass tighter values */
+    timeoutMs?: number;
+    attempts?: number;
+  } = {},
 ): Promise<ChatMessage> {
   if (!aiConfigured()) throw new Error("AI_API_KEY not configured");
   const t0 = Date.now();
@@ -61,7 +69,7 @@ export async function chat(
   if (opts.jsonSchema) body.response_format = { type: "json_schema", json_schema: { name: opts.jsonSchema.name, strict: true, schema: opts.jsonSchema.schema } };
 
   let lastErr: unknown;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < (opts.attempts ?? 3); attempt++) {
     // reserve the budget synchronously (no await between check and insert), one row per attempt
     if (callsToday(purpose) >= capFor(purpose) || callsToday() >= env.AI_DAILY_CALL_LIMIT) throw new BudgetExceeded("daily AI budget reached");
     const rowId = db.prepare("INSERT INTO llm_usage(ts, purpose, ms) VALUES(?, ?, 0)").run(now(), purpose).lastInsertRowid;
@@ -70,7 +78,7 @@ export async function chat(
         method: "POST",
         headers: { Authorization: `Bearer ${env.AI_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(90_000),
+        signal: AbortSignal.timeout(opts.timeoutMs ?? 90_000),
       });
       if (res.status === 429 || res.status >= 500) throw new Error(`AI HTTP ${res.status}`);
       const j = (await res.json()) as any;
@@ -83,8 +91,9 @@ export async function chat(
       );
       return j.choices[0].message as ChatMessage;
     } catch (e) {
-      lastErr = e;
-      await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+      // a timeout reads as an AI failure like any other ("AI ..."), so callers can fall back the same way
+      lastErr = (e as Error)?.name === "TimeoutError" ? new Error(`AI timeout after ${opts.timeoutMs ?? 90_000} ms`) : e;
+      if (attempt + 1 < (opts.attempts ?? 3)) await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
     }
   }
   throw lastErr;

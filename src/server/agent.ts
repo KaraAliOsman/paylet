@@ -51,7 +51,10 @@ Rules you must follow:
 - Be brief and warm: two or three short sentences, plain text.`;
 
 export const HONEST_ENTRY = "I've requested your entry. It only counts once you approve the hold in PayPal.";
-export const AI_OFFLINE_NOTE = "(My language model is offline right now, so I used my fixed rules for this one.)";
+export const AI_OFFLINE_NOTE = "(My language model didn't answer in time, so I used my fixed rules for this one.)";
+
+/** Wren answers within this budget; past it, a pasted drop link is entered deterministically over MCP. */
+export const AGENT_DEADLINE_MS = 35_000;
 
 /** A drop slug in a message: a pasted drop link (…/d/<slug>) or a bare slug like "ember-glaze-mug-8f3a". */
 export function slugIn(text: string): string | null {
@@ -171,8 +174,11 @@ export async function runFanAgent(history: { role: "user" | "assistant"; content
     }));
     const messages: ChatMessage[] = [{ role: "system", content: SYSTEM }, ...history.slice(-8)];
     let entered = false;
+    const deadline = Date.now() + AGENT_DEADLINE_MS;
     for (let step = 0; step < 4; step++) {
-      const msg = await chat("fan_agent", messages, { tools: toolDefs, maxTokens: 700, temperature: 0.3 });
+      const left = deadline - Date.now();
+      if (left < 2_000) throw new Error("AI deadline reached");
+      const msg = await chat("fan_agent", messages, { tools: toolDefs, maxTokens: 700, temperature: 0.3, timeoutMs: Math.min(25_000, left), attempts: 1 });
       messages.push({ role: "assistant", content: msg.content ?? "", tool_calls: msg.tool_calls });
       if (!msg.tool_calls?.length) return finish(msg.content ?? "");
       for (const call of msg.tool_calls) {

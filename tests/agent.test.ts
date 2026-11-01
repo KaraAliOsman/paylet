@@ -144,6 +144,16 @@ describe("P0-04 / P2-02 Wren over MCP", () => {
     expect(agent.slugIn("what drops are open?")).toBeNull();
   });
 
+  it("model too slow (timeout) with a pasted drop link: same deterministic entry, so a judge never waits minutes", async () => {
+    const drop = await domain.createDrop({ ...domain.SHOWCASE, kind: "judge" });
+    script.replies.push(new Error("AI timeout after 25000 ms"));
+    const r = await chat(`Get me into this drop: https://paylet.onrender.com/d/${drop.slug}`);
+    expect(r.error).toBeUndefined();
+    expect(r.handoff?.title).toBe("Tidepool");
+    expect(r.reply).toContain(agent.AI_OFFLINE_NOTE);
+    expect(agent.AGENT_DEADLINE_MS).toBeLessThanOrEqual(40_000);
+  });
+
   it("model unreachable before anything happened: the honest error reply (HTTP 200, error: true)", async () => {
     script.replies.push(new Error("AI HTTP 503"));
     const r = await chat("What drops are open?");

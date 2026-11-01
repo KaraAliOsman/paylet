@@ -29,6 +29,7 @@ const PAGE_SETUP = `(() => {
     document.documentElement.style.zoom = onPayPal ? "1.35" : "1.5";
     const s = document.createElement("style");
     s.textContent = \`
+      html{scrollbar-width:none}html::-webkit-scrollbar{display:none}
       #__cur{position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;will-change:transform;transform:translate(-200px,-200px)}
       #__cur svg{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
       .__rip{position:fixed;z-index:2147483646;pointer-events:none;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;
@@ -137,54 +138,105 @@ async function glide(page: Page, px: number, ms: number) {
 
 async function open(page: Page, path: string, settle = 1200) {
   await page.goto(base + path, { waitUntil: "load" }).catch(() => undefined);
+  await page.evaluate("document.fonts.ready").catch(() => undefined);
   await page.mouse.move(W - 160, H / 2 + 40);
   await wait(settle);
 }
 
-const OUTRO = `<!doctype html><html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap" rel="stylesheet">
+const INTRO = `<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
 <style>
-  html,body{margin:0;height:100%;background:#f5f5f2;font-family:Inter,system-ui,sans-serif;color:#141414;-webkit-font-smoothing:antialiased}
+  html,body{margin:0;height:100%;background:#fff;font-family:Archivo,system-ui,sans-serif;color:#111110;-webkit-font-smoothing:antialiased}
   body{display:grid;place-items:center}
-  .c{display:grid;justify-items:center;gap:18px;text-align:center}
-  .m{opacity:0;transform:scale(.9);animation:in .9s cubic-bezier(.23,1,.32,1) .1s forwards}
-  .m circle.r{stroke-dasharray:3.4 2.35;animation:spin 6s linear infinite;transform-origin:16px 16px}
-  h1{margin:6px 0 0;font-size:64px;font-weight:650;letter-spacing:-.045em;line-height:1;opacity:0;transform:translateY(8px);animation:in .8s cubic-bezier(.23,1,.32,1) .35s forwards}
-  p{margin:0;font-size:22px;color:#6f6f75;letter-spacing:-.01em;opacity:0;transform:translateY(8px);animation:in .8s cubic-bezier(.23,1,.32,1) .55s forwards}
-  .u{display:flex;gap:10px;margin-top:22px;opacity:0;animation:in .8s cubic-bezier(.23,1,.32,1) .9s forwards}
-  .u span{padding:9px 16px;border-radius:999px;background:#fff;box-shadow:0 0 0 1px rgba(20,20,20,.08),0 6px 20px -10px rgba(20,20,20,.15);font-size:16px;font-weight:550}
-  .u span:first-child{background:#141414;color:#fff;box-shadow:none}
-  small{margin-top:30px;font-size:13px;color:#a1a1a6;opacity:0;animation:in .8s ease 1.3s forwards}
-  @keyframes in{to{opacity:1;transform:none}}
-  @keyframes spin{to{transform:rotate(360deg)}}
+  .c{display:grid;justify-items:center;gap:26px}
+  svg{width:200px;height:200px;overflow:visible}
+  .l{animation:l 1s cubic-bezier(.23,1,.32,1) .25s both}
+  .r{animation:r 1s cubic-bezier(.23,1,.32,1) .25s both}
+  .d{transform-origin:16px 16px;animation:d .7s cubic-bezier(.34,1.56,.64,1) .95s both}
+  @keyframes l{from{transform:translateX(-14px);opacity:0}to{transform:none;opacity:1}}
+  @keyframes r{from{transform:translateX(14px);opacity:0}to{transform:none;opacity:1}}
+  @keyframes d{from{transform:scale(0)}to{transform:scale(1)}}
+  h1{margin:0;font-size:92px;font-weight:800;font-stretch:92%;letter-spacing:-.05em;line-height:1;animation:up .8s cubic-bezier(.23,1,.32,1) 1.35s both}
+  p{margin:0;font:600 20px/1 'JetBrains Mono',monospace;color:#8a5a00;letter-spacing:.02em;animation:up .8s cubic-bezier(.23,1,.32,1) 1.6s both}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 </style></head><body><div class="c">
-  <svg class="m" width="84" height="84" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="#141414"/><circle class="r" cx="16" cy="16" r="8.6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><circle cx="16" cy="16" r="3.6" fill="#ff5a1f"/></svg>
-  <h1>Paylet</h1>
-  <p>Fair drops for the agent era. Powered by PayPal.</p>
+  <svg viewBox="0 0 32 32"><path class="l" d="M11.5 5.5H6.5v21h5" fill="none" stroke="#111110" stroke-width="3.4"/><path class="r" d="M20.5 5.5h5v21h-5" fill="none" stroke="#111110" stroke-width="3.4"/><circle class="d" cx="16" cy="16" r="4.2" fill="#f5a400"/></svg>
+  <h1>paylet</h1>
+  <p>FAIR DROPS FOR THE AGENT ERA</p>
+</div></body></html>`;
+
+const OUTRO = `<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;background:#fff;font-family:Archivo,system-ui,sans-serif;color:#111110;-webkit-font-smoothing:antialiased}
+  body{display:grid;place-items:center}
+  .c{display:grid;justify-items:center;gap:20px;text-align:center}
+  svg{width:96px;height:96px;overflow:visible;animation:up .8s cubic-bezier(.23,1,.32,1) .1s both}
+  h1{margin:4px 0 0;font-size:72px;font-weight:800;font-stretch:92%;letter-spacing:-.05em;line-height:1;animation:up .8s cubic-bezier(.23,1,.32,1) .3s both}
+  .t{margin:0;font-size:26px;font-weight:600;font-stretch:92%;letter-spacing:-.02em;animation:up .8s cubic-bezier(.23,1,.32,1) .5s both}
+  .t b{position:relative;padding:0 .14em;margin:0 .06em}
+  .t b::before,.t b::after{content:"";position:absolute;top:.1em;bottom:0;width:.16em;border:.09em solid #f5a400}
+  .t b::before{left:-.04em;border-right:0}.t b::after{right:-.04em;border-left:0}
+  .u{display:flex;gap:12px;margin-top:18px;animation:up .8s cubic-bezier(.23,1,.32,1) .8s both}
+  .u span{padding:11px 18px;border-radius:10px;font:600 17px/1 'JetBrains Mono',monospace}
+  .u span:first-child{background:#111110;color:#fff}.u span:last-child{background:#f4f4f1}
+  small{margin-top:26px;font:600 13px/1 'JetBrains Mono',monospace;color:#8a5a00;letter-spacing:.04em;animation:up .8s ease 1.2s both}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+</style></head><body><div class="c">
+  <svg viewBox="0 0 32 32"><path d="M11.5 5.5H6.5v21h5" fill="none" stroke="#111110" stroke-width="3.4"/><path d="M20.5 5.5h5v21h-5" fill="none" stroke="#111110" stroke-width="3.4"/><circle cx="16" cy="16" r="4.2" fill="#f5a400"/></svg>
+  <h1>paylet</h1>
+  <p class="t">One unit per <b>PayPal account</b>. Agents welcome.</p>
   <div class="u"><span>paylet.onrender.com</span><span>github.com/KaraAliOsman/paylet</span></div>
-  <small>PayPal sandbox only · MIT licensed</small>
+  <small>PAYPAL SANDBOX ONLY · MIT LICENSED</small>
 </div></body></html>`;
 
 // HEADED=1: a real window, so Chrome uses the GPU (the animated hero drops to ~9 fps in software rendering)
-const browser = await chromium.launch(process.env.HEADED ? { headless: false, args: ["--ignore-gpu-blocklist", "--enable-gpu-rasterization", "--window-position=0,0"] } : {});
+// The window sits off-screen so no stray mouse or wheel on the desktop can touch it, and Chrome is told to keep
+// painting it at full rate even though it is not visible.
+const browser = await chromium.launch(
+  process.env.HEADED
+    ? {
+        headless: false,
+        args: [
+          "--ignore-gpu-blocklist",
+          "--enable-gpu-rasterization",
+          "--window-position=-3000,0",
+          "--disable-backgrounding-occluded-windows",
+          "--disable-renderer-backgrounding",
+          "--disable-background-timer-throttling",
+        ],
+      }
+    : {},
+);
 // Drop A: the real-money drop (agent + PayPal + duplicate + swarm + real capture). Drop B: scale, AI review, failed payment.
 const A = await post("/api/judge-drop", ADMIN);
 const B = await post("/api/judge-drop", ADMIN);
 await post(`/api/seller/${A.slug}/negative-test`, A.sellerKey, { on: false });
 console.log("drop A", A.slug, "drop B", B.slug);
 
+await scene(browser, "00-intro", async (page) => {
+  await page.setContent(INTRO, { waitUntil: "load" });
+  await page.evaluate("document.fonts.ready");
+  await page.mouse.move(-50, -50);
+  mark("start");
+  await wait(3600);
+});
+
 await scene(browser, "01-home", async (page) => {
   await open(page, "/", 400);
   mark("start");
-  await wait(7500);
-  mark("waited");
+  await wait(7600); // the headline's hold brackets close, the proof ledger replays
+  // hard cuts between sections (a smooth scroll renders at ~15 fps in a recorded browser)
+  await page.evaluate("document.querySelector('.rules').scrollIntoView({ block: 'center' })");
+  mark("rules");
+  await wait(3600);
+  await page.evaluate("document.querySelector('.outcomes').scrollIntoView({ block: 'center' })");
+  mark("outcomes");
+  await wait(600);
   await glideTo(page, page.getByRole("tab", { name: "Not selected" }));
-  mark("tab");
-  await wait(3200);
-  mark("scroll");
-  await glide(page, 720, 2600);
-  mark("flow");
   await wait(2600);
+  mark("flow");
+  await wait(600);
 });
 
 await scene(browser, "02-drop", async (page) => {
@@ -345,6 +397,7 @@ await scene(browser, "08-how", async (page) => {
 
 await scene(browser, "09-outro", async (page) => {
   await page.setContent(OUTRO, { waitUntil: "load" });
+  await page.evaluate("document.fonts.ready");
   await page.mouse.move(-50, -50);
   await wait(800);
   mark("start");

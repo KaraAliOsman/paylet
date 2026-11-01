@@ -11,9 +11,10 @@ const FPS = 30;
 
 // [from, to, target seconds or null] — from/to are "mark" or "mark+1.2" / "mark-0.5"
 const EDL = {
-  "01-home": { seg: [["start-0.3", "flow+1.4", null]], vo: [["01", "start+0.7"]] },
-  "02-drop": { seg: [["start-0.2", "start+7.6", null]], vo: [["02", "start+0.5"]] },
-  "03-agent": {
+  "00-intro": { seg: [["start-0.2", "end", null]], vo: [] },
+  "01-home": { seg: [["start-0.3", "end", null]], vo: [["01", "start+0.6"]] },
+  "02-drop": { cap: "01  A HOLD, NOT A CHARGE", seg: [["start-0.2", "start+7.6", null]], vo: [["02", "start+0.5"]] },
+  "03-agent": { cap: "02  AGENTS CAN ASK. PEOPLE APPROVE.",
     seg: [
       ["start-0.2", "asked+1.2", null],
       ["asked+1.2", "handoff-0.2", 2.2],
@@ -26,7 +27,7 @@ const EDL = {
     // the sandbox buyer's email is printed as text on PayPal's password step
     blur: [[560, 360, 800, 60, "paypal", "approved"]],
   },
-  "04-duplicate-and-swarm": {
+  "04-duplicate-and-swarm": { cap: "03  ONE PAYPAL ACCOUNT, ONE UNIT",
     seg: [
       ["start-0.2", "clicked+0.8", null],
       ["clicked+0.8", "dup-0.4", 1.4],
@@ -37,7 +38,7 @@ const EDL = {
     ],
     vo: [["04a", "start+0.3"], ["04b", "console+0.3"]],
   },
-  "05-crowd-ai": {
+  "05-crowd-ai": { cap: "04  AI FINDS RESELLER NETWORKS",
     seg: [
       ["start-0.2", "ai+0.8", null],
       ["ai+0.8", "clusters", 2.4],
@@ -46,7 +47,7 @@ const EDL = {
     ],
     vo: [["05a", "start+0.3"], ["05b", "evals+0.4"]],
   },
-  "06-draw": {
+  "06-draw": { cap: "05  THE DRAW: CAPTURE OR VOID",
     seg: [
       ["start-0.2", "draw+0.6", null],
       ["draw+0.6", "drawn", 2.5],
@@ -57,11 +58,27 @@ const EDL = {
     ],
     vo: [["06a", "start+0.3"], ["06b", "a-ledger+0.2"]],
   },
-  "07-verify": { seg: [["start-0.2", "consistent+1.6", null], ["a-start-0.1", "ask+3.2", null]], vo: [["07", "start+0.4"]] },
-  "08-how": { seg: [["start-0.2", "end", null]], vo: [["08", "start+1.0"]] },
+  "07-verify": { cap: "06  VERIFY IT YOURSELF", seg: [["start-0.2", "consistent+1.6", null], ["a-start-0.1", "ask+3.2", null]], vo: [["07", "start+0.4"]] },
+  "08-how": { cap: "07  UNDER THE HOOD", seg: [["start-0.2", "end", null]], vo: [["08", "start+1.0"]] },
   "09-outro": { seg: [["start-0.6", "end", null]], vo: [["09", "start+0.6"]] },
 };
 
+// chapter label in the brand's hold tag: amber box, ink mono text, top-left, fades in and out
+const FONT = `${dir}/fonts/JetBrains_Mono_wght_600.ttf`;
+const caption = (text) => {
+  if (!text) return "";
+  const a = "if(lt(t,0.35),0,if(lt(t,0.65),(t-0.35)/0.3,if(lt(t,3.9),1,if(lt(t,4.3),(4.3-t)/0.4,0))))";
+  const [n, ...rest] = text.split("  ");
+  // text goes through files, so commas and colons need no filter escaping
+  const num = `${dir}/clips/cap-${n}.txt`;
+  const body = `${dir}/clips/cap-${n}-t.txt`;
+  writeFileSync(num, `[ ${n} ]`);
+  writeFileSync(body, rest.join(" "));
+  return (
+    `,drawtext=fontfile='${FONT}':textfile='${num}':fontsize=30:fontcolor=0x111110:box=1:boxcolor=0xF5A400:boxborderw=18:x=96:y=118:alpha='${a}'` +
+    `,drawtext=fontfile='${FONT}':textfile='${body}':fontsize=30:fontcolor=0xFFFFFF:box=1:boxcolor=0x111110:boxborderw=18:x=96+178:y=118:alpha='${a}'`
+  );
+};
 const run = (args) => execFileSync("ffmpeg", ["-v", "error", "-y", ...args], { stdio: "inherit" });
 const dur = (f) => +execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", f]).toString().trim();
 
@@ -128,9 +145,11 @@ for (const [name, cfg] of Object.entries(EDL)) {
   }
   const inp = (i) => (src === "[0:v]" ? "[0:v]" : `[sv${i}]`);
   const v = segs.map((s, i) => `${inp(i)}trim=start=${s.a.toFixed(3)}:end=${s.b.toFixed(3)},setpts=(PTS-STARTPTS)/${s.speed.toFixed(4)},fps=${FPS}[v${i}]`);
-  const vcat = `${segs.map((_, i) => `[v${i}]`).join("")}concat=n=${segs.length}:v=1:a=0,tpad=stop_mode=clone:stop_duration=${hold.toFixed(3)},format=yuv420p[vout]`;
+  const vcat = `${segs.map((_, i) => `[v${i}]`).join("")}concat=n=${segs.length}:v=1:a=0,tpad=stop_mode=clone:stop_duration=${hold.toFixed(3)}${caption(cfg.cap)},format=yuv420p[vout]`;
   const a = cues.map((c, i) => `[${i + 1}:a]aresample=48000,adelay=${Math.round(c.start * 1000)}:all=1[a${i}]`);
-  const amix = `${cues.map((_, i) => `[a${i}]`).join("")}amix=inputs=${cues.length}:normalize=0,apad,atrim=0:${length.toFixed(3)},loudnorm=I=-16:TP=-1.5:LRA=9[aout]`;
+  const amix = cues.length
+    ? `${cues.map((_, i) => `[a${i}]`).join("")}amix=inputs=${cues.length}:normalize=0,apad,atrim=0:${length.toFixed(3)},loudnorm=I=-16:TP=-1.5:LRA=9[aout]`
+    : `anullsrc=r=48000:cl=stereo,atrim=0:${length.toFixed(3)}[aout]`;
   run([
     ...inputs,
     "-filter_complex",
@@ -150,15 +169,31 @@ for (const [name, cfg] of Object.entries(EDL)) {
   );
 }
 
-// join, with a short fade in and out
+// join; then the music bed (ElevenLabs Music, instrumental) ducks under the voice with a sidechain compressor,
+// fades in and out, and the whole mix is normalised to YouTube's -14 LUFS
 writeFileSync(`${dir}/clips/list.txt`, parts.map((p) => `file '${p.split("/").pop()}'`).join("\n"));
 run(["-f", "concat", "-safe", "0", "-i", `${dir}/clips/list.txt`, "-c", "copy", `${dir}/clips/_joined.mp4`]);
 const full = dur(`${dir}/clips/_joined.mp4`);
+const music = `${dir}/music/bed.mp3`;
+const fadeOut = (full - 1.2).toFixed(2);
+const audio = existsSync(music)
+  ? [
+      "-filter_complex",
+      [
+        `[0:a]asplit=2[vo][key]`,
+        `[1:a]aresample=48000,atrim=0:${full.toFixed(2)},volume=0.30,afade=t=in:d=1.5,afade=t=out:st=${fadeOut}:d=1.2[bed]`,
+        `[bed][key]sidechaincompress=threshold=0.02:ratio=6:attack=40:release=600:makeup=1[ducked]`,
+        `[vo][ducked]amix=inputs=2:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11,afade=t=out:st=${fadeOut}:d=1.2[aout]`,
+        `[0:v]fade=t=in:st=0:d=0.4,fade=t=out:st=${(full - 0.7).toFixed(2)}:d=0.7[vout]`,
+      ].join(";"),
+      "-map", "[vout]", "-map", "[aout]",
+    ]
+  : ["-vf", `fade=t=in:st=0:d=0.4,fade=t=out:st=${(full - 0.7).toFixed(2)}:d=0.7`, "-af", `loudnorm=I=-14:TP=-1.5:LRA=11,afade=t=out:st=${fadeOut}:d=1.2`];
 run([
   "-i", `${dir}/clips/_joined.mp4`,
-  "-vf", `fade=t=in:st=0:d=0.4,fade=t=out:st=${(full - 0.7).toFixed(2)}:d=0.7`,
-  "-af", `afade=t=in:st=0:d=0.2,afade=t=out:st=${(full - 0.7).toFixed(2)}:d=0.7`,
-  "-c:v", "libx264", "-preset", "slow", "-crf", "17", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
+  ...(existsSync(music) ? ["-i", music] : []),
+  ...audio,
+  "-c:v", "libx264", "-preset", "slow", "-crf", "17", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
   "-movflags", "+faststart",
   `${dir}/paylet-demo.mp4`,
 ]);
