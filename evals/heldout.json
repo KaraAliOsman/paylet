@@ -1,0 +1,2743 @@
+[
+ {
+  "id": "ho-hh3-0",
+  "name": "Zoe Okafor",
+  "email": "okafor.ho3.m0@example.net",
+  "address": {
+   "line1": "4001 Quarry St",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "group": "ho-hh3",
+  "kind": "household",
+  "ts": 1793552169392,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net3-4",
+  "name": "Sam Tanaka",
+  "email": "omar553@mailbox.example",
+  "address": {
+   "line1": "1311 Airport Rd, Bldg 1",
+   "line2": "No. 7B",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "ts": 1793554846697,
+  "source": "human",
+  "group": "ho-net3",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-net4-1",
+  "name": "Okafor, Jonah Chukwuemeka",
+  "email": "jonah.okafor@googlemail.com",
+  "address": {
+   "line1": "1348 Logistics Parkway",
+   "line2": "PMB 8B",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "ts": 1793554099301,
+  "source": "agent",
+  "group": "ho-net4",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-fan-28",
+  "name": "Sofia Okafor",
+  "email": "sofia.okafor44@example.com",
+  "address": {
+   "line1": "5740 Bayview Ter",
+   "city": "Burlington",
+   "state": "VT",
+   "zip": "05401",
+   "country": "US"
+  },
+  "group": "ho-fan-28",
+  "kind": "fan",
+  "ts": 1793549903436,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net0-3",
+  "name": "lucia ramirez",
+  "email": "omar773@mailbox.example",
+  "address": {
+   "line1": "1200 harbor blvd",
+   "line2": "pmb 4b",
+   "city": "Boise",
+   "state": "ID",
+   "zip": "83702",
+   "country": "US"
+  },
+  "ts": 1793551678534,
+  "source": "agent",
+  "group": "ho-net0",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-fan-47",
+  "name": "Amara Abara",
+  "email": "amara.abara7@example.com",
+  "address": {
+   "line1": "550 Mission St",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "group": "ho-fan-47",
+  "kind": "fan",
+  "ts": 1793549926286,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-p3-b",
+  "group": "hw-p3",
+  "kind": "household",
+  "note": "Father and son with the same name in one home",
+  "name": "James Carter Jr.",
+  "email": "jamescarterjr@example.net",
+  "address": {
+   "line1": "1504 Peachtree Court",
+   "city": "Savannah",
+   "state": "GA",
+   "zip": "31405",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793549441471
+ },
+ {
+  "id": "ho-nb5-0",
+  "name": "Lena Brennan",
+  "email": "n50829@example.org",
+  "address": {
+   "line1": "3060 Harbor Rd",
+   "line2": "Apt 2A",
+   "city": "Raleigh",
+   "state": "NC",
+   "zip": "27601",
+   "country": "US"
+  },
+  "group": "ho-nb5-0",
+  "kind": "neighbor",
+  "ts": 1793551981290,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-ns0-1",
+  "name": "Clara Petrov",
+  "email": "clara10@example.com",
+  "address": {
+   "line1": "126 Quarry St",
+   "city": "Madison",
+   "state": "WI",
+   "zip": "53703",
+   "country": "US"
+  },
+  "group": "ho-ns0-1",
+  "kind": "namesake",
+  "ts": 1793550082203,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net0-1",
+  "name": "Tobias A. Ramirez",
+  "email": "tobias.ramirez@googlemail.com",
+  "address": {
+   "line1": "1200 Harbor Blvd Ste 4B",
+   "line2": "c/o Ramirez Family",
+   "city": "Boise",
+   "state": "ID",
+   "zip": "83702",
+   "country": "US"
+  },
+  "ts": 1793551675731,
+  "source": "agent",
+  "group": "ho-net0",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "hw-p4-a",
+  "group": "hw-p4",
+  "kind": "household",
+  "note": "One person, two PayPal accounts, transliterated first name",
+  "name": "Aleksandr Petrov",
+  "email": "apetrov.bk@example.com",
+  "address": {
+   "line1": "15 Ocean Pkwy",
+   "line2": "Apt 6F",
+   "city": "Brooklyn",
+   "state": "NY",
+   "zip": "11218",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793549837186
+ },
+ {
+  "id": "ho-fan-57",
+  "name": "Sofia Brennan",
+  "email": "sofia.brennan53@example.com",
+  "address": {
+   "line1": "1603 Mission St",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "group": "ho-fan-57",
+  "kind": "fan",
+  "ts": 1793553944537,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-ns4-1",
+  "name": "Ana Petrov",
+  "email": "ana14@example.com",
+  "address": {
+   "line1": "2098 Granite Pl",
+   "city": "Denver",
+   "state": "CO",
+   "zip": "80203",
+   "country": "US"
+  },
+  "group": "ho-ns4-1",
+  "kind": "namesake",
+  "ts": 1793553266240,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net3-2",
+  "name": "Omar T. Nguyen",
+  "email": "iris330@mailbox.example",
+  "address": {
+   "line1": "1311 Airport Road",
+   "line2": "Apt 7B",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "ts": 1793549218427,
+  "source": "human",
+  "group": "ho-net3",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-fan-22",
+  "name": "Elena Silva",
+  "email": "elena.silva43@example.com",
+  "address": {
+   "line1": "4421 Mission St",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "group": "ho-fan-22",
+  "kind": "fan",
+  "ts": 1793554274326,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-34",
+  "name": "Omar Petrov",
+  "email": "omar.petrov12@example.com",
+  "address": {
+   "line1": "3504 Cedar St",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "group": "ho-fan-34",
+  "kind": "fan",
+  "ts": 1793555443516,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net1-2",
+  "name": "Domenic Rossi",
+  "email": "lena592@mailbox.example",
+  "address": {
+   "line1": "1237 Logistics Parkway #5B",
+   "line2": "c/o Rossi Family",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78704",
+   "country": "US"
+  },
+  "ts": 1793551669947,
+  "source": "human",
+  "group": "ho-net1",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-hh0-0",
+  "name": "Mei Moreau",
+  "email": "moreau.ho0.m0@example.net",
+  "address": {
+   "line1": "1938 Elm Ct",
+   "city": "Richmond",
+   "state": "VA",
+   "zip": "23219",
+   "country": "US"
+  },
+  "group": "ho-hh0",
+  "kind": "household",
+  "ts": 1793550035817,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net1-4",
+  "name": "Marcus Chen",
+  "email": "theo917@mailbox.example",
+  "address": {
+   "line1": "1237 Logistic Pkwy",
+   "line2": "Attn: M. Chen / Unit 5-B",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78704",
+   "country": "US"
+  },
+  "ts": 1793551884537,
+  "source": "human",
+  "group": "ho-net1",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-net2-0",
+  "name": "AMARA MOREAU",
+  "email": "amaramoreau+drop@gmail.com",
+  "address": {
+   "line1": "1274 HARBOR BLDV STE 6B",
+   "line2": "SUITE RECEPTION",
+   "city": "Raleigh",
+   "state": "NC",
+   "zip": "27601",
+   "country": "US"
+  },
+  "ts": 1793554342224,
+  "source": "agent",
+  "group": "ho-net2",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-fan-5",
+  "name": "Kai Haddad",
+  "email": "kai.haddad61@example.com",
+  "address": {
+   "line1": "1689 Willow Way",
+   "city": "Portland",
+   "state": "OR",
+   "zip": "97205",
+   "country": "US"
+  },
+  "group": "ho-fan-5",
+  "kind": "fan",
+  "ts": 1793551364352,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-27",
+  "name": "Diego Walsh",
+  "email": "diego.walsh6@example.com",
+  "address": {
+   "line1": "6093 Cedar St",
+   "city": "Portland",
+   "state": "OR",
+   "zip": "97205",
+   "country": "US"
+  },
+  "group": "ho-fan-27",
+  "kind": "fan",
+  "ts": 1793555661107,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-13",
+  "name": "Hana Silva",
+  "email": "hana.silva64@example.com",
+  "address": {
+   "line1": "4050 Willow Way",
+   "city": "Burlington",
+   "state": "VT",
+   "zip": "05401",
+   "country": "US"
+  },
+  "group": "ho-fan-13",
+  "kind": "fan",
+  "ts": 1793551910241,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-n12-a",
+  "group": "hw-n12-a",
+  "kind": "neighbor",
+  "note": "Dorm, different rooms (214 vs 412)",
+  "name": "Ethan Miller",
+  "email": "emiller.uw@example.edu",
+  "address": {
+   "line1": "1 University Ave",
+   "line2": "Rm 214",
+   "city": "Madison",
+   "state": "WI",
+   "zip": "53706",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793554570939
+ },
+ {
+  "id": "hw-p2-c",
+  "group": "hw-p2",
+  "kind": "reshipper_network",
+  "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts",
+  "name": "Andrade Trading LLC",
+  "email": "orders@andrade-trading.example",
+  "source": "agent",
+  "address": {
+   "line1": "8240 N.W. 52nd Ter.",
+   "line2": "Suite 410 PMB 88213",
+   "city": "Doral",
+   "state": "FL",
+   "zip": "33166",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "ts": 1793554639327
+ },
+ {
+  "id": "hw-p2-d",
+  "group": "hw-p2",
+  "kind": "reshipper_network",
+  "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts",
+  "name": "Sofia Mendes",
+  "email": "sofi.mendes22@example.org",
+  "source": "human",
+  "address": {
+   "line1": "8240 NW 52 Ter",
+   "line2": "STE 410-88213",
+   "city": "Doral",
+   "state": "FL",
+   "zip": "33166",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "ts": 1793551806756
+ },
+ {
+  "id": "ho-net2-3",
+  "name": "Ravi Moreau",
+  "email": "ravi134@mailbox.example",
+  "address": {
+   "line1": "1274 Harbor Blvd PMB 6B",
+   "line2": "Attn: Ravi M. c/o ParcelHop Receiving, Raleigh NC 27601",
+   "city": "Raleigh",
+   "state": "NC",
+   "zip": "27601",
+   "country": "US"
+  },
+  "ts": 1793554333009,
+  "source": "agent",
+  "group": "ho-net2",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-net0-2",
+  "name": "T. Ramirez",
+  "email": "nora984@mailbox.example",
+  "address": {
+   "line1": "1200 Harbor Boulevard",
+   "line2": "ShipBridge LLC, Attn: T. Ramirez, No. 4-B",
+   "city": "Boise",
+   "state": "ID",
+   "zip": "83702",
+   "country": "US"
+  },
+  "ts": 1793551680973,
+  "source": "agent",
+  "group": "ho-net0",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "hw-p2-b",
+  "group": "hw-p2",
+  "kind": "reshipper_network",
+  "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts",
+  "name": "L. Andrade",
+  "email": "andrade.trading@example.com",
+  "source": "agent",
+  "address": {
+   "line1": "8240 NW 52nd Terrace #410-88213",
+   "line2": "",
+   "city": "Doral",
+   "state": "FL",
+   "zip": "33166-4011",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "ts": 1793554636327
+ },
+ {
+  "id": "ho-nb1-0",
+  "name": "Omar Kowalski",
+  "email": "n10433@example.org",
+  "address": {
+   "line1": "2462 Bayview Ter",
+   "line2": "Apt 2A",
+   "city": "Richmond",
+   "state": "VA",
+   "zip": "23219",
+   "country": "US"
+  },
+  "group": "ho-nb1-0",
+  "kind": "neighbor",
+  "ts": 1793553707308,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-8",
+  "name": "Ana Rossi",
+  "email": "ana.rossi52@example.com",
+  "address": {
+   "line1": "3111 Orchard Dr",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78704",
+   "country": "US"
+  },
+  "group": "ho-fan-8",
+  "kind": "fan",
+  "ts": 1793551200436,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-58",
+  "name": "Clara Novak",
+  "email": "clara.novak34@example.com",
+  "address": {
+   "line1": "7762 Elm Ct",
+   "city": "Burlington",
+   "state": "VT",
+   "zip": "05401",
+   "country": "US"
+  },
+  "group": "ho-fan-58",
+  "kind": "fan",
+  "ts": 1793552863043,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-6",
+  "name": "Arjun Rossi",
+  "email": "arjun.rossi67@example.com",
+  "address": {
+   "line1": "7882 Granite Pl",
+   "city": "Albany",
+   "state": "NY",
+   "zip": "12207",
+   "country": "US"
+  },
+  "group": "ho-fan-6",
+  "kind": "fan",
+  "ts": 1793548838969,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-p1-a",
+  "group": "hw-p1",
+  "kind": "household",
+  "note": "Couple with different surnames in one single-family home",
+  "name": "Ji-woo Park",
+  "email": "jiwoo.park@example.com",
+  "address": {
+   "line1": "731 Larkspur Ln",
+   "city": "Boise",
+   "state": "ID",
+   "zip": "83702",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793551516240
+ },
+ {
+  "id": "hw-n12-b",
+  "group": "hw-n12-b",
+  "kind": "neighbor",
+  "note": "Dorm, different rooms (214 vs 412)",
+  "name": "Jacob Wilson",
+  "email": "jwilson.uw@example.edu",
+  "address": {
+   "line1": "1 University Ave",
+   "line2": "Room 412",
+   "city": "Madison",
+   "state": "WI",
+   "zip": "53706",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793550490462
+ },
+ {
+  "id": "ho-hh4-2",
+  "name": "Maya Walsh",
+  "email": "walsh.ho4.m2@example.net",
+  "address": {
+   "line1": "821 Cedar St",
+   "city": "Richmond",
+   "state": "VA",
+   "zip": "23219",
+   "country": "US"
+  },
+  "group": "ho-hh4",
+  "kind": "household",
+  "ts": 1793553992159,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-nb2-1",
+  "name": "Clara Novak",
+  "email": "n21168@example.org",
+  "address": {
+   "line1": "405 Mission St",
+   "line2": "Apt 5A",
+   "city": "Madison",
+   "state": "WI",
+   "zip": "53703",
+   "country": "US"
+  },
+  "group": "ho-nb2-1",
+  "kind": "neighbor",
+  "ts": 1793551250455,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-hh4-0",
+  "name": "Priya Walsh",
+  "email": "walsh.ho4.m0@example.net",
+  "address": {
+   "line1": "821 Cedar St",
+   "city": "Richmond",
+   "state": "VA",
+   "zip": "23219",
+   "country": "US"
+  },
+  "group": "ho-hh4",
+  "kind": "household",
+  "ts": 1793551907547,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net1-0",
+  "name": "DIEGO ROSSI JR",
+  "email": "diegorossi+drop@gmail.com",
+  "address": {
+   "line1": "1237 Logistics Pkwy Ste 5B",
+   "line2": "Bldg 1",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78704",
+   "country": "US"
+  },
+  "ts": 1793549645980,
+  "source": "human",
+  "group": "ho-net1",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "hw-n8-b",
+  "group": "hw-n8-b",
+  "kind": "neighbor",
+  "note": "Same street address in two different Springfields",
+  "name": "Olivia Park",
+  "email": "olivia.park.ma@example.org",
+  "address": {
+   "line1": "100 Main St",
+   "city": "Springfield",
+   "state": "MA",
+   "zip": "01103",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793553532428
+ },
+ {
+  "id": "hw-n7-a",
+  "group": "hw-n7-a",
+  "kind": "namesake",
+  "note": "Same name in two different states",
+  "name": "Emily Nguyen",
+  "email": "emily.nguyen.hou@example.com",
+  "address": {
+   "line1": "9120 Bellaire Blvd",
+   "city": "Houston",
+   "state": "TX",
+   "zip": "77036",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793551656634
+ },
+ {
+  "id": "hw-p1-b",
+  "group": "hw-p1",
+  "kind": "household",
+  "note": "Couple with different surnames in one single-family home",
+  "name": "Daniel Okonkwo",
+  "email": "d.okonkwo@example.net",
+  "address": {
+   "line1": "731 Larkspur Lane",
+   "city": "Boise",
+   "state": "ID",
+   "zip": "83702",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793552326523
+ },
+ {
+  "id": "ho-ns5-1",
+  "name": "Ravi Kaur",
+  "email": "ravi15@example.com",
+  "address": {
+   "line1": "5615 Bayview Ter",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "group": "ho-ns5-1",
+  "kind": "namesake",
+  "ts": 1793555444062,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-20",
+  "name": "Jordan Nguyen",
+  "email": "jordan.nguyen50@example.com",
+  "address": {
+   "line1": "3253 Maple Ave",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78704",
+   "country": "US"
+  },
+  "group": "ho-fan-20",
+  "kind": "fan",
+  "ts": 1793552896803,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-p3-a",
+  "group": "hw-p3",
+  "kind": "household",
+  "note": "Father and son with the same name in one home",
+  "name": "James Carter",
+  "email": "jcarter.sav@example.com",
+  "address": {
+   "line1": "1504 Peachtree Ct",
+   "city": "Savannah",
+   "state": "GA",
+   "zip": "31405",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793550151487
+ },
+ {
+  "id": "ho-fan-16",
+  "name": "Lena Fischer",
+  "email": "lena.fischer76@example.com",
+  "address": {
+   "line1": "1225 Maple Ave",
+   "city": "Raleigh",
+   "state": "NC",
+   "zip": "27601",
+   "country": "US"
+  },
+  "group": "ho-fan-16",
+  "kind": "fan",
+  "ts": 1793549831268,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-0",
+  "name": "Felix Delgado",
+  "email": "felix.delgado44@example.com",
+  "address": {
+   "line1": "3794 Cedar St",
+   "city": "Albany",
+   "state": "NY",
+   "zip": "12207",
+   "country": "US"
+  },
+  "group": "ho-fan-0",
+  "kind": "fan",
+  "ts": 1793553406593,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-n3-b",
+  "group": "hw-n3-b",
+  "kind": "neighbor",
+  "note": "Duplex: the front house (no unit) and Unit B are different homes",
+  "name": "Carlos Ibarra",
+  "email": "c.ibarra@example.net",
+  "address": {
+   "line1": "18 Alder St",
+   "line2": "Unit B",
+   "city": "Burlington",
+   "state": "VT",
+   "zip": "05401",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793552570070
+ },
+ {
+  "id": "ho-net0-0",
+  "name": "TOBIAS RAMIREZ JR",
+  "email": "tobiasramirez+drop@gmail.com",
+  "address": {
+   "line1": "1200 HARBOR BLVD",
+   "line2": "Bldg 1, Ste 4-B",
+   "city": "Boise",
+   "state": "ID",
+   "zip": "83702",
+   "country": "US"
+  },
+  "ts": 1793551691435,
+  "source": "agent",
+  "group": "ho-net0",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-fan-25",
+  "name": "Grace Chen",
+  "email": "grace.chen44@example.com",
+  "address": {
+   "line1": "1200 Elm Ct",
+   "city": "Madison",
+   "state": "WI",
+   "zip": "53703",
+   "country": "US"
+  },
+  "group": "ho-fan-25",
+  "kind": "fan",
+  "ts": 1793549512146,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-18",
+  "name": "Hana Okafor",
+  "email": "hana.okafor32@example.com",
+  "address": {
+   "line1": "6307 Willow Way",
+   "city": "Raleigh",
+   "state": "NC",
+   "zip": "27601",
+   "country": "US"
+  },
+  "group": "ho-fan-18",
+  "kind": "fan",
+  "ts": 1793553249998,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net4-2",
+  "name": "Jojo Okafor",
+  "email": "priya647@mailbox.example",
+  "address": {
+   "line1": "1348 Logistics Pkway #8B",
+   "line2": "",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "ts": 1793554110640,
+  "source": "agent",
+  "group": "ho-net4",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-fan-53",
+  "name": "Grace Petrov",
+  "email": "grace.petrov15@example.com",
+  "address": {
+   "line1": "3025 Cedar St",
+   "city": "Burlington",
+   "state": "VT",
+   "zip": "05401",
+   "country": "US"
+  },
+  "group": "ho-fan-53",
+  "kind": "fan",
+  "ts": 1793553431953,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-hh5-0",
+  "name": "Iris Tanaka",
+  "email": "tanaka.ho5.m0@example.net",
+  "address": {
+   "line1": "3451 Linden Blvd",
+   "city": "Raleigh",
+   "state": "NC",
+   "zip": "27601",
+   "country": "US"
+  },
+  "group": "ho-hh5",
+  "kind": "household",
+  "ts": 1793549967296,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net4-4",
+  "name": "Priya R. Walsh",
+  "email": "kenji157@mailbox.example",
+  "address": {
+   "line1": "1348 logistcs pkwy ste 8b",
+   "line2": "",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "ts": 1793554096060,
+  "source": "agent",
+  "group": "ho-net4",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-fan-42",
+  "name": "Clara Hoang",
+  "email": "clara.hoang28@example.com",
+  "address": {
+   "line1": "8579 Quarry St",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78704",
+   "country": "US"
+  },
+  "group": "ho-fan-42",
+  "kind": "fan",
+  "ts": 1793552172771,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-n3-a",
+  "group": "hw-n3-a",
+  "kind": "neighbor",
+  "note": "Duplex: the front house (no unit) and Unit B are different homes",
+  "name": "Ruth Meyer",
+  "email": "ruthmeyer.vt@example.com",
+  "address": {
+   "line1": "18 Alder St",
+   "city": "Burlington",
+   "state": "VT",
+   "zip": "05401",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793549238927
+ },
+ {
+  "id": "hw-n5-a",
+  "group": "hw-n5-a",
+  "kind": "namesake",
+  "note": "Same common name, same ZIP, different streets",
+  "name": "Maria Garcia",
+  "email": "mgarcia.atx@example.com",
+  "address": {
+   "line1": "2210 E Cesar Chavez St",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78702",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793555530018
+ },
+ {
+  "id": "ho-fan-54",
+  "name": "Felix Ramirez",
+  "email": "felix.ramirez24@example.com",
+  "address": {
+   "line1": "7715 Orchard Dr",
+   "city": "Boise",
+   "state": "ID",
+   "zip": "83702",
+   "country": "US"
+  },
+  "group": "ho-fan-54",
+  "kind": "fan",
+  "ts": 1793549377089,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-50",
+  "name": "Kenji Haddad",
+  "email": "kenji.haddad14@example.com",
+  "address": {
+   "line1": "4272 Linden Blvd",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "group": "ho-fan-50",
+  "kind": "fan",
+  "ts": 1793553502714,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-39",
+  "name": "Omar Kaur",
+  "email": "omar.kaur80@example.com",
+  "address": {
+   "line1": "566 Orchard Dr",
+   "city": "Burlington",
+   "state": "VT",
+   "zip": "05401",
+   "country": "US"
+  },
+  "group": "ho-fan-39",
+  "kind": "fan",
+  "ts": 1793550557326,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-3",
+  "name": "Priya Kaur",
+  "email": "priya.kaur77@example.com",
+  "address": {
+   "line1": "1178 Maple Ave",
+   "city": "Savannah",
+   "state": "GA",
+   "zip": "31401",
+   "country": "US"
+  },
+  "group": "ho-fan-3",
+  "kind": "fan",
+  "ts": 1793555449566,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-nb5-1",
+  "name": "Ravi Fischer",
+  "email": "n51766@example.org",
+  "address": {
+   "line1": "3060 Harbor Rd",
+   "line2": "Apt 5C",
+   "city": "Raleigh",
+   "state": "NC",
+   "zip": "27601",
+   "country": "US"
+  },
+  "group": "ho-nb5-1",
+  "kind": "neighbor",
+  "ts": 1793554711003,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-hh4-1",
+  "name": "Maya Walsh",
+  "email": "walsh.ho4.m1@example.net",
+  "address": {
+   "line1": "821 Cedar Street",
+   "city": "Richmond",
+   "state": "VA",
+   "zip": "23219",
+   "country": "US"
+  },
+  "group": "ho-hh4",
+  "kind": "household",
+  "ts": 1793554907616,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-hh2-0",
+  "name": "Theo Novak",
+  "email": "novak.ho2.m0@example.net",
+  "address": {
+   "line1": "1824 Linden Blvd",
+   "city": "Denver",
+   "state": "CO",
+   "zip": "80203",
+   "country": "US"
+  },
+  "group": "ho-hh2",
+  "kind": "household",
+  "ts": 1793551993621,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-n1-b",
+  "group": "hw-n1-b",
+  "kind": "neighbor",
+  "note": "Neighbours one letter apart (Apt 3B vs 3D)",
+  "name": "Tomasz Wojcik",
+  "email": "tomasz.w@example.net",
+  "address": {
+   "line1": "4410 Delmar Blvd",
+   "line2": "Apt 3D",
+   "city": "St. Louis",
+   "state": "MO",
+   "zip": "63108",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793555505398
+ },
+ {
+  "id": "ho-fan-19",
+  "name": "Clara Okafor",
+  "email": "clara.okafor66@example.com",
+  "address": {
+   "line1": "1083 Mission St",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "group": "ho-fan-19",
+  "kind": "fan",
+  "ts": 1793554404695,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-9",
+  "name": "Noah Haddad",
+  "email": "noah.haddad51@example.com",
+  "address": {
+   "line1": "2909 Harbor Rd",
+   "city": "Raleigh",
+   "state": "NC",
+   "zip": "27601",
+   "country": "US"
+  },
+  "group": "ho-fan-9",
+  "kind": "fan",
+  "ts": 1793554487739,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-2",
+  "name": "Diego Okafor",
+  "email": "diego.okafor72@example.com",
+  "address": {
+   "line1": "4636 Elm Ct",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "group": "ho-fan-2",
+  "kind": "fan",
+  "ts": 1793549604559,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-17",
+  "name": "Ana Hoang",
+  "email": "ana.hoang10@example.com",
+  "address": {
+   "line1": "5721 Harbor Rd",
+   "city": "Burlington",
+   "state": "VT",
+   "zip": "05401",
+   "country": "US"
+  },
+  "group": "ho-fan-17",
+  "kind": "fan",
+  "ts": 1793553253804,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-hh2-1",
+  "name": "Clara Novak",
+  "email": "novak.ho2.m1@example.net",
+  "address": {
+   "line1": "1824 Linden Blvd",
+   "city": "Denver",
+   "state": "CO",
+   "zip": "80203",
+   "country": "US"
+  },
+  "group": "ho-hh2",
+  "kind": "household",
+  "ts": 1793555760970,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-14",
+  "name": "Hana Rossi",
+  "email": "hana.rossi10@example.com",
+  "address": {
+   "line1": "1675 Linden Blvd",
+   "city": "Denver",
+   "state": "CO",
+   "zip": "80203",
+   "country": "US"
+  },
+  "group": "ho-fan-14",
+  "kind": "fan",
+  "ts": 1793553242709,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-59",
+  "name": "Elena Silva",
+  "email": "elena.silva67@example.com",
+  "address": {
+   "line1": "8662 Elm Ct",
+   "city": "Richmond",
+   "state": "VA",
+   "zip": "23219",
+   "country": "US"
+  },
+  "group": "ho-fan-59",
+  "kind": "fan",
+  "ts": 1793551463461,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-hh1-0",
+  "name": "Lucia Kaur",
+  "email": "kaur.ho1.m0@example.net",
+  "address": {
+   "line1": "2099 Quarry St",
+   "city": "Portland",
+   "state": "OR",
+   "zip": "97205",
+   "country": "US"
+  },
+  "group": "ho-hh1",
+  "kind": "household",
+  "ts": 1793550375391,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-nb0-1",
+  "name": "Diego Brennan",
+  "email": "n01923@example.org",
+  "address": {
+   "line1": "2252 Linden Blvd",
+   "line2": "Apt 5C",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78704",
+   "country": "US"
+  },
+  "group": "ho-nb0-1",
+  "kind": "neighbor",
+  "ts": 1793551068246,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-41",
+  "name": "Hana Ramirez",
+  "email": "hana.ramirez26@example.com",
+  "address": {
+   "line1": "925 Granite Pl",
+   "city": "Omaha",
+   "state": "NE",
+   "zip": "68102",
+   "country": "US"
+  },
+  "group": "ho-fan-41",
+  "kind": "fan",
+  "ts": 1793548802244,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-hh3-1",
+  "name": "Clara Okafor",
+  "email": "okafor.ho3.m1@example.net",
+  "address": {
+   "line1": "4001 Quarry Street",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "group": "ho-hh3",
+  "kind": "household",
+  "ts": 1793554423940,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-hh0-1",
+  "name": "Hana Moreau",
+  "email": "moreau.ho0.m1@example.net",
+  "address": {
+   "line1": "1938 Elm Ct",
+   "city": "Richmond",
+   "state": "VA",
+   "zip": "23219",
+   "country": "US"
+  },
+  "group": "ho-hh0",
+  "kind": "household",
+  "ts": 1793550326886,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-nb4-0",
+  "name": "Noah Ramirez",
+  "email": "n40992@example.org",
+  "address": {
+   "line1": "2570 Bayview Ter",
+   "line2": "Apt 2C",
+   "city": "Columbus",
+   "state": "OH",
+   "zip": "43215",
+   "country": "US"
+  },
+  "group": "ho-nb4-0",
+  "kind": "neighbor",
+  "ts": 1793550563536,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-n9-b",
+  "group": "hw-n9-b",
+  "kind": "neighbor",
+  "note": "Two employees getting deliveries at work: different suites, c/o and Attn lines",
+  "name": "Marcus Bell",
+  "email": "mbell.work@example.net",
+  "address": {
+   "line1": "2000 Sand Hill Rd",
+   "line2": "Suite 250, Attn Marcus Bell",
+   "city": "Menlo Park",
+   "state": "CA",
+   "zip": "94025",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793551326520
+ },
+ {
+  "id": "ho-fan-24",
+  "name": "Jordan Brennan",
+  "email": "jordan.brennan74@example.com",
+  "address": {
+   "line1": "3011 Granite Pl",
+   "city": "Burlington",
+   "state": "VT",
+   "zip": "05401",
+   "country": "US"
+  },
+  "group": "ho-fan-24",
+  "kind": "fan",
+  "ts": 1793550029287,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-ns6-0",
+  "name": "Clara Nguyen",
+  "email": "clara06@example.com",
+  "address": {
+   "line1": "7773 Cedar St",
+   "city": "Raleigh",
+   "state": "NC",
+   "zip": "27601",
+   "country": "US"
+  },
+  "group": "ho-ns6-0",
+  "kind": "namesake",
+  "ts": 1793554490709,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-nb6-0",
+  "name": "Iris Petrov",
+  "email": "n60105@example.org",
+  "address": {
+   "line1": "1253 Orchard Dr",
+   "line2": "Apt 2C",
+   "city": "Denver",
+   "state": "CO",
+   "zip": "80203",
+   "country": "US"
+  },
+  "group": "ho-nb6-0",
+  "kind": "neighbor",
+  "ts": 1793550857582,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net2-4",
+  "name": "Arjun \"AJ\" Kaur",
+  "email": "zoe492@mailbox.example",
+  "address": {
+   "line1": "1274 Harbor Blvd",
+   "line2": "Unit 6-B, c/o Simran Kaur (sister)",
+   "city": "Raleigh",
+   "state": "NC",
+   "zip": "27601",
+   "country": "US"
+  },
+  "ts": 1793554347242,
+  "source": "agent",
+  "group": "ho-net2",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-ns3-0",
+  "name": "Leo Kaur",
+  "email": "leo03@example.com",
+  "address": {
+   "line1": "7350 Cedar St",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "group": "ho-ns3-0",
+  "kind": "namesake",
+  "ts": 1793552443081,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-44",
+  "name": "Kenji Novak",
+  "email": "kenji.novak61@example.com",
+  "address": {
+   "line1": "1115 Quarry St",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "group": "ho-fan-44",
+  "kind": "fan",
+  "ts": 1793555540463,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-nb2-0",
+  "name": "Sofia Silva",
+  "email": "n20179@example.org",
+  "address": {
+   "line1": "405 Mission St",
+   "line2": "Apt 2F",
+   "city": "Madison",
+   "state": "WI",
+   "zip": "53703",
+   "country": "US"
+  },
+  "group": "ho-nb2-0",
+  "kind": "neighbor",
+  "ts": 1793551057391,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-49",
+  "name": "Felix Lindqvist",
+  "email": "felix.lindqvist19@example.com",
+  "address": {
+   "line1": "2612 Quarry St",
+   "city": "Richmond",
+   "state": "VA",
+   "zip": "23219",
+   "country": "US"
+  },
+  "group": "ho-fan-49",
+  "kind": "fan",
+  "ts": 1793549697532,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-29",
+  "name": "Sam Kaur",
+  "email": "sam.kaur36@example.com",
+  "address": {
+   "line1": "7392 Willow Way",
+   "city": "Burlington",
+   "state": "VT",
+   "zip": "05401",
+   "country": "US"
+  },
+  "group": "ho-fan-29",
+  "kind": "fan",
+  "ts": 1793554119360,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-n7-b",
+  "group": "hw-n7-b",
+  "kind": "namesake",
+  "note": "Same name in two different states",
+  "name": "Emily Nguyen",
+  "email": "emnguyen.sj@example.net",
+  "address": {
+   "line1": "1650 Story Rd",
+   "city": "San Jose",
+   "state": "CA",
+   "zip": "95122",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793553049881
+ },
+ {
+  "id": "ho-net3-3",
+  "name": "Tobias Nguyen",
+  "email": "theo749@mailbox.example",
+  "address": {
+   "line1": "1311 Airport Rd",
+   "line2": "ParcelHop LLC, Unit 7-B",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "ts": 1793553688148,
+  "source": "human",
+  "group": "ho-net3",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-fan-33",
+  "name": "Mei Moreau",
+  "email": "mei.moreau24@example.com",
+  "address": {
+   "line1": "2762 Willow Way",
+   "city": "Omaha",
+   "state": "NE",
+   "zip": "68102",
+   "country": "US"
+  },
+  "group": "ho-fan-33",
+  "kind": "fan",
+  "ts": 1793553694813,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net3-0",
+  "name": "Ozzie Nguyen",
+  "email": "omarnguyen+drop@gmail.com",
+  "address": {
+   "line1": "1311 Airport Rd #7B",
+   "line2": "Attn: Omar Ngyuen",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "ts": 1793550660943,
+  "source": "human",
+  "group": "ho-net3",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-fan-52",
+  "name": "Ana Kowalski",
+  "email": "ana.kowalski6@example.com",
+  "address": {
+   "line1": "2252 Mission St",
+   "city": "Omaha",
+   "state": "NE",
+   "zip": "68102",
+   "country": "US"
+  },
+  "group": "ho-fan-52",
+  "kind": "fan",
+  "ts": 1793555178033,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-ns1-0",
+  "name": "Jonah Kowalski",
+  "email": "jonah01@example.com",
+  "address": {
+   "line1": "543 Quarry St",
+   "city": "Denver",
+   "state": "CO",
+   "zip": "80203",
+   "country": "US"
+  },
+  "group": "ho-ns1-0",
+  "kind": "namesake",
+  "ts": 1793554964364,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-51",
+  "name": "Zoe Okafor",
+  "email": "zoe.okafor78@example.com",
+  "address": {
+   "line1": "6289 Elm Ct",
+   "city": "Burlington",
+   "state": "VT",
+   "zip": "05401",
+   "country": "US"
+  },
+  "group": "ho-fan-51",
+  "kind": "fan",
+  "ts": 1793555193223,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-4",
+  "name": "Diego Nguyen",
+  "email": "diego.nguyen76@example.com",
+  "address": {
+   "line1": "2708 Maple Ave",
+   "city": "Omaha",
+   "state": "NE",
+   "zip": "68102",
+   "country": "US"
+  },
+  "group": "ho-fan-4",
+  "kind": "fan",
+  "ts": 1793552576237,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-hh3-2",
+  "name": "Nora Okafor",
+  "email": "okafor.ho3.m2@example.net",
+  "address": {
+   "line1": "4001 Quarry St",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "group": "ho-hh3",
+  "kind": "household",
+  "ts": 1793553795258,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net1-3",
+  "name": "Tobias J. Rossi",
+  "email": "marcus754@mailbox.example",
+  "address": {
+   "line1": "1237 Logistics Pkwy PMB 5B",
+   "line2": "c/o ShipBridge Logistics, Ste 5B",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78704",
+   "country": "US"
+  },
+  "ts": 1793549828094,
+  "source": "human",
+  "group": "ho-net1",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-fan-48",
+  "name": "Nora Abara",
+  "email": "nora.abara29@example.com",
+  "address": {
+   "line1": "1228 Elm Ct",
+   "city": "Omaha",
+   "state": "NE",
+   "zip": "68102",
+   "country": "US"
+  },
+  "group": "ho-fan-48",
+  "kind": "fan",
+  "ts": 1793551994840,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-n5-b",
+  "group": "hw-n5-b",
+  "kind": "namesake",
+  "note": "Same common name, same ZIP, different streets",
+  "name": "Maria Garcia",
+  "email": "maria.g.garcia@example.net",
+  "address": {
+   "line1": "908 Willow St",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78702",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793552986334
+ },
+ {
+  "id": "ho-ns1-1",
+  "name": "Jonah Kowalski",
+  "email": "jonah11@example.com",
+  "address": {
+   "line1": "8126 Orchard Dr",
+   "city": "Richmond",
+   "state": "VA",
+   "zip": "23219",
+   "country": "US"
+  },
+  "group": "ho-ns1-1",
+  "kind": "namesake",
+  "ts": 1793553424215,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-hh6-0",
+  "name": "Marcus Chen",
+  "email": "chen.ho6.m0@example.net",
+  "address": {
+   "line1": "3927 Elm Ct",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "group": "ho-hh6",
+  "kind": "household",
+  "ts": 1793552821638,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-hh5-1",
+  "name": "Clara Tanaka",
+  "email": "tanaka.ho5.m1@example.net",
+  "address": {
+   "line1": "3451 Linden Blvd",
+   "city": "Raleigh",
+   "state": "NC",
+   "zip": "27601",
+   "country": "US"
+  },
+  "group": "ho-hh5",
+  "kind": "household",
+  "ts": 1793549956908,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-10",
+  "name": "Iris Tanaka",
+  "email": "iris.tanaka76@example.com",
+  "address": {
+   "line1": "5730 Mission St",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "group": "ho-fan-10",
+  "kind": "fan",
+  "ts": 1793550427387,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-31",
+  "name": "Jonah Okafor",
+  "email": "jonah.okafor45@example.com",
+  "address": {
+   "line1": "4686 Cedar St",
+   "city": "Portland",
+   "state": "OR",
+   "zip": "97205",
+   "country": "US"
+  },
+  "group": "ho-fan-31",
+  "kind": "fan",
+  "ts": 1793550642104,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-n1-a",
+  "group": "hw-n1-a",
+  "kind": "neighbor",
+  "note": "Neighbours one letter apart (Apt 3B vs 3D)",
+  "name": "Keisha Brown",
+  "email": "keisha.brown.stl@example.com",
+  "address": {
+   "line1": "4410 Delmar Blvd",
+   "line2": "Apt 3B",
+   "city": "St. Louis",
+   "state": "MO",
+   "zip": "63108",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793550416260
+ },
+ {
+  "id": "ho-net0-4",
+  "name": "Lucy Tanaka",
+  "email": "elena556@mailbox.example",
+  "address": {
+   "line1": "1200 Harbor Bvld",
+   "line2": "STE4B",
+   "city": "Boise",
+   "state": "ID",
+   "zip": "83702",
+   "country": "US"
+  },
+  "ts": 1793551685503,
+  "source": "agent",
+  "group": "ho-net0",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "hw-n2-a",
+  "group": "hw-n2-a",
+  "kind": "neighbor",
+  "note": "Common surname in one building, different apartments (12 vs 21)",
+  "name": "Wei Zhang",
+  "email": "wzhang77@example.com",
+  "address": {
+   "line1": "77 Mott St",
+   "line2": "Apt 12",
+   "city": "New York",
+   "state": "NY",
+   "zip": "10013",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793555526025
+ },
+ {
+  "id": "ho-hh1-1",
+  "name": "Jonah Kaur",
+  "email": "kaur.ho1.m1@example.net",
+  "address": {
+   "line1": "2099 Quarry Street",
+   "city": "Portland",
+   "state": "OR",
+   "zip": "97205",
+   "country": "US"
+  },
+  "group": "ho-hh1",
+  "kind": "household",
+  "ts": 1793554884931,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-21",
+  "name": "Zoe Tanaka",
+  "email": "zoe.tanaka87@example.com",
+  "address": {
+   "line1": "7769 Elm Ct",
+   "city": "Columbus",
+   "state": "OH",
+   "zip": "43215",
+   "country": "US"
+  },
+  "group": "ho-fan-21",
+  "kind": "fan",
+  "ts": 1793550134371,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net2-2",
+  "name": "aaron j. moreau",
+  "email": "omar304@mailbox.example",
+  "address": {
+   "line1": "1274 harbor blvd",
+   "line2": "no. 6b",
+   "city": "Raleigh",
+   "state": "NC",
+   "zip": "27601",
+   "country": "US"
+  },
+  "ts": 1793554350630,
+  "source": "agent",
+  "group": "ho-net2",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-fan-35",
+  "name": "Kai Chen",
+  "email": "kai.chen28@example.com",
+  "address": {
+   "line1": "546 Orchard Dr",
+   "city": "Albany",
+   "state": "NY",
+   "zip": "12207",
+   "country": "US"
+  },
+  "group": "ho-fan-35",
+  "kind": "fan",
+  "ts": 1793548950118,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-hh6-1",
+  "name": "Nora Chen",
+  "email": "chen.ho6.m1@example.net",
+  "address": {
+   "line1": "3927 Elm Ct",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "group": "ho-hh6",
+  "kind": "household",
+  "ts": 1793553128268,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-15",
+  "name": "Amara Brennan",
+  "email": "amara.brennan85@example.com",
+  "address": {
+   "line1": "7775 Harbor Rd",
+   "city": "Richmond",
+   "state": "VA",
+   "zip": "23219",
+   "country": "US"
+  },
+  "group": "ho-fan-15",
+  "kind": "fan",
+  "ts": 1793554962032,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net4-3",
+  "name": "Arjun Okafor",
+  "email": "elena652@mailbox.example",
+  "address": {
+   "line1": "Bldg 1, 1348 Logistics Pkwy",
+   "line2": "Ste 8B, c/o ShipBridge",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "ts": 1793554102441,
+  "source": "agent",
+  "group": "ho-net4",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-fan-38",
+  "name": "Nora Hoang",
+  "email": "nora.hoang36@example.com",
+  "address": {
+   "line1": "4633 Mission St",
+   "city": "Albany",
+   "state": "NY",
+   "zip": "12207",
+   "country": "US"
+  },
+  "group": "ho-fan-38",
+  "kind": "fan",
+  "ts": 1793549475940,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-p2-a",
+  "group": "hw-p2",
+  "kind": "reshipper_network",
+  "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts",
+  "name": "Luis Andrade",
+  "email": "luis.andrade.drops@gmail.com",
+  "source": "agent",
+  "address": {
+   "line1": "8240 NW 52nd Ter",
+   "line2": "Ste 410 Box 88213",
+   "city": "Doral",
+   "state": "FL",
+   "zip": "33166",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "ts": 1793554633327
+ },
+ {
+  "id": "ho-fan-26",
+  "name": "Priya Petrov",
+  "email": "priya.petrov48@example.com",
+  "address": {
+   "line1": "8087 Willow Way",
+   "city": "Columbus",
+   "state": "OH",
+   "zip": "43215",
+   "country": "US"
+  },
+  "group": "ho-fan-26",
+  "kind": "fan",
+  "ts": 1793555922259,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-nb1-1",
+  "name": "Ana Hoang",
+  "email": "n11376@example.org",
+  "address": {
+   "line1": "2462 Bayview Ter",
+   "line2": "Apt 5C",
+   "city": "Richmond",
+   "state": "VA",
+   "zip": "23219",
+   "country": "US"
+  },
+  "group": "ho-nb1-1",
+  "kind": "neighbor",
+  "ts": 1793555074588,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net3-1",
+  "name": "NGUYEN, OMAR",
+  "email": "omar.nguyen@googlemail.com",
+  "address": {
+   "line1": "1311 AIRPORT RD STE 7B",
+   "line2": "SPOKANE WA 99201-4417 — attn: O. N.",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "ts": 1793555388019,
+  "source": "human",
+  "group": "ho-net3",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "hw-n4-a",
+  "group": "hw-n4-a",
+  "kind": "neighbor",
+  "note": "Office tower, two different companies (Suite 200 vs 1200)",
+  "name": "Priya Raman",
+  "email": "priya.raman@example.com",
+  "address": {
+   "line1": "500 Market St",
+   "line2": "Ste 200",
+   "city": "San Francisco",
+   "state": "CA",
+   "zip": "94105",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793551366396
+ },
+ {
+  "id": "ho-fan-56",
+  "name": "Arjun Tanaka",
+  "email": "arjun.tanaka84@example.com",
+  "address": {
+   "line1": "2626 Harbor Rd",
+   "city": "Columbus",
+   "state": "OH",
+   "zip": "43215",
+   "country": "US"
+  },
+  "group": "ho-fan-56",
+  "kind": "fan",
+  "ts": 1793555278019,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net1-1",
+  "name": "rossi diego m.",
+  "email": "diego.rossi@googlemail.com",
+  "address": {
+   "line1": "1237 logistics parkway, no. 5B",
+   "line2": "",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78704",
+   "country": "US"
+  },
+  "ts": 1793555507415,
+  "source": "human",
+  "group": "ho-net1",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "hw-n10-b",
+  "group": "hw-n10-b",
+  "kind": "neighbor",
+  "note": "One building written two ways (W / West), apartments 5 vs 7",
+  "name": "Hannah Cohen",
+  "email": "hannah.cohen57@example.org",
+  "address": {
+   "line1": "250 West 57th Street",
+   "line2": "Apt 7",
+   "city": "New York",
+   "state": "NY",
+   "zip": "10107",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793552701723
+ },
+ {
+  "id": "ho-nb6-1",
+  "name": "Marcus Brennan",
+  "email": "n61711@example.org",
+  "address": {
+   "line1": "1253 Orchard Dr",
+   "line2": "Apt 5F",
+   "city": "Denver",
+   "state": "CO",
+   "zip": "80203",
+   "country": "US"
+  },
+  "group": "ho-nb6-1",
+  "kind": "neighbor",
+  "ts": 1793552883279,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-n10-a",
+  "group": "hw-n10-a",
+  "kind": "neighbor",
+  "note": "One building written two ways (W / West), apartments 5 vs 7",
+  "name": "Ibrahim Diallo",
+  "email": "idiallo@example.com",
+  "address": {
+   "line1": "250 W 57th St #5",
+   "city": "New York",
+   "state": "NY",
+   "zip": "10107",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793555986531
+ },
+ {
+  "id": "hw-n9-a",
+  "group": "hw-n9-a",
+  "kind": "neighbor",
+  "note": "Two employees getting deliveries at work: different suites, c/o and Attn lines",
+  "name": "Sara Lindgren",
+  "email": "sara.lindgren@example.com",
+  "address": {
+   "line1": "2000 Sand Hill Rd",
+   "line2": "Ste 100 c/o Acme Robotics",
+   "city": "Menlo Park",
+   "state": "CA",
+   "zip": "94025",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793552182494
+ },
+ {
+  "id": "ho-net4-0",
+  "name": "Jonah Okafor",
+  "email": "jonahokafor+drop@gmail.com",
+  "address": {
+   "line1": "1348 NORTH LOGISTICS PKWY",
+   "line2": "STE8B",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "ts": 1793554105389,
+  "source": "agent",
+  "group": "ho-net4",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "hw-n4-b",
+  "group": "hw-n4-b",
+  "kind": "neighbor",
+  "note": "Office tower, two different companies (Suite 200 vs 1200)",
+  "name": "Dylan Foster",
+  "email": "dfoster@example.org",
+  "address": {
+   "line1": "500 Market St",
+   "line2": "Suite 1200",
+   "city": "San Francisco",
+   "state": "CA",
+   "zip": "94105",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793552245268
+ },
+ {
+  "id": "ho-fan-40",
+  "name": "Zoe Hoang",
+  "email": "zoe.hoang55@example.com",
+  "address": {
+   "line1": "7588 Harbor Rd",
+   "city": "Omaha",
+   "state": "NE",
+   "zip": "68102",
+   "country": "US"
+  },
+  "group": "ho-fan-40",
+  "kind": "fan",
+  "ts": 1793552659776,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-n8-a",
+  "group": "hw-n8-a",
+  "kind": "neighbor",
+  "note": "Same street address in two different Springfields",
+  "name": "Henry Adams",
+  "email": "hadams.il@example.com",
+  "address": {
+   "line1": "100 Main St",
+   "city": "Springfield",
+   "state": "IL",
+   "zip": "62701",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793550743069
+ },
+ {
+  "id": "ho-fan-37",
+  "name": "Priya Lindqvist",
+  "email": "priya.lindqvist88@example.com",
+  "address": {
+   "line1": "5279 Willow Way",
+   "city": "Omaha",
+   "state": "NE",
+   "zip": "68102",
+   "country": "US"
+  },
+  "group": "ho-fan-37",
+  "kind": "fan",
+  "ts": 1793552146288,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-46",
+  "name": "Marcus Kowalski",
+  "email": "marcus.kowalski88@example.com",
+  "address": {
+   "line1": "1798 Harbor Rd",
+   "city": "Omaha",
+   "state": "NE",
+   "zip": "68102",
+   "country": "US"
+  },
+  "group": "ho-fan-46",
+  "kind": "fan",
+  "ts": 1793550777129,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-nb3-0",
+  "name": "Noah Moreau",
+  "email": "n30648@example.org",
+  "address": {
+   "line1": "1134 Cedar St",
+   "line2": "Apt 2C",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "group": "ho-nb3-0",
+  "kind": "neighbor",
+  "ts": 1793554846321,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-n6-a",
+  "group": "hw-n6-a",
+  "kind": "namesake",
+  "note": "Mike vs Michael Sullivan: same ZIP, different homes",
+  "name": "Mike Sullivan",
+  "email": "sully45@example.com",
+  "address": {
+   "line1": "45 Pleasant St",
+   "city": "Somerville",
+   "state": "MA",
+   "zip": "02143",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793551342304
+ },
+ {
+  "id": "ho-nb4-1",
+  "name": "Sofia Brennan",
+  "email": "n41801@example.org",
+  "address": {
+   "line1": "2570 Bayview Ter",
+   "line2": "Apt 5A",
+   "city": "Columbus",
+   "state": "OH",
+   "zip": "43215",
+   "country": "US"
+  },
+  "group": "ho-nb4-1",
+  "kind": "neighbor",
+  "ts": 1793554575272,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-nb3-1",
+  "name": "Diego Haddad",
+  "email": "n31291@example.org",
+  "address": {
+   "line1": "1134 Cedar St",
+   "line2": "Apt 5C",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "group": "ho-nb3-1",
+  "kind": "neighbor",
+  "ts": 1793549709006,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-32",
+  "name": "Amara Walsh",
+  "email": "amara.walsh14@example.com",
+  "address": {
+   "line1": "6693 Quarry St",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "group": "ho-fan-32",
+  "kind": "fan",
+  "ts": 1793550363108,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-55",
+  "name": "Amara Nguyen",
+  "email": "amara.nguyen42@example.com",
+  "address": {
+   "line1": "2784 Juniper Ln",
+   "city": "Denver",
+   "state": "CO",
+   "zip": "80203",
+   "country": "US"
+  },
+  "group": "ho-fan-55",
+  "kind": "fan",
+  "ts": 1793555426350,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-n11",
+  "group": "hw-n11",
+  "kind": "neighbor",
+  "note": "International fan using the same Miami forwarder suite as a reseller, but with her own box number",
+  "name": "Valentina Rojas",
+  "email": "vale.rojas.cl@example.com",
+  "address": {
+   "line1": "8240 NW 52nd Ter",
+   "line2": "Ste 410 Box 90577",
+   "city": "Doral",
+   "state": "FL",
+   "zip": "33166",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793549043582
+ },
+ {
+  "id": "ho-fan-12",
+  "name": "Kenji Nguyen",
+  "email": "kenji.nguyen89@example.com",
+  "address": {
+   "line1": "4125 Granite Pl",
+   "city": "Albany",
+   "state": "NY",
+   "zip": "12207",
+   "country": "US"
+  },
+  "group": "ho-fan-12",
+  "kind": "fan",
+  "ts": 1793549489201,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-ns6-1",
+  "name": "Clara Nguyen",
+  "email": "clara16@example.com",
+  "address": {
+   "line1": "2514 Linden Blvd",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "group": "ho-ns6-1",
+  "kind": "namesake",
+  "ts": 1793550819775,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-net2-1",
+  "name": "Moreau Amara",
+  "email": "amara.moreau@googlemail.com",
+  "address": {
+   "line1": "1274 N Harbor Boulevard, #6-B",
+   "line2": "Bldg 1, Gate B",
+   "city": "Raleigh",
+   "state": "NC",
+   "zip": "27601",
+   "country": "US"
+  },
+  "ts": 1793554337593,
+  "source": "agent",
+  "group": "ho-net2",
+  "kind": "reshipper_network",
+  "origin": "redteam"
+ },
+ {
+  "id": "ho-fan-1",
+  "name": "Jonah Hoang",
+  "email": "jonah.hoang82@example.com",
+  "address": {
+   "line1": "5804 Mission St",
+   "city": "Madison",
+   "state": "WI",
+   "zip": "53703",
+   "country": "US"
+  },
+  "group": "ho-fan-1",
+  "kind": "fan",
+  "ts": 1793551993368,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-ns2-0",
+  "name": "Priya Walsh",
+  "email": "priya02@example.com",
+  "address": {
+   "line1": "6517 Juniper Ln",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "group": "ho-ns2-0",
+  "kind": "namesake",
+  "ts": 1793554471378,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-45",
+  "name": "Amara Delgado",
+  "email": "amara.delgado54@example.com",
+  "address": {
+   "line1": "8342 Bayview Ter",
+   "city": "Tucson",
+   "state": "AZ",
+   "zip": "85701",
+   "country": "US"
+  },
+  "group": "ho-fan-45",
+  "kind": "fan",
+  "ts": 1793555419946,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-n6-b",
+  "group": "hw-n6-b",
+  "kind": "namesake",
+  "note": "Mike vs Michael Sullivan: same ZIP, different homes",
+  "name": "Michael Sullivan",
+  "email": "m.sullivan.highland@example.org",
+  "address": {
+   "line1": "312 Highland Ave",
+   "city": "Somerville",
+   "state": "MA",
+   "zip": "02143",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793554147894
+ },
+ {
+  "id": "ho-ns3-1",
+  "name": "Leo Kaur",
+  "email": "leo13@example.com",
+  "address": {
+   "line1": "3961 Maple Ave",
+   "city": "Portland",
+   "state": "OR",
+   "zip": "97205",
+   "country": "US"
+  },
+  "group": "ho-ns3-1",
+  "kind": "namesake",
+  "ts": 1793552233733,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-nb0-0",
+  "name": "Elena Fischer",
+  "email": "n00546@example.org",
+  "address": {
+   "line1": "2252 Linden Blvd",
+   "line2": "Apt 2A",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78704",
+   "country": "US"
+  },
+  "group": "ho-nb0-0",
+  "kind": "neighbor",
+  "ts": 1793551712695,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-ns0-0",
+  "name": "Clara Petrov",
+  "email": "clara00@example.com",
+  "address": {
+   "line1": "521 Cedar St",
+   "city": "Portland",
+   "state": "OR",
+   "zip": "97205",
+   "country": "US"
+  },
+  "group": "ho-ns0-0",
+  "kind": "namesake",
+  "ts": 1793553813077,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-ns2-1",
+  "name": "Priya Walsh",
+  "email": "priya12@example.com",
+  "address": {
+   "line1": "3610 Juniper Ln",
+   "city": "Omaha",
+   "state": "NE",
+   "zip": "68102",
+   "country": "US"
+  },
+  "group": "ho-ns2-1",
+  "kind": "namesake",
+  "ts": 1793549812759,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-p4-b",
+  "group": "hw-p4",
+  "kind": "household",
+  "note": "One person, two PayPal accounts, transliterated first name",
+  "name": "Alexander Petrov",
+  "email": "alex.petrov.nyc@example.org",
+  "address": {
+   "line1": "15 Ocean Parkway",
+   "line2": "6F",
+   "city": "Brooklyn",
+   "state": "NY",
+   "zip": "11218",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793548842126
+ },
+ {
+  "id": "ho-ns5-0",
+  "name": "Ravi Kaur",
+  "email": "ravi05@example.com",
+  "address": {
+   "line1": "4433 Mission St",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78704",
+   "country": "US"
+  },
+  "group": "ho-ns5-0",
+  "kind": "namesake",
+  "ts": 1793551808812,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-7",
+  "name": "Maya Hoang",
+  "email": "maya.hoang32@example.com",
+  "address": {
+   "line1": "7756 Juniper Ln",
+   "city": "Omaha",
+   "state": "NE",
+   "zip": "68102",
+   "country": "US"
+  },
+  "group": "ho-fan-7",
+  "kind": "fan",
+  "ts": 1793553312848,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-ns4-0",
+  "name": "Ana Petrov",
+  "email": "ana04@example.com",
+  "address": {
+   "line1": "2793 Quarry St",
+   "city": "Savannah",
+   "state": "GA",
+   "zip": "31401",
+   "country": "US"
+  },
+  "group": "ho-ns4-0",
+  "kind": "namesake",
+  "ts": 1793550015005,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-30",
+  "name": "Jonah Tanaka",
+  "email": "jonah.tanaka72@example.com",
+  "address": {
+   "line1": "2484 Juniper Ln",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78704",
+   "country": "US"
+  },
+  "group": "ho-fan-30",
+  "kind": "fan",
+  "ts": 1793551158587,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-36",
+  "name": "Sofia Walsh",
+  "email": "sofia.walsh83@example.com",
+  "address": {
+   "line1": "515 Cedar St",
+   "city": "Denver",
+   "state": "CO",
+   "zip": "80203",
+   "country": "US"
+  },
+  "group": "ho-fan-36",
+  "kind": "fan",
+  "ts": 1793549525881,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-23",
+  "name": "Leo Kowalski",
+  "email": "leo.kowalski12@example.com",
+  "address": {
+   "line1": "5725 Granite Pl",
+   "city": "Austin",
+   "state": "TX",
+   "zip": "78704",
+   "country": "US"
+  },
+  "group": "ho-fan-23",
+  "kind": "fan",
+  "ts": 1793549126784,
+  "origin": "generated"
+ },
+ {
+  "id": "ho-fan-43",
+  "name": "Zoe Chen",
+  "email": "zoe.chen86@example.com",
+  "address": {
+   "line1": "869 Juniper Ln",
+   "city": "Denver",
+   "state": "CO",
+   "zip": "80203",
+   "country": "US"
+  },
+  "group": "ho-fan-43",
+  "kind": "fan",
+  "ts": 1793550462111,
+  "origin": "generated"
+ },
+ {
+  "id": "hw-n2-b",
+  "group": "hw-n2-b",
+  "kind": "neighbor",
+  "note": "Common surname in one building, different apartments (12 vs 21)",
+  "name": "Lin Zhang",
+  "email": "lin.zhang.nyc@example.org",
+  "address": {
+   "line1": "77 Mott Street",
+   "line2": "#21",
+   "city": "New York",
+   "state": "NY",
+   "zip": "10013",
+   "country": "US"
+  },
+  "origin": "handwritten",
+  "source": "human",
+  "ts": 1793551139037
+ },
+ {
+  "id": "ho-fan-11",
+  "name": "Kenji Lindqvist",
+  "email": "kenji.lindqvist0@example.com",
+  "address": {
+   "line1": "6251 Maple Ave",
+   "city": "Spokane",
+   "state": "WA",
+   "zip": "99201",
+   "country": "US"
+  },
+  "group": "ho-fan-11",
+  "kind": "fan",
+  "ts": 1793553891414,
+  "origin": "generated"
+ }
+]

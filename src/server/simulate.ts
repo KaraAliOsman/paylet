@@ -26,6 +26,21 @@ export interface LabeledIdentity extends Identity {
   /** Ground-truth group: entries with the same group should be collapsed into one allocation. */
   group: string;
   kind: "fan" | "household" | "reshipper_network" | "neighbor" | "namesake";
+  /** Eval datasets only: where the record came from, and (hand-written cases) what it is meant to test. */
+  origin?: "generated" | "redteam" | "handwritten";
+  note?: string;
+}
+
+export interface CrowdOptions {
+  /** Every entrant gets a timestamp inside [from, to] (Unix ms) — e.g. the drop's open window up to now. */
+  window?: { from: number; to: number };
+  /**
+   * Label every entrant source "simulated" (the in-drop demo crowd). Reseller networks are then a scripted bot
+   * (agentLabel "simulated-scalper-bot", entries a few seconds apart); everyone else has no agent label.
+   */
+  simulated?: boolean;
+  /** Reseller networks enter as a burst of automated entries (default true). If false they trickle in like humans. */
+  botNetworks?: boolean;
 }
 
 function pick<T>(r: () => number, a: T[]): T {
@@ -83,7 +98,7 @@ function reshipperNetwork(r: () => number, n: number, tag: string, idx: number):
             : `${pick(r, FIRST)}${100 + Math.floor(r() * 899)}@mailbox.example`.toLowerCase(),
       address: { line1: f.line1, line2: f.line2, city, state, zip, country: "US" },
       ts: t0 + k * 2000,
-      source: "agent",
+      source: "agent" as string,
       group: `${tag}-net${idx}`,
       kind: "reshipper_network" as const,
     };
@@ -138,7 +153,12 @@ function namesakes(r: () => number, tag: string, idx: number): LabeledIdentity[]
   });
 }
 
-export function syntheticCrowd(seed: number, opts: { fans: number; networks: number; netSize: number; households: number; neighbors: number; namesakes: number }, tag = "s"): LabeledIdentity[] {
+export function syntheticCrowd(
+  seed: number,
+  opts: { fans: number; networks: number; netSize: number; households: number; neighbors: number; namesakes: number },
+  tag = "s",
+  crowd: CrowdOptions = {},
+): LabeledIdentity[] {
   const r = rng(seed);
   const out: LabeledIdentity[] = [];
   for (let i = 0; i < opts.fans; i++) out.push(fan(r, i, tag));
@@ -151,5 +171,44 @@ export function syntheticCrowd(seed: number, opts: { fans: number; networks: num
     const j = Math.floor(r() * (i + 1));
     [out[i], out[j]] = [out[j], out[i]];
   }
+  // Labels and timestamps use their own random stream, so the identities above stay byte-identical for a given seed.
+  const bot = crowd.botNetworks ?? true;
+  for (const e of out) {
+    if (e.kind === "reshipper_network" && bot) {
+      e.source = crowd.simulated ? "simulated" : "agent";
+      if (crowd.simulated) e.agentLabel = "simulated-scalper-bot";
+    } else {
+      e.source = crowd.simulated ? "simulated" : e.source === "agent" ? "human" : e.source;
+      if (!crowd.simulated && e.source === undefined) delete e.source;
+    }
+  }
+  if (crowd.window) placeInWindow(out, crowd.window, rng((seed ^ 0x5eed1e55) >>> 0), bot);
   return out;
+}
+
+/**
+ * Timestamps inside [from, to]: people arrive at random moments; a bot network arrives as one burst
+ * (2–6 s between entries) that starts late enough to fit inside the window. Output is sorted by time.
+ */
+function placeInWindow(list: LabeledIdentity[], window: { from: number; to: number }, r: () => number, bot: boolean) {
+  const from = Math.min(window.from, window.to);
+  const to = Math.max(window.from, window.to);
+  const span = to - from;
+  const bursts = new Map<string, LabeledIdentity[]>();
+  for (const e of list) {
+    if (e.kind === "reshipper_network" && bot) bursts.set(e.group, [...(bursts.get(e.group) ?? []), e]);
+    else e.ts = Math.round(from + r() * span);
+  }
+  for (const members of bursts.values()) {
+    const gaps = members.map((_, k) => (k === 0 ? 0 : 2000 + Math.floor(r() * 4000)));
+    let total = gaps.reduce((a, b) => a + b, 0);
+    const squeeze = total > span ? span / Math.max(total, 1) : 1; // tiny window: compress the burst rather than overflow it
+    total *= squeeze;
+    let t = from + r() * Math.max(0, span - total);
+    members.forEach((m, k) => {
+      t += gaps[k] * squeeze;
+      m.ts = Math.min(to, Math.round(t));
+    });
+  }
+  list.sort((a, b) => (a.ts ?? 0) - (b.ts ?? 0));
 }

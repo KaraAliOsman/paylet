@@ -1,6 +1,23 @@
 {
-  "ranAt": "2026-10-31T23:50:35.943Z",
+  "schemaVersion": 2,
+  "ranAt": "2026-11-01T02:13:05.361Z",
+  "replayedAt": "2026-11-01T02:30:00.731Z",
+  "mode": "replay",
   "model": "primalabs-ai/MiMo-V2.6-Pro",
+  "runs": 3,
+  "system": {
+    "sha256": "4a19fe329f53ae17ce159f2d1f9fef50a392263aaa0b4b5aa054446bd8dae1e5",
+    "files": [
+      "src/server/er/normalize.ts",
+      "src/server/er/rules.ts",
+      "src/server/er/resolve.ts"
+    ],
+    "current": "968e492b0bd28fc4c9173cec0a03c6f95a23bcf359699c7039862f323309569c"
+  },
+  "cassette": {
+    "file": "evals/cassette.json",
+    "calls": 197
+  },
   "dataset": {
     "sha256": "b8367bedadcf68570acc6e2766bbf3b0bfe00791883d5b131b4a21d04afb0dbd",
     "entries": 169,
@@ -17,31 +34,32 @@
   },
   "truthPairs": 123,
   "uncertainPairs": 52,
+  "totalPairs": 14196,
   "results": [
     {
+      "id": "exact",
       "system": "Exact match (raw address / email)",
       "precision": 1,
       "recall": 0.12195121951219512,
       "f1": 0.21739130434782605,
       "falseMerges": 0,
       "missedLinks": 108,
-      "llmCalls": 0,
-      "ms": 8,
       "recallByKind": {
         "reshipper_network": 0,
         "household": 0.8333333333333334
       },
-      "falseMergeKinds": {}
+      "falseMergeKinds": {},
+      "ms": 9,
+      "llmCalls": 0
     },
     {
+      "id": "rules",
       "system": "Normalisation + rules (no AI)",
       "precision": 0.9044117647058824,
       "recall": 1,
       "f1": 0.9498069498069499,
       "falseMerges": 13,
       "missedLinks": 0,
-      "llmCalls": 0,
-      "ms": 213,
       "recallByKind": {
         "reshipper_network": 1,
         "household": 1
@@ -50,9 +68,12 @@
         "fan": 12,
         "reshipper_network": 12,
         "neighbor": 2
-      }
+      },
+      "ms": 197,
+      "llmCalls": 0
     },
     {
+      "id": "paylet",
       "system": "Paylet: rules + AI adjudication (MiMo-V2.6-Pro)",
       "precision": 1,
       "recall": 1,
@@ -60,18 +81,1261 @@
       "falseMerges": 0,
       "missedLinks": 0,
       "llmCalls": 17,
-      "ms": 31333,
+      "ms": 33558.666666666664,
       "recallByKind": {
         "reshipper_network": 1,
         "household": 1
       },
-      "falseMergeKinds": {}
+      "falseMergeKinds": {},
+      "runs": [
+        {
+          "run": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falseMerges": 0,
+          "missedLinks": 0,
+          "llmCalls": 17,
+          "ms": 36188,
+          "keptApart": 13,
+          "degraded": null
+        },
+        {
+          "run": 2,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falseMerges": 0,
+          "missedLinks": 0,
+          "llmCalls": 17,
+          "ms": 30566,
+          "keptApart": 13,
+          "degraded": null
+        },
+        {
+          "run": 3,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falseMerges": 0,
+          "missedLinks": 0,
+          "llmCalls": 17,
+          "ms": 33922,
+          "keptApart": 13,
+          "degraded": null
+        }
+      ],
+      "stats": {
+        "precision": {
+          "mean": 1,
+          "sd": 0,
+          "min": 1,
+          "max": 1
+        },
+        "recall": {
+          "mean": 1,
+          "sd": 0,
+          "min": 1,
+          "max": 1
+        },
+        "f1": {
+          "mean": 1,
+          "sd": 0,
+          "min": 1,
+          "max": 1
+        },
+        "falseMerges": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "max": 0
+        },
+        "missedLinks": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "max": 0
+        }
+      },
+      "worstRun": 1
+    }
+  ],
+  "recordedAt": "2026-11-01T02:13:05.361Z",
+  "systemSha": "4a19fe329f53ae17ce159f2d1f9fef50a392263aaa0b4b5aa054446bd8dae1e5",
+  "heldOut": {
+    "dataset": {
+      "sha256": "01348dbb561db1c18da050a71bc0f719b19ea24ae0eee7dded87480b2c7017e7",
+      "entries": 162,
+      "groups": 127,
+      "kinds": {
+        "household": 22,
+        "reshipper_network": 29,
+        "fan": 60,
+        "neighbor": 31,
+        "namesake": 20
+      },
+      "generator": "syntheticCrowd(seed 20261101) + LLM red-team template v2 (23 rewrites accepted; half the networks human-paced) + 33 hand-written hard cases",
+      "frozenAt": "2026-11-01T02:12:44.744Z",
+      "seed": 20261101,
+      "redTeamTemplate": "v2",
+      "origins": {
+        "generated": 104,
+        "redteam": 25,
+        "handwritten": 33
+      },
+      "frozenSystemSha": "4a19fe329f53ae17ce159f2d1f9fef50a392263aaa0b4b5aa054446bd8dae1e5",
+      "frozenSystemCommit": "bc72dd4",
+      "protocol": "Generated after the system files (normalize.ts, rules.ts, resolve.ts incl. the prompt) were frozen at frozenSystemSha. Not used for tuning."
+    },
+    "truthPairs": 70,
+    "uncertainPairs": 34,
+    "totalPairs": 13041,
+    "results": [
+      {
+        "id": "exact",
+        "system": "Exact match (raw address / email)",
+        "precision": 1,
+        "recall": 0.08571428571428572,
+        "f1": 0.15789473684210528,
+        "falseMerges": 0,
+        "missedLinks": 64,
+        "recallByKind": {
+          "reshipper_network": 0,
+          "household": 0.42857142857142855
+        },
+        "falseMergeKinds": {},
+        "ms": 16,
+        "llmCalls": 0
+      },
+      {
+        "id": "rules",
+        "system": "Normalisation + rules (no AI)",
+        "precision": 0.8333333333333334,
+        "recall": 0.7857142857142857,
+        "f1": 0.8088235294117647,
+        "falseMerges": 11,
+        "missedLinks": 15,
+        "recallByKind": {
+          "reshipper_network": 0.7321428571428571,
+          "household": 1
+        },
+        "falseMergeKinds": {
+          "reshipper_network": 8,
+          "namesake": 9,
+          "neighbor": 5
+        },
+        "ms": 319,
+        "llmCalls": 0
+      },
+      {
+        "id": "paylet",
+        "system": "Paylet: rules + AI adjudication (MiMo-V2.6-Pro)",
+        "precision": 0.9564425004556224,
+        "recall": 0.8333333333333334,
+        "f1": 0.8905332393704487,
+        "falseMerges": 2.6666666666666665,
+        "missedLinks": 11.666666666666666,
+        "llmCalls": 25,
+        "ms": 53693,
+        "recallByKind": {
+          "reshipper_network": 0.7678571428571429,
+          "household": 1
+        },
+        "falseMergeKinds": {
+          "neighbor": 2,
+          "reshipper_network": 2
+        },
+        "runs": [
+          {
+            "run": 1,
+            "precision": 0.9661016949152542,
+            "recall": 0.8142857142857143,
+            "f1": 0.8837209302325583,
+            "falseMerges": 2,
+            "missedLinks": 13,
+            "llmCalls": 25,
+            "ms": 60777,
+            "keptApart": 17,
+            "degraded": "The AI reviewer could not answer for 2 of 23 groups: 7 uncertain pairs were not reviewed and stay unmerged. Rule-certain clusters are unaffected."
+          },
+          {
+            "run": 2,
+            "precision": 0.9516129032258065,
+            "recall": 0.8428571428571429,
+            "f1": 0.8939393939393939,
+            "falseMerges": 3,
+            "missedLinks": 11,
+            "llmCalls": 25,
+            "ms": 48290,
+            "keptApart": 17,
+            "degraded": "The AI reviewer could not answer for 1 of 23 groups: 4 uncertain pairs were not reviewed and stay unmerged. Rule-certain clusters are unaffected."
+          },
+          {
+            "run": 3,
+            "precision": 0.9516129032258065,
+            "recall": 0.8428571428571429,
+            "f1": 0.8939393939393939,
+            "falseMerges": 3,
+            "missedLinks": 11,
+            "llmCalls": 25,
+            "ms": 52012,
+            "keptApart": 17,
+            "degraded": "The AI reviewer could not answer for 1 of 23 groups: 4 uncertain pairs were not reviewed and stay unmerged. Rule-certain clusters are unaffected."
+          }
+        ],
+        "stats": {
+          "precision": {
+            "mean": 0.9564425004556224,
+            "sd": 0.008365107782135055,
+            "min": 0.9516129032258065,
+            "max": 0.9661016949152542
+          },
+          "recall": {
+            "mean": 0.8333333333333334,
+            "sd": 0.016495721976846456,
+            "min": 0.8142857142857143,
+            "max": 0.8428571428571429
+          },
+          "f1": {
+            "mean": 0.8905332393704487,
+            "sd": 0.0058996327718459874,
+            "min": 0.8837209302325583,
+            "max": 0.8939393939393939
+          },
+          "falseMerges": {
+            "mean": 2.6666666666666665,
+            "sd": 0.5773502691896258,
+            "min": 2,
+            "max": 3
+          },
+          "missedLinks": {
+            "mean": 11.666666666666666,
+            "sd": 1.1547005383792517,
+            "min": 11,
+            "max": 13
+          }
+        },
+        "worstRun": 1
+      }
+    ],
+    "recordedAt": "2026-11-01T02:13:05.361Z",
+    "systemSha": "4a19fe329f53ae17ce159f2d1f9fef50a392263aaa0b4b5aa054446bd8dae1e5",
+    "frozenSystemSha": "4a19fe329f53ae17ce159f2d1f9fef50a392263aaa0b4b5aa054446bd8dae1e5",
+    "systemUnchangedSinceFreeze": true,
+    "failures": [
+      {
+        "kind": "false_merge",
+        "dataset": "heldOut",
+        "key": "merge:hw-n11|hw-p2",
+        "runs": "3/3 runs",
+        "runCount": 3,
+        "decidedBy": "rules",
+        "pairsAffected": 3,
+        "entries": [
+          {
+            "id": "hw-p2-c",
+            "name": "Andrade Trading LLC",
+            "address": "8240 N.W. 52nd Ter., Suite 410 PMB 88213, Doral, FL 33166",
+            "source": "agent",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          },
+          {
+            "id": "hw-p2-d",
+            "name": "Sofia Mendes",
+            "address": "8240 NW 52 Ter, STE 410-88213, Doral, FL 33166",
+            "source": "human",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          },
+          {
+            "id": "hw-p2-b",
+            "name": "L. Andrade",
+            "address": "8240 NW 52nd Terrace #410-88213, Doral, FL 33166-4011",
+            "source": "agent",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          },
+          {
+            "id": "hw-p2-a",
+            "name": "Luis Andrade",
+            "address": "8240 NW 52nd Ter, Ste 410 Box 88213, Doral, FL 33166",
+            "source": "agent",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          },
+          {
+            "id": "hw-n11",
+            "name": "Valentina Rojas",
+            "address": "8240 NW 52nd Ter, Ste 410 Box 90577, Doral, FL 33166",
+            "source": "human",
+            "origin": "handwritten",
+            "group": "hw-n11",
+            "note": "International fan using the same Miami forwarder suite as a reseller, but with her own box number"
+          }
+        ],
+        "detail": "hw-n11 ↔ hw-p2-c linked by the deterministic rules (score 0.9: same street and unit 410 in 33166); rule-certain links never reach the model. hw-n11 ↔ hw-p2-a linked by the deterministic rules (score 0.9: same street and unit 410 in 33166); rule-certain links never reach the model.",
+        "analysis": "Freight forwarders give every customer the same street and suite and tell them apart by a box/PMB number. Our normaliser keeps only the first unit token ('Ste 410') and drops the box (88213 vs 90577), so a legitimate international fan who uses the same Miami forwarder as a reseller is linked to the reseller with certainty (score 0.9), and rule-certain links never reach the model. In production this is still only a suggestion that the seller must confirm and the fan can appeal, but it is the error we care about most. Planned fix: parse PMB/Box/'#suite-box' as a sub-unit and make 'same suite, different box' uncertain (reviewed by the model) instead of certain. Deliberately not applied before publishing, so the held-out number stays blind."
+      },
+      {
+        "kind": "missed_link",
+        "dataset": "heldOut",
+        "key": "group:hw-p2",
+        "runs": "3/3 runs",
+        "runCount": 3,
+        "decidedBy": "rules",
+        "pairsAffected": 5,
+        "entries": [
+          {
+            "id": "hw-p2-c",
+            "name": "Andrade Trading LLC",
+            "address": "8240 N.W. 52nd Ter., Suite 410 PMB 88213, Doral, FL 33166",
+            "source": "agent",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          },
+          {
+            "id": "hw-p2-d",
+            "name": "Sofia Mendes",
+            "address": "8240 NW 52 Ter, STE 410-88213, Doral, FL 33166",
+            "source": "human",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          },
+          {
+            "id": "hw-p2-b",
+            "name": "L. Andrade",
+            "address": "8240 NW 52nd Terrace #410-88213, Doral, FL 33166-4011",
+            "source": "agent",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          },
+          {
+            "id": "hw-p2-a",
+            "name": "Luis Andrade",
+            "address": "8240 NW 52nd Ter, Ste 410 Box 88213, Doral, FL 33166",
+            "source": "agent",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          }
+        ],
+        "detail": "Run 1: 5 true pairs missed: 2 were in a group the model never answered (empty or truncated answer on both attempts), so they stayed unmerged; 3 were never flagged by the rules (score below the review threshold), so the model never saw them.",
+        "analysis": "Same root cause as the false merge, seen from the other side: '#410-88213' and 'STE 410-88213' normalise to one unit '41088213' instead of suite 410 + box 88213, and '8240 NW 52 Ter' vs '52nd Ter' scores 0.875 on street similarity, just under our 0.88 threshold, so Sofia Mendes's account is never flagged. The model linked 3 of the 4 accounts in runs 2 and 3; in run 1 it returned an empty answer for this group (token budget, see ho-net3), which left only the 2 rule-certain links."
+      },
+      {
+        "kind": "missed_link",
+        "dataset": "heldOut",
+        "key": "group:ho-net3",
+        "runs": "3/3 runs",
+        "runCount": 3,
+        "decidedBy": "ai_unavailable",
+        "pairsAffected": 4,
+        "entries": [
+          {
+            "id": "ho-net3-4",
+            "name": "Sam Tanaka",
+            "address": "1311 Airport Rd, Bldg 1, No. 7B, Spokane, WA 99201",
+            "source": "human",
+            "origin": "redteam",
+            "group": "ho-net3"
+          },
+          {
+            "id": "ho-net3-2",
+            "name": "Omar T. Nguyen",
+            "address": "1311 Airport Road, Apt 7B, Spokane, WA 99201",
+            "source": "human",
+            "origin": "redteam",
+            "group": "ho-net3"
+          },
+          {
+            "id": "ho-net3-3",
+            "name": "Tobias Nguyen",
+            "address": "1311 Airport Rd, ParcelHop LLC, Unit 7-B, Spokane, WA 99201",
+            "source": "human",
+            "origin": "redteam",
+            "group": "ho-net3"
+          },
+          {
+            "id": "ho-net3-0",
+            "name": "Ozzie Nguyen",
+            "address": "1311 Airport Rd #7B, Attn: Omar Ngyuen, Spokane, WA 99201",
+            "source": "human",
+            "origin": "redteam",
+            "group": "ho-net3"
+          },
+          {
+            "id": "ho-net3-1",
+            "name": "NGUYEN, OMAR",
+            "address": "1311 AIRPORT RD STE 7B, SPOKANE WA 99201-4417 — attn: O. N., Spokane, WA 99201",
+            "source": "human",
+            "origin": "redteam",
+            "group": "ho-net3"
+          }
+        ],
+        "detail": "Run 1: 4 true pairs missed: 4 were in a group the model never answered (empty or truncated answer on both attempts), so they stayed unmerged.",
+        "analysis": "Not a judgement error. In all 3 runs MiMo returned an empty answer, twice, for this group of 5. MiMo V2.6 Pro is a reasoning model and its reasoning tokens count against max_tokens: with our 2,000-token cap it spent the whole budget thinking (reproduced with a direct call: finish_reason 'length', 1,999 reasoning tokens, no content; with 8,000 it answers). Paylet failed safe: the pairs stayed unmerged and the run was flagged as degraded. The rules alone linked 4 of the 5 accounts; the fifth ('Bldg 1, No. 7B', where the normaliser takes 'Bldg 1' as the unit) needed the model. Fix: the adjudication budget is now 6,000 tokens (see the after-fix section)."
+      },
+      {
+        "kind": "missed_link",
+        "dataset": "heldOut",
+        "key": "group:ho-net0",
+        "runs": "3/3 runs",
+        "runCount": 3,
+        "decidedBy": "rules",
+        "pairsAffected": 4,
+        "entries": [
+          {
+            "id": "ho-net0-3",
+            "name": "lucia ramirez",
+            "address": "1200 harbor blvd, pmb 4b, Boise, ID 83702",
+            "source": "agent",
+            "origin": "redteam",
+            "group": "ho-net0"
+          },
+          {
+            "id": "ho-net0-1",
+            "name": "Tobias A. Ramirez",
+            "address": "1200 Harbor Blvd Ste 4B, c/o Ramirez Family, Boise, ID 83702",
+            "source": "agent",
+            "origin": "redteam",
+            "group": "ho-net0"
+          },
+          {
+            "id": "ho-net0-2",
+            "name": "T. Ramirez",
+            "address": "1200 Harbor Boulevard, ShipBridge LLC, Attn: T. Ramirez, No. 4-B, Boise, ID 83702",
+            "source": "agent",
+            "origin": "redteam",
+            "group": "ho-net0"
+          },
+          {
+            "id": "ho-net0-0",
+            "name": "TOBIAS RAMIREZ JR",
+            "address": "1200 HARBOR BLVD, Bldg 1, Ste 4-B, Boise, ID 83702",
+            "source": "agent",
+            "origin": "redteam",
+            "group": "ho-net0"
+          },
+          {
+            "id": "ho-net0-4",
+            "name": "Lucy Tanaka",
+            "address": "1200 Harbor Bvld, STE4B, Boise, ID 83702",
+            "source": "agent",
+            "origin": "redteam",
+            "group": "ho-net0"
+          }
+        ],
+        "detail": "Run 1: 4 true pairs missed: 4 were never flagged by the rules (score below the review threshold), so the model never saw them.",
+        "analysis": "The red-team wrote 'Ste 4B' as 'STE4B' (no space) and misspelled Boulevard as 'Bvld'. Our unit pattern needs a word boundary after 'STE', so the unit becomes 'STE4B', and street similarity drops to 0.875, just under 0.88: that account is never flagged and the model never sees it. The other 4 accounts of this operation were linked in every run (the model read 'Bldg 1, Ste 4-B' and 'No. 4-B' correctly from what was typed), so the operation gets 2 allocations instead of 1, not 5. Planned fix: accept glued unit tokens ('STE4B', 'APT2') and spell-check street suffixes before comparing."
+      }
+    ]
+  },
+  "heldOutAfterFix": {
+    "dataset": {
+      "sha256": "01348dbb561db1c18da050a71bc0f719b19ea24ae0eee7dded87480b2c7017e7",
+      "entries": 162,
+      "groups": 127,
+      "kinds": {
+        "household": 22,
+        "reshipper_network": 29,
+        "fan": 60,
+        "neighbor": 31,
+        "namesake": 20
+      },
+      "generator": "syntheticCrowd(seed 20261101) + LLM red-team template v2 (23 rewrites accepted; half the networks human-paced) + 33 hand-written hard cases",
+      "frozenAt": "2026-11-01T02:12:44.744Z",
+      "seed": 20261101,
+      "redTeamTemplate": "v2",
+      "origins": {
+        "generated": 104,
+        "redteam": 25,
+        "handwritten": 33
+      },
+      "frozenSystemSha": "4a19fe329f53ae17ce159f2d1f9fef50a392263aaa0b4b5aa054446bd8dae1e5",
+      "frozenSystemCommit": "bc72dd4",
+      "protocol": "Generated after the system files (normalize.ts, rules.ts, resolve.ts incl. the prompt) were frozen at frozenSystemSha. Not used for tuning."
+    },
+    "truthPairs": 70,
+    "uncertainPairs": 34,
+    "totalPairs": 13041,
+    "results": [
+      {
+        "id": "exact",
+        "system": "Exact match (raw address / email)",
+        "precision": 1,
+        "recall": 0.08571428571428572,
+        "f1": 0.15789473684210528,
+        "falseMerges": 0,
+        "missedLinks": 64,
+        "recallByKind": {
+          "reshipper_network": 0,
+          "household": 0.42857142857142855
+        },
+        "falseMergeKinds": {},
+        "ms": 3,
+        "llmCalls": 0
+      },
+      {
+        "id": "rules",
+        "system": "Normalisation + rules (no AI)",
+        "precision": 0.8333333333333334,
+        "recall": 0.7857142857142857,
+        "f1": 0.8088235294117647,
+        "falseMerges": 11,
+        "missedLinks": 15,
+        "recallByKind": {
+          "reshipper_network": 0.7321428571428571,
+          "household": 1
+        },
+        "falseMergeKinds": {
+          "reshipper_network": 8,
+          "namesake": 9,
+          "neighbor": 5
+        },
+        "ms": 234,
+        "llmCalls": 0
+      },
+      {
+        "id": "paylet",
+        "system": "Paylet: rules + AI adjudication (MiMo-V2.6-Pro)",
+        "precision": 0.9525904203323559,
+        "recall": 0.861904761904762,
+        "f1": 0.9047831253713606,
+        "falseMerges": 3,
+        "missedLinks": 9.666666666666666,
+        "llmCalls": 23.666666666666668,
+        "ms": 87045,
+        "recallByKind": {
+          "reshipper_network": 0.8035714285714286,
+          "household": 1
+        },
+        "falseMergeKinds": {
+          "neighbor": 3,
+          "reshipper_network": 3
+        },
+        "runs": [
+          {
+            "run": 1,
+            "precision": 0.9516129032258065,
+            "recall": 0.8428571428571429,
+            "f1": 0.8939393939393939,
+            "falseMerges": 3,
+            "missedLinks": 11,
+            "llmCalls": 24,
+            "ms": 114416,
+            "keptApart": 17,
+            "degraded": "The AI reviewer could not answer for 1 of 23 groups: 4 uncertain pairs were not reviewed and stay unmerged. Rule-certain clusters are unaffected."
+          },
+          {
+            "run": 2,
+            "precision": 0.9516129032258065,
+            "recall": 0.8428571428571429,
+            "f1": 0.8939393939393939,
+            "falseMerges": 3,
+            "missedLinks": 11,
+            "llmCalls": 24,
+            "ms": 88958,
+            "keptApart": 17,
+            "degraded": "The AI reviewer could not answer for 1 of 23 groups: 4 uncertain pairs were not reviewed and stay unmerged. Rule-certain clusters are unaffected."
+          },
+          {
+            "run": 3,
+            "precision": 0.9545454545454546,
+            "recall": 0.9,
+            "f1": 0.9264705882352942,
+            "falseMerges": 3,
+            "missedLinks": 7,
+            "llmCalls": 23,
+            "ms": 57761,
+            "keptApart": 17,
+            "degraded": null
+          }
+        ],
+        "stats": {
+          "precision": {
+            "mean": 0.9525904203323559,
+            "sd": 0.0016931092938112177,
+            "min": 0.9516129032258065,
+            "max": 0.9545454545454546
+          },
+          "recall": {
+            "mean": 0.861904761904762,
+            "sd": 0.03299144395369291,
+            "min": 0.8428571428571429,
+            "max": 0.9
+          },
+          "f1": {
+            "mean": 0.9047831253713606,
+            "sd": 0.01878189378379802,
+            "min": 0.8939393939393939,
+            "max": 0.9264705882352942
+          },
+          "falseMerges": {
+            "mean": 3,
+            "sd": 0,
+            "min": 3,
+            "max": 3
+          },
+          "missedLinks": {
+            "mean": 9.666666666666666,
+            "sd": 2.3094010767585034,
+            "min": 7,
+            "max": 11
+          }
+        },
+        "worstRun": 1
+      }
+    ],
+    "recordedAt": "2026-11-01T02:24:43.540Z",
+    "systemSha": "968e492b0bd28fc4c9173cec0a03c6f95a23bcf359699c7039862f323309569c",
+    "changes": [
+      "Adjudication token budget raised from 2,000 to 6,000 (llmAdjudicator in resolve.ts). MiMo is a reasoning model and reasoning tokens count against max_tokens: on two hard groups it spent the whole budget thinking and returned an empty answer (finish_reason \"length\").",
+      "Nothing else changed: same rules, same prompt, same decision logic, same held-out file. Not blind: we saw the held-out failures before making this change."
+    ],
+    "failures": [
+      {
+        "kind": "false_merge",
+        "dataset": "heldOutAfterFix",
+        "key": "merge:hw-n11|hw-p2",
+        "runs": "3/3 runs",
+        "runCount": 3,
+        "decidedBy": "rules",
+        "pairsAffected": 3,
+        "entries": [
+          {
+            "id": "hw-p2-c",
+            "name": "Andrade Trading LLC",
+            "address": "8240 N.W. 52nd Ter., Suite 410 PMB 88213, Doral, FL 33166",
+            "source": "agent",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          },
+          {
+            "id": "hw-p2-d",
+            "name": "Sofia Mendes",
+            "address": "8240 NW 52 Ter, STE 410-88213, Doral, FL 33166",
+            "source": "human",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          },
+          {
+            "id": "hw-p2-b",
+            "name": "L. Andrade",
+            "address": "8240 NW 52nd Terrace #410-88213, Doral, FL 33166-4011",
+            "source": "agent",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          },
+          {
+            "id": "hw-p2-a",
+            "name": "Luis Andrade",
+            "address": "8240 NW 52nd Ter, Ste 410 Box 88213, Doral, FL 33166",
+            "source": "agent",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          },
+          {
+            "id": "hw-n11",
+            "name": "Valentina Rojas",
+            "address": "8240 NW 52nd Ter, Ste 410 Box 90577, Doral, FL 33166",
+            "source": "human",
+            "origin": "handwritten",
+            "group": "hw-n11",
+            "note": "International fan using the same Miami forwarder suite as a reseller, but with her own box number"
+          }
+        ],
+        "detail": "hw-n11 ↔ hw-p2-c linked by the deterministic rules (score 0.9: same street and unit 410 in 33166); rule-certain links never reach the model. hw-n11 ↔ hw-p2-a linked by the deterministic rules (score 0.9: same street and unit 410 in 33166); rule-certain links never reach the model.",
+        "analysis": "Unchanged by the fix: same normaliser root cause as in the blind runs (the forwarder box number is dropped, so a different customer at the same suite is linked with certainty before the model sees it). It now costs 3 pairs in every run instead of 2-3: the model correctly links one more account of the reseller, and the transitive closure pulls the wrongly linked fan into one more pair."
+      },
+      {
+        "kind": "missed_link",
+        "dataset": "heldOutAfterFix",
+        "key": "group:ho-net0",
+        "runs": "3/3 runs",
+        "runCount": 3,
+        "decidedBy": "rules",
+        "pairsAffected": 4,
+        "entries": [
+          {
+            "id": "ho-net0-3",
+            "name": "lucia ramirez",
+            "address": "1200 harbor blvd, pmb 4b, Boise, ID 83702",
+            "source": "agent",
+            "origin": "redteam",
+            "group": "ho-net0"
+          },
+          {
+            "id": "ho-net0-1",
+            "name": "Tobias A. Ramirez",
+            "address": "1200 Harbor Blvd Ste 4B, c/o Ramirez Family, Boise, ID 83702",
+            "source": "agent",
+            "origin": "redteam",
+            "group": "ho-net0"
+          },
+          {
+            "id": "ho-net0-2",
+            "name": "T. Ramirez",
+            "address": "1200 Harbor Boulevard, ShipBridge LLC, Attn: T. Ramirez, No. 4-B, Boise, ID 83702",
+            "source": "agent",
+            "origin": "redteam",
+            "group": "ho-net0"
+          },
+          {
+            "id": "ho-net0-0",
+            "name": "TOBIAS RAMIREZ JR",
+            "address": "1200 HARBOR BLVD, Bldg 1, Ste 4-B, Boise, ID 83702",
+            "source": "agent",
+            "origin": "redteam",
+            "group": "ho-net0"
+          },
+          {
+            "id": "ho-net0-4",
+            "name": "Lucy Tanaka",
+            "address": "1200 Harbor Bvld, STE4B, Boise, ID 83702",
+            "source": "agent",
+            "origin": "redteam",
+            "group": "ho-net0"
+          }
+        ],
+        "detail": "Run 1: 4 true pairs missed: 4 were never flagged by the rules (score below the review threshold), so the model never saw them.",
+        "analysis": "Unchanged by the fix: 'STE4B' (no space) and the 'Bvld' typo keep one account below the review threshold, so the model never sees it; the other 4 accounts are linked in every run."
+      },
+      {
+        "kind": "missed_link",
+        "dataset": "heldOutAfterFix",
+        "key": "group:hw-p2",
+        "runs": "3/3 runs",
+        "runCount": 3,
+        "decidedBy": "rules",
+        "pairsAffected": 3,
+        "entries": [
+          {
+            "id": "hw-p2-c",
+            "name": "Andrade Trading LLC",
+            "address": "8240 N.W. 52nd Ter., Suite 410 PMB 88213, Doral, FL 33166",
+            "source": "agent",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          },
+          {
+            "id": "hw-p2-d",
+            "name": "Sofia Mendes",
+            "address": "8240 NW 52 Ter, STE 410-88213, Doral, FL 33166",
+            "source": "human",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          },
+          {
+            "id": "hw-p2-b",
+            "name": "L. Andrade",
+            "address": "8240 NW 52nd Terrace #410-88213, Doral, FL 33166-4011",
+            "source": "agent",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          },
+          {
+            "id": "hw-p2-a",
+            "name": "Luis Andrade",
+            "address": "8240 NW 52nd Ter, Ste 410 Box 88213, Doral, FL 33166",
+            "source": "agent",
+            "origin": "handwritten",
+            "group": "hw-p2",
+            "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+          }
+        ],
+        "detail": "Run 1: 3 true pairs missed: 3 were never flagged by the rules (score below the review threshold), so the model never saw them.",
+        "analysis": "Unchanged by the fix: same normaliser root cause as in the blind runs (suite and box glued into one unit, and '52 Ter' vs '52nd Ter' just under the street-similarity threshold). With the larger budget the model answered for this group in every run and linked 3 of the 4 accounts."
+      },
+      {
+        "kind": "missed_link",
+        "dataset": "heldOutAfterFix",
+        "key": "group:ho-net3",
+        "runs": "2/3 runs",
+        "runCount": 2,
+        "decidedBy": "ai_unavailable",
+        "pairsAffected": 4,
+        "entries": [
+          {
+            "id": "ho-net3-4",
+            "name": "Sam Tanaka",
+            "address": "1311 Airport Rd, Bldg 1, No. 7B, Spokane, WA 99201",
+            "source": "human",
+            "origin": "redteam",
+            "group": "ho-net3"
+          },
+          {
+            "id": "ho-net3-2",
+            "name": "Omar T. Nguyen",
+            "address": "1311 Airport Road, Apt 7B, Spokane, WA 99201",
+            "source": "human",
+            "origin": "redteam",
+            "group": "ho-net3"
+          },
+          {
+            "id": "ho-net3-3",
+            "name": "Tobias Nguyen",
+            "address": "1311 Airport Rd, ParcelHop LLC, Unit 7-B, Spokane, WA 99201",
+            "source": "human",
+            "origin": "redteam",
+            "group": "ho-net3"
+          },
+          {
+            "id": "ho-net3-0",
+            "name": "Ozzie Nguyen",
+            "address": "1311 Airport Rd #7B, Attn: Omar Ngyuen, Spokane, WA 99201",
+            "source": "human",
+            "origin": "redteam",
+            "group": "ho-net3"
+          },
+          {
+            "id": "ho-net3-1",
+            "name": "NGUYEN, OMAR",
+            "address": "1311 AIRPORT RD STE 7B, SPOKANE WA 99201-4417 — attn: O. N., Spokane, WA 99201",
+            "source": "human",
+            "origin": "redteam",
+            "group": "ho-net3"
+          }
+        ],
+        "detail": "Run 1: 4 true pairs missed: 4 were in a group the model never answered (empty or truncated answer on both attempts), so they stayed unmerged.",
+        "analysis": "The budget fix was not enough for this group. In 2 of 3 runs MiMo still reasoned past 6,000 tokens on both attempts (calls of 19-35 s) and returned nothing, so these pairs stayed unmerged (fail-safe, flagged as degraded); in run 3 it answered and linked all 5 accounts. Next fix, not applied here: when an answer comes back empty, re-ask for that group in smaller pieces, and cap reasoning effort where the provider supports it."
+      }
+    ]
+  },
+  "headline": {
+    "falseMergesRulesDev": 13,
+    "falseMergesPayletDev": {
+      "mean": 0,
+      "sd": 0,
+      "min": 0,
+      "max": 0
+    },
+    "heldOut": {
+      "precision": {
+        "mean": 0.9564425004556224,
+        "sd": 0.008365107782135055,
+        "min": 0.9516129032258065,
+        "max": 0.9661016949152542
+      },
+      "recall": {
+        "mean": 0.8333333333333334,
+        "sd": 0.016495721976846456,
+        "min": 0.8142857142857143,
+        "max": 0.8428571428571429
+      },
+      "f1": {
+        "mean": 0.8905332393704487,
+        "sd": 0.0058996327718459874,
+        "min": 0.8837209302325583,
+        "max": 0.8939393939393939
+      },
+      "falseMerges": {
+        "mean": 2.6666666666666665,
+        "sd": 0.5773502691896258,
+        "min": 2,
+        "max": 3
+      },
+      "missedLinks": {
+        "mean": 11.666666666666666,
+        "sd": 1.1547005383792517,
+        "min": 11,
+        "max": 13
+      },
+      "falseMergesRules": 11,
+      "failures": 4,
+      "failuresExplained": 4
+    },
+    "heldOutAfterFix": {
+      "precision": {
+        "mean": 0.9525904203323559,
+        "sd": 0.0016931092938112177,
+        "min": 0.9516129032258065,
+        "max": 0.9545454545454546
+      },
+      "recall": {
+        "mean": 0.861904761904762,
+        "sd": 0.03299144395369291,
+        "min": 0.8428571428571429,
+        "max": 0.9
+      },
+      "f1": {
+        "mean": 0.9047831253713606,
+        "sd": 0.01878189378379802,
+        "min": 0.8939393939393939,
+        "max": 0.9264705882352942
+      },
+      "falseMerges": {
+        "mean": 3,
+        "sd": 0,
+        "min": 3,
+        "max": 3
+      },
+      "missedLinks": {
+        "mean": 9.666666666666666,
+        "sd": 2.3094010767585034,
+        "min": 7,
+        "max": 11
+      },
+      "falseMergesRules": 11,
+      "failures": 4,
+      "failuresExplained": 4
+    }
+  },
+  "examples": [
+    {
+      "type": "linked",
+      "dataset": "heldOut",
+      "title": "5 PayPal accounts, one reseller operation",
+      "entries": [
+        {
+          "id": "ho-net4-1",
+          "name": "Okafor, Jonah Chukwuemeka",
+          "address": "1348 Logistics Parkway, PMB 8B, Tucson, AZ 85701",
+          "source": "agent",
+          "origin": "redteam",
+          "group": "ho-net4"
+        },
+        {
+          "id": "ho-net4-2",
+          "name": "Jojo Okafor",
+          "address": "1348 Logistics Pkway #8B, Tucson, AZ 85701",
+          "source": "agent",
+          "origin": "redteam",
+          "group": "ho-net4"
+        },
+        {
+          "id": "ho-net4-4",
+          "name": "Priya R. Walsh",
+          "address": "1348 logistcs pkwy ste 8b, Tucson, AZ 85701",
+          "source": "agent",
+          "origin": "redteam",
+          "group": "ho-net4"
+        },
+        {
+          "id": "ho-net4-3",
+          "name": "Arjun Okafor",
+          "address": "Bldg 1, 1348 Logistics Pkwy, Ste 8B, c/o ShipBridge, Tucson, AZ 85701",
+          "source": "agent",
+          "origin": "redteam",
+          "group": "ho-net4"
+        },
+        {
+          "id": "ho-net4-0",
+          "name": "Jonah Okafor",
+          "address": "1348 NORTH LOGISTICS PKWY, STE8B, Tucson, AZ 85701",
+          "source": "agent",
+          "origin": "redteam",
+          "group": "ho-net4"
+        }
+      ],
+      "decidedBy": "ai",
+      "verdict": "Linked as one operator",
+      "confidence": 0.92,
+      "reason": "All five are agent entries at one freight-forwarder suite (PMB 8B, c/o ShipBridge) — one reshipper operation.",
+      "evidence": [
+        {
+          "field": "address",
+          "detail": "all at 1348 Logistics Pkwy, Tucson 85701, suite 8B (PMB/Ste variants)"
+        },
+        {
+          "field": "email",
+          "detail": "ho-net4-1 and ho-net4-0 share the same mailbox"
+        },
+        {
+          "field": "name",
+          "detail": "Okafor surname repeats across four entries at the same suite"
+        },
+        {
+          "field": "care_of",
+          "detail": "ho-net4-3 routes c/o ShipBridge, a reshipper at the shared suite"
+        },
+        {
+          "field": "timing",
+          "detail": "five agent entries within 15 seconds"
+        },
+        {
+          "field": "entered_via",
+          "detail": "all five are agent entries"
+        }
+      ],
+      "truth": "same",
+      "correct": true,
+      "runsObserved": "3/3 runs"
+    },
+    {
+      "type": "kept_apart",
+      "dataset": "heldOut",
+      "title": "Common surname in one building, different apartments (12 vs 21)",
+      "entries": [
+        {
+          "id": "hw-n2-a",
+          "name": "Wei Zhang",
+          "address": "77 Mott St, Apt 12, New York, NY 10013",
+          "source": "human",
+          "origin": "handwritten",
+          "group": "hw-n2-a",
+          "note": "Common surname in one building, different apartments (12 vs 21)"
+        },
+        {
+          "id": "hw-n2-b",
+          "name": "Lin Zhang",
+          "address": "77 Mott Street, #21, New York, NY 10013",
+          "source": "human",
+          "origin": "handwritten",
+          "group": "hw-n2-b",
+          "note": "Common surname in one building, different apartments (12 vs 21)"
+        }
+      ],
+      "decidedBy": "ai",
+      "verdict": "Kept apart",
+      "confidence": 0.85,
+      "reason": "Different apartments (12 vs 21) and different mailboxes; shared surname Zhang is too common to merge.",
+      "truth": "different",
+      "correct": true,
+      "runsObserved": "3/3 runs"
+    },
+    {
+      "type": "failure",
+      "dataset": "heldOut",
+      "title": "False merge (3 pairs)",
+      "entries": [
+        {
+          "id": "hw-p2-c",
+          "name": "Andrade Trading LLC",
+          "address": "8240 N.W. 52nd Ter., Suite 410 PMB 88213, Doral, FL 33166",
+          "source": "agent",
+          "origin": "handwritten",
+          "group": "hw-p2",
+          "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+        },
+        {
+          "id": "hw-p2-d",
+          "name": "Sofia Mendes",
+          "address": "8240 NW 52 Ter, STE 410-88213, Doral, FL 33166",
+          "source": "human",
+          "origin": "handwritten",
+          "group": "hw-p2",
+          "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+        },
+        {
+          "id": "hw-p2-b",
+          "name": "L. Andrade",
+          "address": "8240 NW 52nd Terrace #410-88213, Doral, FL 33166-4011",
+          "source": "agent",
+          "origin": "handwritten",
+          "group": "hw-p2",
+          "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+        },
+        {
+          "id": "hw-p2-a",
+          "name": "Luis Andrade",
+          "address": "8240 NW 52nd Ter, Ste 410 Box 88213, Doral, FL 33166",
+          "source": "agent",
+          "origin": "handwritten",
+          "group": "hw-p2",
+          "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+        },
+        {
+          "id": "hw-n11",
+          "name": "Valentina Rojas",
+          "address": "8240 NW 52nd Ter, Ste 410 Box 90577, Doral, FL 33166",
+          "source": "human",
+          "origin": "handwritten",
+          "group": "hw-n11",
+          "note": "International fan using the same Miami forwarder suite as a reseller, but with her own box number"
+        }
+      ],
+      "decidedBy": "rules",
+      "verdict": "Merged, but they are different people",
+      "confidence": null,
+      "reason": "hw-n11 ↔ hw-p2-c linked by the deterministic rules (score 0.9: same street and unit 410 in 33166); rule-certain links never reach the model. hw-n11 ↔ hw-p2-a linked by the deterministic rules (score 0.9: same street and unit 410 in 33166); rule-certain links never reach the model.",
+      "truth": "different",
+      "correct": false,
+      "runsObserved": "3/3 runs",
+      "analysis": "Freight forwarders give every customer the same street and suite and tell them apart by a box/PMB number. Our normaliser keeps only the first unit token ('Ste 410') and drops the box (88213 vs 90577), so a legitimate international fan who uses the same Miami forwarder as a reseller is linked to the reseller with certainty (score 0.9), and rule-certain links never reach the model. In production this is still only a suggestion that the seller must confirm and the fan can appeal, but it is the error we care about most. Planned fix: parse PMB/Box/'#suite-box' as a sub-unit and make 'same suite, different box' uncertain (reviewed by the model) instead of certain. Deliberately not applied before publishing, so the held-out number stays blind."
+    },
+    {
+      "type": "failure",
+      "dataset": "heldOut",
+      "title": "Missed link (5 pairs)",
+      "entries": [
+        {
+          "id": "hw-p2-c",
+          "name": "Andrade Trading LLC",
+          "address": "8240 N.W. 52nd Ter., Suite 410 PMB 88213, Doral, FL 33166",
+          "source": "agent",
+          "origin": "handwritten",
+          "group": "hw-p2",
+          "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+        },
+        {
+          "id": "hw-p2-d",
+          "name": "Sofia Mendes",
+          "address": "8240 NW 52 Ter, STE 410-88213, Doral, FL 33166",
+          "source": "human",
+          "origin": "handwritten",
+          "group": "hw-p2",
+          "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+        },
+        {
+          "id": "hw-p2-b",
+          "name": "L. Andrade",
+          "address": "8240 NW 52nd Terrace #410-88213, Doral, FL 33166-4011",
+          "source": "agent",
+          "origin": "handwritten",
+          "group": "hw-p2",
+          "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+        },
+        {
+          "id": "hw-p2-a",
+          "name": "Luis Andrade",
+          "address": "8240 NW 52nd Ter, Ste 410 Box 88213, Doral, FL 33166",
+          "source": "agent",
+          "origin": "handwritten",
+          "group": "hw-p2",
+          "note": "Reseller operation behind one forwarder box (Ste 410, box 88213), four accounts"
+        }
+      ],
+      "decidedBy": "rules",
+      "verdict": "Left apart, but they are the same household or operation",
+      "confidence": null,
+      "reason": "Run 1: 5 true pairs missed: 2 were in a group the model never answered (empty or truncated answer on both attempts), so they stayed unmerged; 3 were never flagged by the rules (score below the review threshold), so the model never saw them.",
+      "truth": "same",
+      "correct": false,
+      "runsObserved": "3/3 runs",
+      "analysis": "Same root cause as the false merge, seen from the other side: '#410-88213' and 'STE 410-88213' normalise to one unit '41088213' instead of suite 410 + box 88213, and '8240 NW 52 Ter' vs '52nd Ter' scores 0.875 on street similarity, just under our 0.88 threshold, so Sofia Mendes's account is never flagged. The model linked 3 of the 4 accounts in runs 2 and 3; in run 1 it returned an empty answer for this group (token budget, see ho-net3), which left only the 2 rule-certain links."
+    },
+    {
+      "type": "failure",
+      "dataset": "heldOut",
+      "title": "Missed link (4 pairs)",
+      "entries": [
+        {
+          "id": "ho-net3-4",
+          "name": "Sam Tanaka",
+          "address": "1311 Airport Rd, Bldg 1, No. 7B, Spokane, WA 99201",
+          "source": "human",
+          "origin": "redteam",
+          "group": "ho-net3"
+        },
+        {
+          "id": "ho-net3-2",
+          "name": "Omar T. Nguyen",
+          "address": "1311 Airport Road, Apt 7B, Spokane, WA 99201",
+          "source": "human",
+          "origin": "redteam",
+          "group": "ho-net3"
+        },
+        {
+          "id": "ho-net3-3",
+          "name": "Tobias Nguyen",
+          "address": "1311 Airport Rd, ParcelHop LLC, Unit 7-B, Spokane, WA 99201",
+          "source": "human",
+          "origin": "redteam",
+          "group": "ho-net3"
+        },
+        {
+          "id": "ho-net3-0",
+          "name": "Ozzie Nguyen",
+          "address": "1311 Airport Rd #7B, Attn: Omar Ngyuen, Spokane, WA 99201",
+          "source": "human",
+          "origin": "redteam",
+          "group": "ho-net3"
+        },
+        {
+          "id": "ho-net3-1",
+          "name": "NGUYEN, OMAR",
+          "address": "1311 AIRPORT RD STE 7B, SPOKANE WA 99201-4417 — attn: O. N., Spokane, WA 99201",
+          "source": "human",
+          "origin": "redteam",
+          "group": "ho-net3"
+        }
+      ],
+      "decidedBy": "ai_unavailable",
+      "verdict": "Left apart, but they are the same household or operation",
+      "confidence": null,
+      "reason": "Run 1: 4 true pairs missed: 4 were in a group the model never answered (empty or truncated answer on both attempts), so they stayed unmerged.",
+      "truth": "same",
+      "correct": false,
+      "runsObserved": "3/3 runs",
+      "analysis": "Not a judgement error. In all 3 runs MiMo returned an empty answer, twice, for this group of 5. MiMo V2.6 Pro is a reasoning model and its reasoning tokens count against max_tokens: with our 2,000-token cap it spent the whole budget thinking (reproduced with a direct call: finish_reason 'length', 1,999 reasoning tokens, no content; with 8,000 it answers). Paylet failed safe: the pairs stayed unmerged and the run was flagged as degraded. The rules alone linked 4 of the 5 accounts; the fifth ('Bldg 1, No. 7B', where the normaliser takes 'Bldg 1' as the unit) needed the model. Fix: the adjudication budget is now 6,000 tokens (see the after-fix section)."
+    },
+    {
+      "type": "failure",
+      "dataset": "heldOut",
+      "title": "Missed link (4 pairs)",
+      "entries": [
+        {
+          "id": "ho-net0-3",
+          "name": "lucia ramirez",
+          "address": "1200 harbor blvd, pmb 4b, Boise, ID 83702",
+          "source": "agent",
+          "origin": "redteam",
+          "group": "ho-net0"
+        },
+        {
+          "id": "ho-net0-1",
+          "name": "Tobias A. Ramirez",
+          "address": "1200 Harbor Blvd Ste 4B, c/o Ramirez Family, Boise, ID 83702",
+          "source": "agent",
+          "origin": "redteam",
+          "group": "ho-net0"
+        },
+        {
+          "id": "ho-net0-2",
+          "name": "T. Ramirez",
+          "address": "1200 Harbor Boulevard, ShipBridge LLC, Attn: T. Ramirez, No. 4-B, Boise, ID 83702",
+          "source": "agent",
+          "origin": "redteam",
+          "group": "ho-net0"
+        },
+        {
+          "id": "ho-net0-0",
+          "name": "TOBIAS RAMIREZ JR",
+          "address": "1200 HARBOR BLVD, Bldg 1, Ste 4-B, Boise, ID 83702",
+          "source": "agent",
+          "origin": "redteam",
+          "group": "ho-net0"
+        },
+        {
+          "id": "ho-net0-4",
+          "name": "Lucy Tanaka",
+          "address": "1200 Harbor Bvld, STE4B, Boise, ID 83702",
+          "source": "agent",
+          "origin": "redteam",
+          "group": "ho-net0"
+        }
+      ],
+      "decidedBy": "rules",
+      "verdict": "Left apart, but they are the same household or operation",
+      "confidence": null,
+      "reason": "Run 1: 4 true pairs missed: 4 were never flagged by the rules (score below the review threshold), so the model never saw them.",
+      "truth": "same",
+      "correct": false,
+      "runsObserved": "3/3 runs",
+      "analysis": "The red-team wrote 'Ste 4B' as 'STE4B' (no space) and misspelled Boulevard as 'Bvld'. Our unit pattern needs a word boundary after 'STE', so the unit becomes 'STE4B', and street similarity drops to 0.875, just under 0.88: that account is never flagged and the model never sees it. The other 4 accounts of this operation were linked in every run (the model read 'Bldg 1, Ste 4-B' and 'No. 4-B' correctly from what was typed), so the operation gets 2 allocations instead of 1, not 5. Planned fix: accept glued unit tokens ('STE4B', 'APT2') and spell-check street suffixes before comparing."
     }
   ],
   "notes": [
-    "Ground truth: 123 account pairs that belong to the same household or reseller operation.",
-    "Only 52 fuzzy pairs (out of 14196) were sent to the model; everything else is decided by deterministic rules.",
-    "Hard negatives include neighbours in different apartments of one building and identical common names in different cities.",
+    "Dev set: 123 true pairs; only 52 fuzzy pairs (of 14196) go to the model, everything else is decided by deterministic rules.",
+    "Held-out set (blind): generated after the rules and prompt were frozen (other seed, other red-team template, hand-written neighbours, namesakes and forwarder customers). 70 true pairs, 34 fuzzy pairs sent to the model.",
+    "After-fix section: the same held-out file re-run after one labelled change (Adjudication token budget raised from 2,000 to 6,000 (llmAdjudicator in resolve). Not blind.",
+    "Paylet numbers are the mean of 3 independent model runs (± sample standard deviation); the worst run is published too.",
+    "Every model answer is recorded in evals/cassette.json: `pnpm evals --replay` reproduces these numbers offline, without a key.",
     "In production nothing is auto-merged: these suggestions go to the seller, and fans can appeal."
   ]
 }
