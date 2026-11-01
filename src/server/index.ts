@@ -364,6 +364,9 @@ app.post("/webhooks/paypal", async (c) => {
   return c.json(r.body, r.status);
 });
 
+// Unknown API routes are JSON 404s (never the SPA shell), so clients can degrade gracefully.
+app.all("/api/*", (c) => c.json({ error: "not_found" }, 404));
+
 // ---------------------------------------------------------------- SPA
 app.use("/assets/*", serveStatic({ root: "./dist" }));
 app.get("*", serveStatic({ root: "./dist", rewriteRequestPath: (p) => (/\.[a-z0-9]+$/i.test(p) ? p : "/index.html") }));
