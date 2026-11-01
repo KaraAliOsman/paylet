@@ -24,7 +24,10 @@ export function AgentPage() {
   });
   const [busy, setBusy] = useState(false);
   const end = useRef<HTMLDivElement>(null);
-  useEffect(() => end.current?.scrollIntoView({ behavior: "smooth" }), [turns.length]);
+  useEffect(() => {
+    // braces matter: newer browsers return a Promise from scrollIntoView, which React would treat as a cleanup
+    end.current?.scrollIntoView({ behavior: "smooth" });
+  }, [turns.length]);
 
   const send = async () => {
     if (!input.trim() || busy) return;
