@@ -19,7 +19,7 @@ shipping); everyone else's hold is **voided**. If a winner's payment fails, the 
 already exists, gets the unit.
 
 > **Live demo:** https://paylet.onrender.com · **Judges:** [`/judge`](https://paylet.onrender.com/judge), a guided 2-minute run ("try to scalp us")
-> **Finished real run, no login needed:** {{PROOF_DROP_URL}} · **Video:** see the Devpost submission
+> **Finished real run, no login needed:** https://paylet.onrender.com/d/ember-glaze-mug-2710 · **Video:** see the Devpost submission
 > PayPal **sandbox only**: no real money moves. The demo runs on a free instance: the first request after it sleeps takes about a minute.
 
 ![Paylet seller console: AI-adjudicated reseller network, confirmed by the seller, then settled](docs/img/settled.png)
@@ -150,8 +150,8 @@ sandbox buyer **inside PayPal's own window**, and every hold, capture and void i
 
 - [`scripts/paypal-approve.ts`](scripts/paypal-approve.ts) is a reusable recipe for driving the PayPal sandbox approval page
   with Playwright (login, "already logged in", guest-to-login switch, review page), in English or Spanish.
-- No login needed to see real money: the **proof drop** ({{PROOF_DROP_URL}}) is a finished run with real sandbox money:
-  {{PROOF_SUMMARY}}. Its **Ask PayPal now** button re-checks every authorization with PayPal live.
+- No login needed to see real money: the **proof drop** (https://paylet.onrender.com/d/ember-glaze-mug-2710) is a finished run with real sandbox money:
+  14 real PayPal orders · 13 agent requests → 0 holds without a person · 1 same-account duplicate blocked · partial capture $44.50 ($3.50 of the hold released) · tracking added in PayPal · $0.00 charged to anyone who lost. Its **Ask PayPal now** button re-checks every authorization with PayPal live.
 - The daily [`e2e-prod`](.github/workflows/e2e-prod.yml) job runs the judge flow against production (real sandbox orders
   from the scalper agents, AI review, draw, browser verification) and keeps the Playwright report.
 
@@ -218,10 +218,10 @@ editions, pre-orders. The maker is the hero: no forms, no invoices, no chasing w
   slightly change the layout of your address each time"* ([Sole Retriever](https://soleretriever.com/news/end-raffle-review)).
   Paylet answers both moves: one PayPal account is one entry, and address variants are grouped for the seller.
 
-**Measured on the proof drop (from its Drop report):** {{PROOF_UNITS}} units → {{PROOF_DISTINCT_PAYERS}} different PayPal
-payers · {{PROOF_HOLDS_VOIDED}} holds voided, **$0 charged to anyone who lost** · {{PROOF_FAILED_PAYMENTS}} failed payment
-recovered from the waitlist in {{PROOF_RECOVERY_SECONDS}} s · {{PROOF_AGENT_REQUESTS}} agent requests → **0 holds without
-a person**.
+**Measured on the proof drop (from its Drop report):** 1 unit → 1 PayPal payer, $44.50 captured and $3.50 of the
+hold released · 13 agent requests → **0 holds without a person** · 1 same-account duplicate blocked · **$0 charged to
+anyone who lost**. The failed-payment path (waitlist #1 takes the unit) runs on any judge drop with the *Negative test*
+switch, and against real PayPal in `e2e/real-paypal.spec.ts`.
 
 ## Is this a raffle?
 No. Entering is free and nobody pays for a chance. Winners buy the item at its list price (an allocation ballot, like
@@ -274,7 +274,7 @@ namesakes in different cities). Pairwise metrics over the transitive closure. De
 | Exact match | 100.0% | 12.2% | 21.7% | 0 |
 | Normalization + rules (no AI) | 90.4% | 100.0% | 95.0% | **13** |
 | **Rules + MiMo adjudication**, development set | 100.0% | 100.0% | 100.0% | **0** |
-| **Rules + MiMo adjudication**, held-out set ({{EVAL_HELDOUT_RUNS}} runs, mean ± sd) | {{EVAL_HELDOUT_PRECISION}} | {{EVAL_HELDOUT_RECALL}} | {{EVAL_HELDOUT_F1}} | {{EVAL_HELDOUT_FALSE_MERGES}} |
+| **Rules + MiMo adjudication**, held-out set (3 runs, mean ± sd) | 95.6% ± 0.8 | 83.3% ± 1.6 | 89.1% ± 0.6 | 2.7 (worst run 3; rules alone 11) |
 
 Honest caveats: both sets are synthetic and built by us (generators published); the held-out set was generated after
 rules and prompt were frozen. Rules alone are already strong: the AI's job is to remove the false merges that would cost
