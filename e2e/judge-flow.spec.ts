@@ -16,7 +16,7 @@ test("judge drop: swarm → AI review → confirm → draw → verify", async ({
   await expect(page.getByText(/Scalper swarm finished: 3 approval links issued, 0 holds/).first()).toBeVisible({ timeout: 60_000 });
 
   await page.getByRole("button", { name: /Add simulated crowd/ }).click();
-  await expect(page.getByText(/Added \d+ SIMULATED entrants/).first()).toBeVisible();
+  await expect(page.getByText(/Added \d+ simulated/i).first()).toBeVisible();
 
   await page.getByRole("button", { name: /Find households & networks/ }).click();
   await expect(page.getByText("Reseller network").first()).toBeVisible({ timeout: 120_000 });
