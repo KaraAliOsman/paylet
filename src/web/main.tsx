@@ -21,7 +21,7 @@ function App() {
   else if (seg[0] === "verify" && seg[1]) page = <VerifyPage slug={seg[1]} />;
   else if (seg[0] === "me" && seg[1]) page = <MePage entryId={seg[1]} />;
   else if (seg[0] === "return") page = <ReturnPage entryId={query.get("entry") ?? ""} cancelled={query.get("cancelled") === "1"} />;
-  else if (seg[0] === "agent" && seg.length === 1) page = <AgentPage />;
+  else if (seg[0] === "agent" && seg.length === 1) page = <AgentPage key={query.get("drop") ?? ""} />;
   else if (seg[0] === "evals" && seg.length === 1) page = <EvalsPage />;
   else if (seg[0] === "judge" && seg.length === 1) page = <JudgePage />;
   else if (seg[0] === "how" && seg.length === 1) page = <HowPage />;
