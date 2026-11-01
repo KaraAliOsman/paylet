@@ -18,7 +18,7 @@ function App() {
   let page;
   if (seg.length === 0) page = <Home />;
   else if (seg[0] === "d" && seg[1]) page = <DropPage slug={seg[1]} />;
-  else if (seg[0] === "seller" && seg[1]) page = <SellerPage slug={seg[1]} sellerKey={query.get("k") ?? ""} />;
+  else if (seg[0] === "seller" && seg[1]) page = <SellerPage key={seg[1]} slug={seg[1]} />;
   else if (seg[0] === "verify" && seg[1]) page = <VerifyPage slug={seg[1]} />;
   else if (seg[0] === "me" && seg[1]) page = <MePage entryId={seg[1]} />;
   else if (seg[0] === "return") page = <ReturnPage entryId={query.get("entry") ?? ""} cancelled={query.get("cancelled") === "1"} />;
