@@ -6,6 +6,7 @@ import { Link } from "../router";
 import { canonicalList, computeDraw, sha256Hex } from "../../shared/draw";
 import { QUICKNET_HASH, quicknetRoundTime, reconcile, type Reconciliation, type ReconciledRow } from "../verify-logic";
 import { NotFound } from "./public";
+import { SettlementSummary } from "../ui";
 
 // ---------------------------------------------------------------- /verify/:slug — re-run the draw in the browser, then ask PayPal
 
@@ -178,6 +179,7 @@ export function VerifyPage({ slug }: { slug: string }) {
         {res && <Results d={d} res={res} />}
       </section>
 
+      <SettlementSummary slug={slug} settled={d.status === "settled"} showVerify={false} />
       <AskPayPal slug={slug} />
     </div>
   );

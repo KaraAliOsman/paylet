@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, clock, friendlyError, realOrders, timeLeft, usd, type Participant, type PublicDrop } from "../api";
 import { Art, Hash, PayPalEntryButton, Stat, StatusPill, Ticker } from "../components";
 import { HoldTimeline, timelineInput } from "../hold-timeline";
-import { BotIcon, ClockIcon, ShieldIcon } from "../icons";
+import { BotIcon, ClockIcon, ShieldIcon, TruckIcon } from "../icons";
+import { SettlementSummary } from "../ui";
 import { approvalExpiresAt } from "../timeline";
 import { Link, navigate } from "../router";
 
@@ -151,6 +152,7 @@ export function DropPage({ slug }: { slug: string }) {
         <Stat label="merged by household/network" value={drop.stats.merged} tone="warn" />
         {drop.stats.simulated > 0 && <Stat label="simulated entrants (no PayPal call)" value={drop.stats.simulated} />}
       </section>
+      <SettlementSummary slug={drop.slug} settled={drop.status === "settled"} showVerify={false} />
       <div className="commit card">
         <Hash label="Seed commitment (SHA-256)" value={drop.seedHash} />
         <span className="muted small">Published before any entry. The seed is revealed at the draw so anyone can re-run it.</span>
@@ -261,6 +263,11 @@ export function MePage({ entryId }: { entryId: string }) {
       </div>
       <div className="row gap wrap">
         <StatusPill status={p.status} />
+        {p.shipping && p.status === "captured" && (
+          <span className="tag tag-real" data-testid="shipped-tag">
+            <TruckIcon size={13} /> Shipped
+          </span>
+        )}
         {p.payerVerified && (
           <span className="tag tag-real">
             <ShieldIcon size={13} /> PayPal-verified payer
