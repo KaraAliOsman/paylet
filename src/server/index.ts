@@ -173,7 +173,7 @@ app.get("/api/ai/usage", (c) => c.json(usageSummary()));
 function seller(c: Context): DropRow {
   const d = mustDrop(c.req.param("slug")!);
   const key = c.req.header("x-seller-key") ?? c.req.query("k");
-  if (!key || key !== d.seller_token) throw new HttpError(403, "seller_key_required");
+  if (!key || (key !== d.seller_token && !(env.SELLER_ADMIN_KEY && key === env.SELLER_ADMIN_KEY))) throw new HttpError(403, "seller_key_required");
   return d;
 }
 

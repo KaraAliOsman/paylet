@@ -12,6 +12,8 @@ const schema = z.object({
   PORT: z.coerce.number().int().default(8790),
   DATA_DIR: z.string().default("./data"),
   HASH_SECRET: z.string().min(8).default("paylet-dev-secret"),
+  /** Optional owner key that opens every seller console (survives restarts on ephemeral hosting). */
+  SELLER_ADMIN_KEY: z.string().min(16).optional(),
 });
 
 export const env = schema.parse(process.env);
