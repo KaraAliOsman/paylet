@@ -1,14 +1,36 @@
 name: ci
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with: { node-version: 24 }
       - run: npm install -g pnpm@12.5.1
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - run: pnpm test
+      # Unit + mocked end-to-end flow, with coverage floors (vitest.config.ts). No PayPal or AI credentials needed.
+      - run: pnpm test:coverage
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f test-results/coverage/coverage-summary.json ]; then
+            node -e "const t=require('./test-results/coverage/coverage-summary.json').total;console.log('### Coverage (src/server + src/shared)\n\n| | % |\n|---|---|\n'+['lines','statements','functions','branches'].map(k=>'| '+k+' | '+t[k].pct+' |').join('\n'))" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage
+          path: test-results/coverage
+          retention-days: 14
       - run: pnpm build
