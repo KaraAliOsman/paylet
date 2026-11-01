@@ -19,6 +19,7 @@ import {
   bridges,
   failedKeys,
   lf,
+  loadSystem,
   pairKey,
   recorder,
   replayer,
@@ -31,11 +32,12 @@ import {
   truthOf,
   type Cassette,
   type CassetteRun,
+  type ErSystem,
   type Metrics,
   type RunOutcome,
   type Stat,
+  type SystemId,
 } from "../src/server/er/evaluate";
-import { allPairs, prepare } from "../src/server/er/rules";
 import { llmAdjudicator } from "../src/server/er/resolve";
 import type { LabeledIdentity } from "../src/server/simulate";
 
@@ -55,16 +57,19 @@ interface Spec {
   name: SectionName;
   file: string;
   metaFile: string;
+  /** System version the section was recorded with (v1 cassette: every section, the after-fix one only differs by its token budget). */
+  system: SystemId;
   /** What changed in the system for this section (labelled variants only). */
   changes?: string[];
 }
 const SPECS: Spec[] = [
-  { name: "dev", file: "evals/dataset.json", metaFile: "evals/dataset.meta.json" },
-  { name: "heldOut", file: "evals/heldout.json", metaFile: "evals/heldout.meta.json" },
+  { name: "dev", file: "evals/dataset.json", metaFile: "evals/dataset.meta.json", system: "frozen" },
+  { name: "heldOut", file: "evals/heldout.json", metaFile: "evals/heldout.meta.json", system: "frozen" },
   {
     name: "heldOutAfterFix",
     file: "evals/heldout.json",
     metaFile: "evals/heldout.meta.json",
+    system: "frozen",
     changes: [
       'Adjudication token budget raised from 2,000 to 6,000 (llmAdjudicator in resolve.ts). MiMo is a reasoning model and reasoning tokens count against max_tokens: on two hard groups it spent the whole budget thinking and returned an empty answer (finish_reason "length").',
       "Nothing else changed: same rules, same prompt, same decision logic, same held-out file. Not blind: we saw the held-out failures before making this change.",
@@ -156,7 +161,8 @@ async function evaluate(spec: Spec) {
   const live = isLive(spec);
   if (live) cassette.datasets[spec.name] = sha;
   const truth = truthOf(data);
-  const base = baselines(data, truth);
+  const system = await loadSystem(spec.system);
+  const base = baselines(data, truth, system);
   const outs: RunOutcome[] = [];
   const runsMeta: CassetteRun[] = [];
   const n = live ? LIVE_RUNS : Math.max(...cassette.runs.filter((r) => r.dataset === spec.name).map((r) => r.run));
@@ -165,14 +171,14 @@ async function evaluate(spec: Spec) {
     let run: CassetteRun;
     if (live) {
       run = { dataset: spec.name, run: i, ms: 0, calls: [], ...(fresh ? {} : { recordedAt: new Date().toISOString(), systemSha: currentSystem }) };
-      o = await runPaylet(data, truth, recorder(llmAdjudicator, run, cassette.requests));
+      o = await runPaylet(data, truth, recorder(llmAdjudicator, run, cassette.requests), system);
       run.ms = o.ms;
       cassette.runs.push(run);
     } else {
       run = cassette.runs.find((r) => r.dataset === spec.name && r.run === i)!;
       if (!run) throw new Error(`cassette has no ${spec.name} run ${i}`);
       const rp = replayer(run);
-      o = await runPaylet(data, truth, rp.adjudicator);
+      o = await runPaylet(data, truth, rp.adjudicator, system);
       o.ms = run.ms;
       misses.push(...rp.misses);
     }
@@ -236,7 +242,7 @@ async function evaluate(spec: Spec) {
       systemSha: recordedSha,
       ...(spec.changes ? { changes: spec.changes } : {}),
     },
-    failures: failures(spec.name, data, outs, runsMeta),
+    failures: failures(spec.name, data, outs, runsMeta, system),
   };
 }
 type Evaluated = Awaited<ReturnType<typeof evaluate>>;
@@ -256,9 +262,9 @@ function entryOf(d: LabeledIdentity): ExampleEntry {
   };
 }
 
-function failures(section: SectionName, data: LabeledIdentity[], outs: RunOutcome[], runsMeta: CassetteRun[]): Failure[] {
+function failures(section: SectionName, data: LabeledIdentity[], outs: RunOutcome[], runsMeta: CassetteRun[], system: ErSystem): Failure[] {
   const byId = new Map(data.map((d) => [d.id, d]));
-  const band = new Map(allPairs(prepare(data)).map((p) => [pairKey(p.a, p.b), p.band]));
+  const band = new Map(system.allPairs(system.prepare(data)).map((p) => [pairKey(p.a, p.b), p.band]));
   const found = new Map<string, Failure & { seen: Set<number> }>();
   const add = (key: string, run: number, make: () => Failure) => {
     const f = found.get(key) ?? { ...make(), seen: new Set<number>() };
@@ -271,7 +277,7 @@ function failures(section: SectionName, data: LabeledIdentity[], outs: RunOutcom
   outs.forEach((o, run) => {
     // false merges, one failure per pair of true groups that got merged
     const byGroups = new Map<string, ReturnType<typeof bridges>>();
-    for (const b of bridges(data, o.result)) {
+    for (const b of bridges(data, o.result, system)) {
       const gk = [byId.get(b.a)!.group, byId.get(b.b)!.group].sort().join("|");
       byGroups.set(gk, [...(byGroups.get(gk) ?? []), b]);
     }
