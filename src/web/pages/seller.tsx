@@ -243,7 +243,7 @@ export function SellerPage({ slug, sellerKey }: { slug: string; sellerKey: strin
             </table>
           </div>
         </section>
-        <Ticker slug={drop.slug} title="Settlement ledger" sellerView />
+        <Ticker slug={drop.slug} title="Settlement ledger" traceDefault fixed />
       </div>
     </div>
   );

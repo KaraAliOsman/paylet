@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { loadCoreSdkScript } from "@paypal/paypal-js/sdk-v6";
-import { api, type EventRow, type Participant } from "./api";
+import { api, type Participant } from "./api";
 import { Link, navigate } from "./router";
 
 declare module "react" {
@@ -115,59 +115,11 @@ export function StatusPill({ status }: { status: string }) {
 
 export function ShortStatus({ status }: { status: string }) {
   const tone = (STATUS[status] ?? ["", "muted"])[1];
-  return <span className={`pill pill-${tone} pill-sm`}>{status.replace("_", " ")}</span>;
+  return <span className={`pill pill-${tone} pill-sm`}>{status.replace(/_/g, " ")}</span>;
 }
 
-// ---------------------------------------------------------------- live ticker
-
-export function Ticker({ slug, title = "Live ledger", sellerView = false }: { slug: string; title?: string; sellerView?: boolean }) {
-  const [events, setEvents] = useState<EventRow[]>([]);
-  useEffect(() => {
-    let alive = true;
-    let last = 0;
-    const load = async () => {
-      try {
-        const r = await api<{ events: EventRow[] }>(`/api/drops/${slug}/events?after=${last}`);
-        if (!alive || !r.events.length) return;
-        last = r.events[r.events.length - 1].id;
-        setEvents((prev) => [...prev, ...r.events].slice(-120));
-      } catch {
-        /* ignore */
-      }
-    };
-    void load();
-    const t = setInterval(load, 1500);
-    return () => {
-      alive = false;
-      clearInterval(t);
-    };
-  }, [slug]);
-  const ref = useRef<HTMLOListElement>(null);
-  useEffect(() => {
-    ref.current?.scrollTo({ top: ref.current.scrollHeight, behavior: "smooth" });
-  }, [events.length]);
-  return (
-    <section className="card ticker">
-      <div className="card-head">
-        <h3>{title}</h3>
-        <span className="legend">
-          <span className="tag tag-real">PayPal sandbox API</span>
-          <span className="tag tag-sim">simulated / local</span>
-        </span>
-      </div>
-      <ol ref={ref}>
-        {events.length === 0 && <li className="muted">Nothing yet.</li>}
-        {events.map((e) => (
-          <li key={e.id} className={e.real ? "ev-real" : "ev-sim"}>
-            <time>{new Date(e.ts).toLocaleTimeString()}</time>
-            <span className={`tag ${e.real ? "tag-real" : "tag-sim"}`}>{e.real ? "PayPal" : sellerView ? "local" : "local"}</span>
-            <span className="ev-msg">{e.message}</span>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
+// the ledger lives in ./ledger (trace chips, folded simulated rows)
+export { Ticker } from "./ledger";
 
 // ---------------------------------------------------------------- PayPal JS SDK v6 button
 // Adapted from paypal-examples/v6-web-sdk-sample-integration (Apache-2.0): the order promise is passed to
