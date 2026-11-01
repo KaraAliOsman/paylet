@@ -314,15 +314,16 @@ Requirements: Node 24 and pnpm.
 ```bash
 pnpm install
 cp .env.example .env       # PayPal SANDBOX client id/secret (+ an OpenAI-compatible key, optional)
-pnpm build && pnpm start   # http://localhost:8790; the showcase seller console link is printed on boot
+pnpm build && pnpm start   # listens on PORT from .env (8790 if unset); prints the showcase seller console link
 pnpm test                  # unit tests + the full drop lifecycle against a mocked PayPal
 pnpm test:coverage         # the same, with coverage floors
-pnpm e2e                   # Playwright judge flow against the running instance
+pnpm e2e                   # Playwright judge flow against E2E_BASE_URL (default http://127.0.0.1:8790)
 pnpm evals --replay        # entity-resolution evals from the recorded run, no API key needed
-pnpm mcp:smoke             # MCP client → list_drops / enter_drop / entry_status
+pnpm mcp:smoke             # MCP client → list_drops / enter_drop / entry_status (pass the /mcp URL if not on 8790)
 ```
-PayPal webhooks need a public https URL. Locally: `cloudflared tunnel --url http://localhost:8790`, set `PUBLIC_URL` to the
-tunnel URL and restart; Paylet registers its webhook on boot. The real-sandbox suite is described in
+The port is whatever `PORT` says in your `.env` (8790 when unset); point a local `PUBLIC_URL` and `E2E_BASE_URL` at it.
+PayPal webhooks need a public https URL. Locally: `cloudflared tunnel --url http://localhost:<PORT>`, set `PUBLIC_URL` to
+the tunnel URL and restart; Paylet registers its webhook on boot. The real-sandbox suite is described in
 [`docs/e2e-real/`](docs/e2e-real/README.md). Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md) · security:
 [`SECURITY.md`](SECURITY.md) · history: [`CHANGELOG.md`](CHANGELOG.md).
 

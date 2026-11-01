@@ -22,7 +22,7 @@ All notable changes to Paylet. Dates are in America/Santiago time. Format: [Keep
 ### Fixed
 - Factual corrections: the DOJ/FTC case is cited from the FTC's press release ("7,624 tickets for a single concert",
   alleged); "proof of personhood" removed (a hold is proof of a real customer who can pay, not of a unique human); the
-  draw order is freeze → public randomness → reveal; local port is 8790 everywhere; a single test count, from the badge.
+  draw order is freeze → public randomness → reveal; a single test count, from the badge.
 
 ## [0.1.0] — 2026-10-31
 First public version, built during the PayPal AI Hackathon.

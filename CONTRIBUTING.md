@@ -7,9 +7,11 @@ Requirements: Node 24 and pnpm (see `packageManager` in `package.json`).
 ```bash
 pnpm install
 cp .env.example .env    # PayPal SANDBOX client id/secret; an OpenAI-compatible AI key is optional (rules-only without it)
-pnpm build && pnpm start  # http://localhost:8790 — the showcase seller console link is printed on boot
+pnpm build && pnpm start  # listens on PORT from .env (8790 if unset); prints the showcase seller console link
 ```
-For webhooks on your machine, expose the port with a tunnel (for example `cloudflared tunnel --url http://localhost:8790`)
+The port comes from `PORT` in `.env` (8790 when unset). The Playwright and MCP smoke defaults assume 8790: if your `.env`
+says otherwise, set `E2E_BASE_URL` (and pass the `/mcp` URL to `pnpm mcp:smoke`), and point a local `PUBLIC_URL` at the same port.
+For webhooks on your machine, expose the port with a tunnel (for example `cloudflared tunnel --url http://localhost:<PORT>`)
 and set `PUBLIC_URL` to the https URL; Paylet registers its webhook on boot when `PUBLIC_URL` is https.
 
 ## Tests
