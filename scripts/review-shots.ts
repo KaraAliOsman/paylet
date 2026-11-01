@@ -11,7 +11,7 @@ const proof = (await (await fetch(base + "/api/proof").catch(() => null))?.json(
 const proofSlug = proof?.slug ?? proof?.drop?.slug ?? "ember-glaze-mug-2710";
 const pages: [string, string][] = [
   ["home", "/"], ["judge", "/judge"], ["how", "/how"], ["drop", `/d/${slug}`], ["seller", `/seller/${slug}?k=${sellerKey}`],
-  ["agent", `/agent?drop=${slug}`], ["verify-proof", `/verify/${proofSlug}`], ["proof-drop", `/d/${proofSlug}`], ["404", "/nope"],
+  ["agent", `/agent?drop=${slug}`], ["verify-proof", `/verify/${proofSlug}`], ["proof-drop", `/d/${proofSlug}`], ["404", "/nope"], ["evals", "/evals"],
 ];
 const browser = await chromium.launch();
 for (const [vw, vh, tag] of [[1360, 900, "d"], [390, 844, "m"]] as const) {
