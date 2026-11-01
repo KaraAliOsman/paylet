@@ -155,4 +155,13 @@ describe("raw REST: webhook verification and registration", () => {
     expect(ops[0].value.map((v) => v.name).sort()).toEqual([...paypal.WEBHOOK_EVENTS].sort());
     expect(await paypal.ensureWebhook("http://localhost:8790")).toEqual({ id: "", patched: [] });
   });
+
+  it("a failed PATCH keeps the existing webhook id (signature verification depends on it)", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    stubFetch((url, init) => {
+      if (init.method === "GET") return { json: { webhooks: [{ id: "WH-REG-2", url: "https://paylet.example/webhooks/paypal", event_types: [{ name: "CHECKOUT.ORDER.APPROVED" }] }] } };
+      return { status: 400, json: { name: "INVALID_REQUEST" } };
+    });
+    expect(await paypal.ensureWebhook("https://paylet.example")).toEqual({ id: "WH-REG-2", patched: [] });
+  });
 });

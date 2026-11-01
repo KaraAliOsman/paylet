@@ -467,7 +467,13 @@ export async function ensureWebhook(publicUrl: string): Promise<{ id: string; pa
     const missing = have.has("*") ? [] : WEBHOOK_EVENTS.filter((n) => !have.has(n));
     if (missing.length) {
       const all = [...new Set([...have, ...WEBHOOK_EVENTS])];
-      await rest("PATCH", `/v1/notifications/webhooks/${existing.id}`, [{ op: "replace", path: "/event_types", value: all.map((name) => ({ name })) }]);
+      try {
+        await rest("PATCH", `/v1/notifications/webhooks/${existing.id}`, [{ op: "replace", path: "/event_types", value: all.map((name) => ({ name })) }]);
+      } catch (e) {
+        // best-effort: keep the existing registration (and its id, which signature verification needs)
+        console.warn("[paylet] could not add webhook events:", String(e).slice(0, 160));
+        return { id: existing.id, patched: [] };
+      }
     }
     return { id: existing.id, patched: missing };
   }
