@@ -1,9 +1,11 @@
-// Records the demo-video scenes (entrega/VIDEO.md storyboard) against a live instance, one clip per scene.
-// Silent footage for a human voice-over. Records page content only (no address bar, so seller keys never show) and blurs
-// the sandbox buyer's email inside PayPal. Needs BUYER_EMAIL / BUYER_PASSWORD (sandbox) and SELLER_ADMIN_KEY (quota bypass).
+// Records the demo-video scenes (entrega/VIDEO.md storyboard) against a live instance, one clip per scene, in native 1080p:
+// a 1920×1080 viewport with the page zoomed 1.5× (so the layout is the 1280-wide one, rendered sharp). A drawn cursor glides
+// to every click. Each scene also writes <scene>.marks.json (seconds since the clip started) so scripts/edit-video.mjs can
+// cut the waiting and place the voice-over on the action. Page content only: no address bar, so seller keys never show, and
+// the sandbox buyer's email is blurred inside PayPal. Needs BUYER_EMAIL / BUYER_PASSWORD (sandbox) and SELLER_ADMIN_KEY.
 //   node --env-file=../.secrets/buyer.env --env-file=../.secrets/seller_admin.env --import tsx scripts/record-video.ts [base] [outDir] [scenes]
-import { chromium, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { mkdirSync, renameSync } from "node:fs";
+import { chromium, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
+import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { approveInPayPal } from "./paypal-approve";
 
 const base = process.argv[2] ?? "https://paylet.onrender.com";
@@ -11,183 +13,327 @@ const out = process.argv[3] ?? "../entrega/video";
 const only = process.argv[4]?.split(",");
 const BUYER = { email: process.env.BUYER_EMAIL ?? "", password: process.env.BUYER_PASSWORD ?? "" };
 const ADMIN = process.env.SELLER_ADMIN_KEY ?? "";
-const W = 1280;
-const H = 720;
+const W = 1920;
+const H = 1080;
 mkdirSync(`${out}/raw`, { recursive: true });
 
 const post = (p: string, key?: string, data?: unknown) =>
   fetch(base + p, { method: "POST", headers: { "content-type": "application/json", ...(key ? { "x-seller-key": key } : {}) }, body: JSON.stringify(data ?? {}) }).then((r) => r.json());
-const sellerState = (slug: string, key: string) => fetch(`${base}/api/seller/${slug}`, { headers: { "x-seller-key": key } }).then((r) => r.json());
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Runs in every page: 1.5× zoom, a drawn cursor with a click ripple, and the PayPal login identity blurred.
+ * A string, not a function: tsx would wrap nested functions in __name(), which does not exist in the page. */
+const PAGE_SETUP = `(() => {
+  const onPayPal = /paypal\.com$/.test(location.hostname);
+  const setup = () => {
+    document.documentElement.style.zoom = onPayPal ? "1.35" : "1.5";
+    const s = document.createElement("style");
+    s.textContent = \`
+      #__cur{position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;will-change:transform;transform:translate(-200px,-200px)}
+      #__cur svg{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
+      .__rip{position:fixed;z-index:2147483646;pointer-events:none;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;
+        background:rgba(20,20,20,.18);animation:__rip .5s cubic-bezier(.23,1,.32,1) forwards}
+      @keyframes __rip{from{transform:scale(.3);opacity:1}to{transform:scale(1.4);opacity:0}}
+      \${onPayPal ? "#email,input[name=login_email],#password,[data-testid=header-profile],.profileDisplayName,.email{filter:blur(7px)!important}" : ""}\`;
+    (document.head ?? document.documentElement).appendChild(s);
+    const c = document.createElement("div");
+    c.id = "__cur";
+    c.innerHTML =
+      '<svg width="20" height="24" viewBox="0 0 20 24"><path d="M2 1.5v18.2l5-4.6 3.3 7.4 3-1.3-3.2-7.3H17z" fill="#141414" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+    document.documentElement.appendChild(c);
+    const last = sessionStorage.getItem("__cur");
+    if (last) c.style.transform = last;
+    document.addEventListener(
+      "mousemove",
+      (e) => {
+        const z = parseFloat(document.documentElement.style.zoom) || 1;
+        const t = \`translate(\${e.clientX / z - 2}px, \${e.clientY / z - 1}px)\`;
+        c.style.transform = t;
+        sessionStorage.setItem("__cur", t);
+      },
+      true,
+    );
+    document.addEventListener(
+      "mousedown",
+      (e) => {
+        const r = document.createElement("div");
+        r.className = "__rip";
+        const z = parseFloat(document.documentElement.style.zoom) || 1;
+        r.style.left = \`\${e.clientX / z}px\`;
+        r.style.top = \`\${e.clientY / z}px\`;
+        document.documentElement.appendChild(r);
+        setTimeout(() => r.remove(), 600);
+      },
+      true,
+    );
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", setup);
+  else setup();
+})();`;
+
+let marks: [string, number][] = [];
+let t0 = 0;
+const mark = (name: string) => marks.push([name, +((Date.now() - t0) / 1000).toFixed(2)]);
 
 async function scene(browser: Browser, name: string, run: (page: Page, ctx: BrowserContext) => Promise<void>) {
   if (only && !only.includes(name.slice(0, 2))) return;
   const ctx = await browser.newContext({ viewport: { width: W, height: H }, recordVideo: { dir: `${out}/raw`, size: { width: W, height: H } }, locale: "en-US" });
-  // blur the sandbox login identity inside PayPal (fictitious sandbox data, but it never needs to be on screen)
-  await ctx.addInitScript(() => {
-    if (!/paypal\.com$/.test(location.hostname)) return;
-    const css = "#email,input[name=login_email],#password,[data-testid=header-profile],.profileDisplayName,.email{filter:blur(7px)!important}";
-    const add = () => {
-      const s = document.createElement("style");
-      s.textContent = css;
-      (document.head ?? document.documentElement).appendChild(s);
-    };
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", add);
-    else add();
-  });
+  await ctx.addInitScript({ content: PAGE_SETUP });
   const page = await ctx.newPage();
-  const t0 = Date.now();
+  t0 = Date.now();
+  marks = [];
   try {
     await run(page, ctx);
   } catch (e) {
     console.log(`scene ${name} FAILED:`, (e as Error).message.split("\n")[0]);
     await page.screenshot({ path: `${out}/raw/${name}-fail.png` }).catch(() => undefined);
   }
+  mark("end");
   const video = page.video();
   await ctx.close();
   if (video) renameSync(await video.path(), `${out}/raw/${name}.webm`);
-  console.log(`scene ${name}: ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  writeFileSync(`${out}/raw/${name}.marks.json`, JSON.stringify(Object.fromEntries(marks), null, 1));
+  console.log(`scene ${name}: ${((Date.now() - t0) / 1000).toFixed(1)} s`, JSON.stringify(marks));
 }
 
-/** Smooth scroll by `px` over `ms`. */
+/** Glide the cursor to the element (ease-out), pause, click. */
+async function glideTo(page: Page, target: Locator, click = true) {
+  await target.scrollIntoViewIfNeeded().catch(() => undefined);
+  const box = await target.boundingBox();
+  if (!box) throw new Error("no box");
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y, { steps: 28 });
+  await wait(220);
+  if (click) {
+    await page.mouse.down();
+    await wait(70);
+    await page.mouse.up();
+  }
+}
+
+/** Smooth scroll by `px` (layout px at the 1.5× zoom) over `ms`. */
 async function glide(page: Page, px: number, ms: number) {
-  const steps = Math.max(1, Math.round(ms / 60)); // each wheel event round-trips the browser (~40 ms)
+  const steps = Math.max(1, Math.round(ms / 50));
   for (let i = 0; i < steps; i++) {
-    await page.mouse.wheel(0, px / steps);
+    // ease in-out
+    const a = (1 - Math.cos((Math.PI * i) / steps)) / 2;
+    const b = (1 - Math.cos((Math.PI * (i + 1)) / steps)) / 2;
+    await page.mouse.wheel(0, px * (b - a));
     await wait(16);
   }
 }
 
 async function open(page: Page, path: string, settle = 1200) {
   await page.goto(base + path, { waitUntil: "load" }).catch(() => undefined);
-  await page.mouse.move(W - 40, H / 2);
+  await page.mouse.move(W - 160, H / 2 + 40);
   await wait(settle);
 }
 
+const OUTRO = `<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;background:#f5f5f2;font-family:Inter,system-ui,sans-serif;color:#141414;-webkit-font-smoothing:antialiased}
+  body{display:grid;place-items:center}
+  .c{display:grid;justify-items:center;gap:18px;text-align:center}
+  .m{opacity:0;transform:scale(.9);animation:in .9s cubic-bezier(.23,1,.32,1) .1s forwards}
+  .m circle.r{stroke-dasharray:3.4 2.35;animation:spin 6s linear infinite;transform-origin:16px 16px}
+  h1{margin:6px 0 0;font-size:64px;font-weight:650;letter-spacing:-.045em;line-height:1;opacity:0;transform:translateY(8px);animation:in .8s cubic-bezier(.23,1,.32,1) .35s forwards}
+  p{margin:0;font-size:22px;color:#6f6f75;letter-spacing:-.01em;opacity:0;transform:translateY(8px);animation:in .8s cubic-bezier(.23,1,.32,1) .55s forwards}
+  .u{display:flex;gap:10px;margin-top:22px;opacity:0;animation:in .8s cubic-bezier(.23,1,.32,1) .9s forwards}
+  .u span{padding:9px 16px;border-radius:999px;background:#fff;box-shadow:0 0 0 1px rgba(20,20,20,.08),0 6px 20px -10px rgba(20,20,20,.15);font-size:16px;font-weight:550}
+  .u span:first-child{background:#141414;color:#fff;box-shadow:none}
+  small{margin-top:30px;font-size:13px;color:#a1a1a6;opacity:0;animation:in .8s ease 1.3s forwards}
+  @keyframes in{to{opacity:1;transform:none}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style></head><body><div class="c">
+  <svg class="m" width="84" height="84" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="#141414"/><circle class="r" cx="16" cy="16" r="8.6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><circle cx="16" cy="16" r="3.6" fill="#ff5a1f"/></svg>
+  <h1>Paylet</h1>
+  <p>Fair drops for the agent era. Powered by PayPal.</p>
+  <div class="u"><span>paylet.onrender.com</span><span>github.com/KaraAliOsman/paylet</span></div>
+  <small>PayPal sandbox only · MIT licensed</small>
+</div></body></html>`;
+
 const browser = await chromium.launch();
-// Drop A: the real-money drop (fan + agent + PayPal). Drop B: scale, AI review, failed payment.
+// Drop A: the real-money drop (agent + PayPal + duplicate + swarm + real capture). Drop B: scale, AI review, failed payment.
 const A = await post("/api/judge-drop", ADMIN);
 const B = await post("/api/judge-drop", ADMIN);
 await post(`/api/seller/${A.slug}/negative-test`, A.sellerKey, { on: false });
 console.log("drop A", A.slug, "drop B", B.slug);
 
 await scene(browser, "01-home", async (page) => {
-  await open(page, "/", 2500);
-  await glide(page, 900, 7000);
-  await wait(1500);
-  await glide(page, 600, 3000);
-  await wait(1000);
+  await open(page, "/", 400);
+  mark("start");
+  await wait(7500);
+  await glideTo(page, page.getByRole("tab", { name: "Not selected" }));
+  await wait(3200);
+  await glide(page, 720, 2600);
+  mark("flow");
+  await wait(2600);
 });
 
 await scene(browser, "02-drop", async (page) => {
-  await open(page, `/d/${A.slug}`, 2000);
+  await open(page, `/d/${A.slug}`, 300);
   await page.locator("paypal-button").waitFor({ timeout: 30_000 });
-  await page.locator("paypal-button").hover();
-  await wait(4000);
-  await glide(page, 350, 1500);
-  await wait(1500);
+  mark("start");
+  await wait(1200);
+  await glideTo(page, page.locator(".ballot-steps"), false);
+  await wait(1800);
+  await glideTo(page, page.locator("paypal-button"), false);
+  await wait(3800);
 });
 
 await scene(browser, "03-agent", async (page) => {
-  await open(page, `/agent?drop=${A.slug}`, 1500);
-  await page.getByRole("button", { name: /Get me into this drop/ }).click();
+  await open(page, `/agent?drop=${A.slug}`, 400);
+  mark("start");
+  await wait(1400);
+  await glideTo(page, page.getByRole("button", { name: /Get me into this drop/ }));
+  mark("asked");
   await page.getByText(/Your agent stopped here/).waitFor({ timeout: 120_000 });
-  await wait(3500);
+  mark("handoff");
+  await page.getByText(/Your agent stopped here/).scrollIntoViewIfNeeded();
+  await wait(2600);
   const link = page.getByRole("link", { name: /Approve .* hold in PayPal/ });
-  await link.hover();
-  await wait(1200);
+  await glideTo(page, link, false);
+  await wait(900);
   const href = await link.getAttribute("href");
+  await page.mouse.down();
+  await page.mouse.up();
   await page.goto(href!);
+  mark("paypal");
   await approveInPayPal(page, BUYER);
+  mark("approved");
   await page.waitForURL(/\/me\//, { timeout: 90_000 });
   await page.getByText(/Hold placed/).first().waitFor({ timeout: 60_000 });
-  await wait(4000);
+  mark("held");
+  await wait(4200);
 });
 
 await scene(browser, "04-duplicate-and-swarm", async (page, ctx) => {
-  await open(page, `/d/${A.slug}`, 1500);
+  await open(page, `/d/${A.slug}`, 400);
+  await page.locator("paypal-button").waitFor({ timeout: 30_000 });
+  mark("start");
+  await wait(800);
   const popupPromise = ctx.waitForEvent("page", { timeout: 30_000 });
-  await page.locator("paypal-button").click();
+  await glideTo(page, page.locator("paypal-button"));
+  mark("clicked");
   const popup = await popupPromise;
   await approveInPayPal(popup, BUYER);
   await popup.waitForEvent("close", { timeout: 90_000 }).catch(() => undefined);
-  await page.getByText(/already has an entry/).first().waitFor({ timeout: 60_000 });
-  await page.getByText(/already has an entry/).first().scrollIntoViewIfNeeded();
-  await wait(4000);
-  await open(page, `/seller/${A.slug}?k=${A.sellerKey}`, 1500);
-  await page.getByTestId("step-swarm").click();
+  const dup = page.getByText(/already has an entry/).first();
+  await dup.waitFor({ timeout: 60_000 });
+  await dup.scrollIntoViewIfNeeded();
+  mark("dup");
+  await wait(4200);
+  await open(page, `/seller/${A.slug}?k=${A.sellerKey}`, 300);
+  mark("console");
+  await wait(900);
+  await glideTo(page, page.getByTestId("step-swarm"));
+  mark("swarm");
   await page.getByTestId("step-swarm-result").filter({ hasText: /PayPal links · 0 holds/ }).waitFor({ timeout: 90_000 });
+  mark("swarmed");
   await wait(1500);
   await page.getByTestId("ledger").scrollIntoViewIfNeeded();
+  mark("ledger");
   await wait(4000);
 });
 
 await scene(browser, "05-crowd-ai", async (page) => {
-  await open(page, `/seller/${B.slug}?k=${B.sellerKey}`, 1500);
-  await page.getByTestId("step-crowd").click();
+  await open(page, `/seller/${B.slug}?k=${B.sellerKey}`, 300);
+  mark("start");
+  await wait(600);
+  await glideTo(page, page.getByTestId("step-crowd"));
+  mark("crowd");
   await page.getByTestId("step-crowd-row").and(page.locator('[data-state="done"]')).waitFor({ timeout: 30_000 });
-  await wait(1500);
-  await page.getByTestId("step-ai").click();
+  await wait(1200);
+  await glideTo(page, page.getByTestId("step-ai"));
+  mark("ai");
   await page.getByTestId("cluster-operator").first().waitFor({ timeout: 180_000 });
-  await wait(800);
+  mark("clusters");
   await page.getByTestId("cluster-operator").first().scrollIntoViewIfNeeded();
-  await glide(page, 120, 600);
-  await wait(6000);
+  await page.mouse.move(W - 160, H / 2, { steps: 10 });
+  await glide(page, 160, 800);
+  await wait(7000);
+  mark("decide");
   let pending = await page.getByTestId("cluster-confirm").count();
   while (pending > 0) {
-    await page.getByTestId("cluster-confirm").first().click();
-    await wait(1600);
+    await glideTo(page, page.getByTestId("cluster-confirm").first());
+    await wait(1300);
     pending = await page.getByTestId("cluster-confirm").count();
   }
-  await wait(2000);
-  await open(page, "/evals", 1500);
-  await glide(page, 330, 1500);
-  await wait(5000);
+  mark("decided");
+  await wait(1500);
+  await open(page, "/evals", 300);
+  mark("evals");
+  await wait(800);
+  await glideTo(page, page.locator(".evals table").first().locator("tr").last(), false);
+  await wait(5500);
 });
 
 await scene(browser, "06-draw", async (page) => {
-  await open(page, `/seller/${B.slug}?k=${B.sellerKey}`, 1500);
-  await page.getByTestId("step-draw").click();
-  await page.getByTestId("confirm-ok").click();
+  await open(page, `/seller/${B.slug}?k=${B.sellerKey}`, 300);
+  mark("start");
+  await wait(600);
+  await glideTo(page, page.getByTestId("step-draw"));
+  await wait(500);
+  await glideTo(page, page.getByTestId("confirm-ok"));
+  mark("draw");
   await page.getByTestId("step-draw-row").and(page.locator('[data-state="done"]')).waitFor({ timeout: 180_000 });
-  await wait(1500);
+  mark("drawn");
+  await wait(1200);
   await page.getByTestId("ledger").scrollIntoViewIfNeeded();
+  mark("ledger");
   await wait(5000);
   await page.locator(".report").first().scrollIntoViewIfNeeded().catch(() => undefined);
-  await wait(4000);
+  mark("report");
+  await wait(4500);
   // drop A: the real PayPal partial capture
-  await open(page, `/seller/${A.slug}?k=${A.sellerKey}`, 1500);
-  await page.getByTestId("step-draw").click();
-  await page.getByTestId("confirm-ok").click();
+  await open(page, `/seller/${A.slug}?k=${A.sellerKey}`, 300);
+  mark("a-start");
+  await glideTo(page, page.getByTestId("step-draw"));
+  await wait(400);
+  await glideTo(page, page.getByTestId("confirm-ok"));
+  mark("a-draw");
   await page.getByTestId("step-draw-row").and(page.locator('[data-state="done"]')).waitFor({ timeout: 180_000 });
-  await wait(1500);
+  mark("a-drawn");
+  await wait(1000);
   await page.getByTestId("ledger").scrollIntoViewIfNeeded();
-  await wait(5000);
+  mark("a-ledger");
+  await wait(5500);
 });
 
 await scene(browser, "07-verify", async (page) => {
-  await open(page, `/verify/${B.slug}`, 1500);
-  await page.getByRole("button", { name: /Re-run the draw here/ }).click();
-  await page.getByText("Recorded outcome is consistent with your computation.").waitFor({ timeout: 30_000 });
-  await page.getByText("Recorded outcome is consistent with your computation.").scrollIntoViewIfNeeded();
-  await wait(4000);
+  await open(page, `/verify/${B.slug}`, 300);
+  mark("start");
+  await wait(600);
+  await glideTo(page, page.getByRole("button", { name: /Re-run the draw here/ }));
+  mark("rerun");
+  const ok = page.getByText("Recorded outcome is consistent with your computation.");
+  await ok.waitFor({ timeout: 30_000 });
+  await ok.scrollIntoViewIfNeeded();
+  mark("consistent");
+  await wait(2500);
+  await open(page, `/verify/${A.slug}`, 300);
+  mark("a-start");
   const ask = page.getByRole("button", { name: /Ask PayPal now/ });
-  if (await ask.count()) {
-    await open(page, `/verify/${A.slug}`, 1200);
-    await page.getByRole("button", { name: /Ask PayPal now/ }).scrollIntoViewIfNeeded();
-    await page.getByRole("button", { name: /Ask PayPal now/ }).click();
-    await wait(6000);
-  }
+  await glideTo(page, ask);
+  mark("ask");
+  await wait(5000);
 });
 
 await scene(browser, "08-how", async (page) => {
-  await open(page, "/how?reveal=1", 600);
+  await open(page, "/how?reveal=1", 200);
+  mark("start");
   await glide(page, 330, 1200);
-  await wait(14000);
+  await wait(13500);
 });
 
 await scene(browser, "09-outro", async (page) => {
-  await open(page, "/", 6000);
+  await page.setContent(OUTRO, { waitUntil: "load" });
+  await page.mouse.move(-50, -50);
+  await wait(800);
+  mark("start");
+  await wait(5600);
 });
 
 await browser.close();
