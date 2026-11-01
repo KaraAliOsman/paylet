@@ -18,7 +18,9 @@
     "evals:dataset": "node --no-warnings --env-file-if-exists=.env --import tsx scripts/build-dataset.ts",
     "evals": "node --no-warnings --env-file-if-exists=.env --import tsx scripts/run-evals.ts",
     "screens": "tsx scripts/screens.ts",
-    "e2e:real": "playwright test e2e/real-paypal.spec.ts"
+    "e2e:real": "playwright test e2e/real-paypal.spec.ts",
+    "test:coverage": "vitest run --coverage",
+    "badges": "vitest run --coverage --reporter=default --reporter=json --outputFile.json=test-results/vitest.json && node .github/scripts/badges.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
@@ -37,6 +39,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "@vitest/coverage-v8": "5.0.5",
     "concurrently": "^10.0.6",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",

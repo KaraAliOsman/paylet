@@ -1,0 +1,54 @@
+name: e2e-prod
+# Daily smoke test of the PUBLIC demo, exactly as a judge would use it, with no PayPal login:
+# judge drop → scalper agents get real sandbox approval links (0 holds) → simulated crowd → AI review → confirm →
+# draw → /verify re-runs the draw in the browser. The Playwright HTML report is uploaded as an artifact.
+# The REAL money suite (buyer login, holds, captures, voids) needs a PayPal login and runs locally: see docs/e2e-real/.
+on:
+  schedule:
+    - cron: "17 11 * * *" # daily, 08:17 in Chile (quiet hours for the sandbox)
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Paylet instance to test"
+        default: "https://paylet.onrender.com"
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: e2e-prod
+  cancel-in-progress: false
+jobs:
+  judge-flow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      E2E_BASE_URL: ${{ inputs.base_url || 'https://paylet.onrender.com' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 24 }
+      - run: npm install -g pnpm@12.5.1
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Wake the instance (free hosting cold start can take ~1 min)
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS --max-time 30 "$E2E_BASE_URL/api/health"; then echo; exit 0; fi
+            echo "not ready yet ($i)"; sleep 15
+          done
+          echo "::error::$E2E_BASE_URL/api/health did not answer in 5 minutes"; exit 1
+      - name: Judge flow against production (no PayPal login)
+        run: pnpm e2e --reporter=list,html
+      - name: Job summary
+        if: always()
+        run: |
+          echo "### e2e-prod against $E2E_BASE_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "Outcome: ${{ job.status }} · $(date -u +%Y-%m-%dT%H:%MZ) · HTML report in the 'playwright-report' artifact" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 30
