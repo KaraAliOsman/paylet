@@ -608,8 +608,6 @@ export async function freeze(dropIdOrSlug: string, opts: DrawOptions = {}): Prom
     updateEntry(e.id, { status: "expired", note: e.source === "agent" ? "No person approved in PayPal: no hold was placed." : "Not approved in PayPal before the draw: no hold was placed." });
   }
   const mergedEntries = held.filter((e) => merged.has(e.id)).map((e) => getEntry(e.id)!);
-  for (const e of mergedEntries.filter((x) => x.source !== "simulated")) scheduleVoid(drop, e, "merged into a confirmed group");
-  releaseSimulated(drop, mergedEntries.filter((x) => x.source === "simulated"), "merged into a confirmed group");
 
   if (pending.suggestions) {
     emit(
@@ -629,6 +627,9 @@ export async function freeze(dropIdOrSlug: string, opts: DrawOptions = {}): Prom
     false,
     { frozenHash, round },
   );
+  // the merged accounts' holds are released after the ledger says why (real ones through the PayPal queue)
+  for (const e of mergedEntries.filter((x) => x.source !== "simulated")) scheduleVoid(drop, e, "merged into a confirmed group");
+  releaseSimulated(drop, mergedEntries.filter((x) => x.source === "simulated"), "merged into a confirmed group");
   return { status: "frozen", dropId: drop.id, frozenHash, eligible: ids.length, excluded, round, revealAt: roundTime(round) };
 }
 
