@@ -5,8 +5,8 @@ import { bodyLimit } from "hono/body-limit";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { db, getSetting, now, setSetting } from "./db";
-import { env } from "./env";
+import { db, now, setSetting } from "./db";
+import { env, unsafeConfig } from "./env";
 import {
   HttpError,
   addSimulatedCrowd,
@@ -21,11 +21,16 @@ import {
   listClusters,
   participantView,
   publicDrop,
+  refundEntry,
+  shipEntry,
   startEntry,
   sweep,
 } from "./domain";
 import { emit, getDrop, getEntry, listEntries, type DropRow } from "./models";
-import { classify, ensureWebhook, verifyWebhookSignature } from "./paypal";
+import { classify, ensureWebhook } from "./paypal";
+import { paypalCheck } from "./paypalcheck";
+import { maskId, traceFromData } from "./trace";
+import { handlePayPalWebhook } from "./webhooks";
 import { pendingOps, startWorker } from "./queue";
 import { handleMcp } from "./mcp";
 import { runFanAgent, runSwarm } from "./agent";
@@ -37,8 +42,11 @@ const judgeQuota = new Map<string, { n: number; reset: number }>();
 
 // ---------------------------------------------------------------- tiny per-IP rate limiter
 const buckets = new Map<string, { n: number; reset: number }>();
-/** Client IP: the LAST X-Forwarded-For hop is the one added by the hosting proxy (earlier hops are client-controlled). */
+/** Client IP. Render sits behind Cloudflare, which overwrites CF-Connecting-IP / True-Client-IP with the real client;
+ *  otherwise the LAST X-Forwarded-For hop is the one added by the hosting proxy (earlier hops are client-controlled). */
 function clientIp(c: Context): string {
+  const cf = c.req.header("cf-connecting-ip") ?? c.req.header("true-client-ip");
+  if (cf) return cf.trim();
   const hops = (c.req.header("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   return hops.at(-1) ?? "local";
 }
@@ -68,11 +76,33 @@ app.use("/api/*", bodyLimit({ maxSize: 64 * 1024, onError: (c) => c.json({ error
 app.use("/webhooks/*", bodyLimit({ maxSize: 64 * 1024, onError: (c) => c.json({ error: "payload_too_large" }, 413) }));
 app.use("/mcp", bodyLimit({ maxSize: 64 * 1024, onError: (c) => c.json({ error: "payload_too_large" }, 413) }));
 
+// P2-14: Content-Security-Policy for the SPA. PayPal's JS SDK v6 (script, iframes, popups, fraud/telemetry calls) lives on
+// *.paypal.com and *.paypalobjects.com; /verify fetches public randomness from the League of Entropy drand relays.
+const HTTPS = env.PUBLIC_URL.startsWith("https://");
+const PAYPAL_SRC = "https://*.paypal.com https://*.paypalobjects.com";
+const DRAND_SRC = "https://api.drand.sh https://api2.drand.sh https://api3.drand.sh https://drand.cloudflare.com";
+export const CSP = [
+  "default-src 'self'",
+  `script-src 'self' ${PAYPAL_SRC}`,
+  `style-src 'self' 'unsafe-inline' ${PAYPAL_SRC}`,
+  `img-src 'self' data: blob: ${PAYPAL_SRC}`,
+  `font-src 'self' data: ${PAYPAL_SRC}`,
+  `connect-src 'self' ${PAYPAL_SRC} ${DRAND_SRC}`,
+  `frame-src ${PAYPAL_SRC}`,
+  `form-action 'self' ${PAYPAL_SRC}`,
+  "object-src 'none'",
+  "base-uri 'self'",
+  "frame-ancestors 'self'",
+  ...(HTTPS ? ["upgrade-insecure-requests"] : []),
+].join("; ");
+
 app.use("*", async (c, next) => {
   await next();
   c.header("Cross-Origin-Opener-Policy", "same-origin-allow-popups"); // required by PayPal popups
   c.header("X-Content-Type-Options", "nosniff");
   c.header("Referrer-Policy", "strict-origin-when-cross-origin");
+  c.header("Content-Security-Policy", CSP);
+  if (HTTPS) c.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
 });
 
 // ---------------------------------------------------------------- public API
@@ -100,8 +130,31 @@ app.get("/api/drops/:slug", (c) => c.json(publicDrop(mustDrop(c.req.param("slug"
 app.get("/api/drops/:slug/events", (c) => {
   const d = mustDrop(c.req.param("slug"));
   const after = Number(c.req.query("after") ?? 0);
-  const rows = db.prepare("SELECT id, ts, kind, message, real FROM events WHERE drop_id = ? AND id > ? ORDER BY id DESC LIMIT 80").all(d.id, after);
-  return c.json({ events: (rows as unknown[]).reverse() });
+  const rows = db.prepare("SELECT id, ts, kind, message, real, data_json FROM events WHERE drop_id = ? AND id > ? ORDER BY id DESC LIMIT 80").all(d.id, after) as {
+    id: number;
+    ts: number;
+    kind: string;
+    message: string;
+    real: 0 | 1;
+    data_json: string | null;
+  }[];
+  // data_json is never sent as is: only the whitelisted, already-masked PayPal trace (P1-01)
+  const events = rows.reverse().map(({ data_json, ...e }) => {
+    const trace = traceFromData(data_json);
+    return trace ? { ...e, trace } : e;
+  });
+  return c.json({ events });
+});
+
+app.get("/api/drops/:slug/paypal-check", async (c) => {
+  const d = mustDrop(c.req.param("slug"));
+  if (!limit(c, "ppcheck", 6)) return c.json({ error: "rate_limited", message: "Ask PayPal at most 6 times a minute." }, 429);
+  try {
+    return c.json(await paypalCheck(d));
+  } catch (e) {
+    if ((e as { code?: string }).code === "rate_limited") return c.json({ error: "rate_limited", message: "PayPal is being asked a lot right now. Try again in a minute." }, 429);
+    throw e;
+  }
 });
 
 app.get("/api/drops/:slug/verify", (c) => {
@@ -215,10 +268,15 @@ app.get("/api/seller/:slug", (c) => {
     address: e.address_json ? JSON.parse(e.address_json) : null,
     holdCents: e.hold_cents,
     capturedCents: e.captured_cents,
+    refundedCents: e.refunded_cents,
+    authorization: e.source === "simulated" ? null : (maskId(e.authorization_id) ?? null),
+    // full id for the drop's own seller (the real-sandbox e2e cross-checks it with PayPal); the UI shows `authorization`
     authorizationId: e.source === "simulated" ? null : e.authorization_id,
     clusterId: e.cluster_id,
     note: e.note,
     createdAt: e.created_at,
+    payerVerified: e.payer_verified == null ? null : e.payer_verified === 1,
+    shipping: e.tracking_number ? { carrier: e.carrier ?? "OTHER", tracking: e.tracking_number } : null,
   }));
   return c.json({ drop: { ...publicDrop(d), negativeTest: d.negative_test === 1 }, entries, clusters: listClusters(d.id), ai: usageSummary() });
 });
@@ -259,6 +317,21 @@ app.post("/api/seller/:slug/negative-test", async (c) => {
   return c.json({ ok: true });
 });
 
+// P2-01: after the sale. Both are async through the PayPal op queue; the ledger shows the PayPal call when it lands.
+app.post("/api/seller/:slug/entries/:id/ship", async (c) => {
+  const d = seller(c);
+  const body = (await c.req.json().catch(() => ({}))) as { carrier?: unknown; tracking?: unknown };
+  shipEntry(d.id, c.req.param("id")!, body);
+  return c.json({ ok: true });
+});
+
+app.post("/api/seller/:slug/entries/:id/refund", async (c) => {
+  const d = seller(c);
+  const body = (await c.req.json().catch(() => ({}))) as { reason?: unknown };
+  refundEntry(d.id, c.req.param("id")!, body.reason);
+  return c.json({ ok: true });
+});
+
 app.post("/api/seller/:slug/draw", async (c) => {
   const d = seller(c);
   const r = await draw(d.id);
@@ -277,34 +350,12 @@ app.all("/mcp", async (c) => {
   return handleMcp(c.req.raw, parsed);
 });
 
-// ---------------------------------------------------------------- PayPal webhooks (signature-verified)
+// ---------------------------------------------------------------- PayPal webhooks (pre-checked, signature-verified, de-duplicated)
 app.post("/webhooks/paypal", async (c) => {
-  const raw = await c.req.text();
-  const webhookId = env.PAYPAL_WEBHOOK_ID || getSetting("webhook_id") || "";
-  const ok = (await verifyWebhookSignature(c.req.raw.headers, raw, webhookId).catch(() => undefined))?.verified === true;
-  let evt: { id?: string; event_type?: string; resource?: { id?: string; supplementary_data?: { related_ids?: { order_id?: string } } } } = {};
-  try {
-    evt = JSON.parse(raw);
-  } catch {
-    /* ignore */
-  }
-  if (!ok) {
-    console.warn("[webhook] rejected unverified event", evt.event_type ?? "?");
-    return c.json({ error: "signature_verification_failed" }, 401);
-  }
-  const inserted = db
-    .prepare("INSERT INTO webhook_events(event_id, type, resource_id, verified, received_at) VALUES(?, ?, ?, 1, ?) ON CONFLICT(event_id) DO NOTHING")
-    .run(evt.id ?? `noid-${now()}`, evt.event_type ?? "?", evt.resource?.id ?? null, now());
-  if (inserted.changes === 0) return c.json({ ok: true, duplicate: true });
-  const resId = evt.resource?.id ?? "";
-  const entry =
-    (db.prepare("SELECT * FROM entries WHERE authorization_id = ? OR capture_id = ? OR order_id = ?").get(resId, resId, resId) as { id: string; drop_id: string; public_id: string } | undefined) ??
-    (evt.resource?.supplementary_data?.related_ids?.order_id
-      ? (db.prepare("SELECT * FROM entries WHERE order_id = ?").get(evt.resource.supplementary_data.related_ids.order_id) as { id: string; drop_id: string; public_id: string } | undefined)
-      : undefined);
-  if (entry) emit(entry.drop_id, "webhook", `Webhook ${evt.event_type} verified (signature OK) for ${entry.public_id}.`, true);
-  if (evt.event_type === "CHECKOUT.ORDER.APPROVED" && resId) void finalize(resId).catch(() => undefined);
-  return c.json({ ok: true });
+  if (!limit(c, "webhook", 60)) return c.json({ error: "rate_limited" }, 429);
+  const raw = await c.req.text(); // raw body, byte for byte: PayPal verifies the signature over it
+  const r = await handlePayPalWebhook(c.req.raw.headers, raw);
+  return c.json(r.body, r.status);
 });
 
 // ---------------------------------------------------------------- SPA
@@ -351,6 +402,11 @@ async function boot() {
 }
 
 if (process.env.PAYLET_NO_LISTEN !== "1") {
+  const unsafe = unsafeConfig(env);
+  if (unsafe) {
+    console.error(`[paylet] refusing to start: ${unsafe}`);
+    process.exit(1);
+  }
   serve({ fetch: app.fetch, port: env.PORT, hostname: "0.0.0.0" }, (info) => {
     console.log(`[paylet] listening on :${info.port} (PayPal SANDBOX, AI model ${env.AI_MODEL})`);
     void boot();
