@@ -44,7 +44,13 @@ const judgeQuota = new Map<string, { n: number; reset: number }>();
 const buckets = new Map<string, { n: number; reset: number }>();
 /** Client IP. Render sits behind Cloudflare, which overwrites CF-Connecting-IP / True-Client-IP with the real client;
  *  otherwise the LAST X-Forwarded-For hop is the one added by the hosting proxy (earlier hops are client-controlled). */
+let ipHeadersLogged = false;
 function clientIp(c: Context): string {
+  if (!ipHeadersLogged && c.req.header("x-forwarded-for")) {
+    // once per boot, names only: confirms which proxy headers the host really sends
+    ipHeadersLogged = true;
+    console.log("[paylet] client IP headers present:", ["cf-connecting-ip", "true-client-ip", "x-forwarded-for", "x-real-ip"].filter((h) => c.req.header(h)).join(", "));
+  }
   const cf = c.req.header("cf-connecting-ip") ?? c.req.header("true-client-ip");
   if (cf) return cf.trim();
   const hops = (c.req.header("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean);

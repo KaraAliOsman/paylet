@@ -289,7 +289,7 @@ export function addSimulatedCrowd(dropIdOrSlug: string, seed = Math.floor(Math.r
     const entryId = id("ent", 8);
     db.prepare(
       `INSERT INTO entries(id, public_id, drop_id, source, agent_label, status, payer_hash, name, display_name, email, address_json, hold_cents, authorization_id, created_at, updated_at, note)
-       VALUES(?, ?, ?, 'simulated', ?, 'held', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SIMULATED entrant — no PayPal call')`,
+       VALUES(?, ?, ?, 'simulated', ?, 'held', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Simulated entrant — no PayPal call.')`,
     ).run(
       entryId,
       publicId(),
