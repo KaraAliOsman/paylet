@@ -12,7 +12,11 @@ fails, the next waitlisted fan, whose hold already exists, gets the unit.
 > 🎬 **Video:** see the Devpost submission · PayPal **sandbox only** — no real money moves.
 > ⏱️ Free hosting: the first request after idle takes ~1 min, and the demo database resets when the instance sleeps (judge drops are created on demand, so this never blocks testing).
 
-![Paylet seller console](docs/img/seller.png)
+![Paylet seller console: AI-adjudicated reseller network, confirmed by the seller, then settled](docs/img/settled.png)
+
+| Fan's agent stops at PayPal | Re-run the draw in your browser | Evals |
+|---|---|---|
+| ![agent](docs/img/agent.png) | ![verify](docs/img/verify.png) | ![evals](docs/img/evals.png) |
 
 ## The problem
 Small makers (artisan keycaps, ceramics, knives, short-run merch) sell limited runs by hand today: a 24-hour form that says
@@ -90,7 +94,7 @@ Requirements: Node 24, pnpm.
 pnpm install
 cp .env.example .env      # PayPal SANDBOX client id/secret + an OpenAI-compatible key
 pnpm build && pnpm start  # http://localhost:8787 (PORT in .env); the seller console link is printed on boot
-pnpm test                 # unit + mocked end-to-end flow (16 tests)
+pnpm test                 # unit + mocked end-to-end flow (17 tests)
 pnpm e2e                  # Playwright against the running instance
 pnpm mcp:smoke            # MCP client → list_drops / enter_drop / entry_status
 ```
