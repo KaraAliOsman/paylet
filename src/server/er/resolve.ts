@@ -163,8 +163,10 @@ Return groups that partition the given member ids (singletons as "distinct").
 Then, for EVERY pair in deterministic_signals whose two entries you did NOT put in the same group, add a kept_apart item with
 a one-sentence reason a seller would understand (name the field that differs, e.g. "different apartments (2A vs 5C), unrelated surnames")
 and your confidence (0-1) that they are different people or households.
-Evidence must cite concrete fields (address, unit, name, mailbox_token, timing, care_of). Describe timing only relatively
-(e.g. "six entries within 12 seconds"); never quote clock times or dates. Keep explanations to one sentence a fan would understand.`;
+Evidence must cite concrete fields (address, unit, name, mailbox_token, timing, care_of), one field per evidence item.
+Describe timing only relatively (e.g. "six entries within 12 seconds"); never quote clock times or dates.
+Never quote mailbox_token values; say "same mailbox" or "different mailboxes". Refer to entries by their id.
+Keep every evidence detail and every kept_apart reason under 20 words, and explanations to one sentence a fan would understand.`;
 
 class InvalidAnswer extends Error {}
 
@@ -213,8 +215,9 @@ const FIELD_ALIASES: Record<string, string> = {
 };
 const FIELD_ORDER = ["address", "email", "name", "care_of", "timing"];
 
+/** "address / unit / care_of" -> "address": compound labels count as their first field. */
 function fieldOf(f: string): string {
-  const k = f.trim().toLowerCase();
+  const k = f.trim().toLowerCase().split(/\s*(?:\/|,|&|\+|\band\b)\s*/)[0] || "other";
   return FIELD_ALIASES[k] ?? k;
 }
 
@@ -275,6 +278,32 @@ function isFatal(e: unknown): boolean {
   return name === "BudgetExceeded" || /budget reached|not configured/i.test(msg);
 }
 
+/** Best-first traversal of a component (highest rule score edge next), so splitting it keeps close pairs together. */
+function strongestFirst(comp: string[], scored: PairScore[]): string[] {
+  const inComp = new Set(comp);
+  const adj = new Map<string, { to: string; score: number }[]>();
+  for (const p of scored) {
+    if (!inComp.has(p.a) || !inComp.has(p.b)) continue;
+    adj.set(p.a, [...(adj.get(p.a) ?? []), { to: p.b, score: p.score }]);
+    adj.set(p.b, [...(adj.get(p.b) ?? []), { to: p.a, score: p.score }]);
+  }
+  const order: string[] = [];
+  const seen = new Set<string>();
+  for (const start of comp) {
+    if (seen.has(start)) continue;
+    const frontier = [{ to: start, score: Infinity }];
+    while (frontier.length) {
+      frontier.sort((x, y) => y.score - x.score);
+      const { to } = frontier.shift()!;
+      if (seen.has(to)) continue;
+      seen.add(to);
+      order.push(to);
+      for (const e of adj.get(to) ?? []) if (!seen.has(e.to)) frontier.push(e);
+    }
+  }
+  return order;
+}
+
 function shortError(e: unknown): string {
   return String(e instanceof Error ? e.message : e).replace(/\s+/g, " ").slice(0, 120);
 }
@@ -302,7 +331,12 @@ export async function resolve(list: Identity[], opts: ResolveOptions = { useLlm:
       prepared.map((p) => p.id),
       [...certain, ...uncertain].map((p) => [p.a, p.b] as [string, string]),
     ).filter((c) => c.some((id) => inUncertain.has(id)));
-    const chunks = comps.flatMap((comp) => Array.from({ length: Math.ceil(comp.length / chunkSize) }, (_, i) => comp.slice(i * chunkSize, (i + 1) * chunkSize)));
+    const chunks = comps.flatMap((comp) => {
+      if (comp.length <= chunkSize) return [comp];
+      // Too big for one call: walk strongest pairs first so look-alikes land in the same chunk.
+      const order = strongestFirst(comp, [...certain, ...uncertain]);
+      return Array.from({ length: Math.ceil(order.length / chunkSize) }, (_, i) => order.slice(i * chunkSize, (i + 1) * chunkSize));
+    });
 
     let consecutiveFailures = 0;
     for (const chunk of chunks) {
@@ -450,7 +484,7 @@ export async function resolve(list: Identity[], opts: ResolveOptions = { useLlm:
   let aiDegraded: string | undefined;
   if (opts.useLlm && failed.length) {
     aiDegraded = failed[0].error ?? "unknown error";
-    const n = unreviewed.size;
+    const n = uncertain.filter((u) => failed.some((o) => o.chunk.includes(u.a) && o.chunk.includes(u.b))).length;
     const pairsTxt = `${n} uncertain pair${n === 1 ? "" : "s"} ${n === 1 ? "was" : "were"} not reviewed and stay${n === 1 ? "s" : ""} unmerged`;
     const why = /budget reached/i.test(aiDegraded)
       ? "The daily AI budget is used up"

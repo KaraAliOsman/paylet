@@ -39,7 +39,7 @@ const goodModel: Adjudicator = async (req) => {
   const ids = entries.map((e) => e.id);
   if (entries.every((e) => !e.unit) && new Set(entries.map((e) => e.street)).size === 1) {
     return {
-      groups: [{ member_ids: ids, verdict: "same_household", confidence: 0.82, evidence: [{ field: "address", detail: "same single-family home" }, { field: "street", detail: "14 WILLOW WAY" }], explanation: "Two people in one home." }],
+      groups: [{ member_ids: ids, verdict: "same_household", confidence: 0.82, evidence: [{ field: "address", detail: "same single-family home" }, { field: "street", detail: "14 WILLOW WAY" }, { field: "Address / unit", detail: "no unit" }, { field: "name and timing", detail: "different surnames" }], explanation: "Two people in one home." }],
       kept_apart: [],
     };
   }
@@ -78,6 +78,7 @@ describe("resolve: AI adjudication contract", () => {
     }
     const hh = r.clusters.find((c) => c.memberIds.includes("ent_internal_c"))!;
     expect(hh.evidence.find((e) => e.field === "address")!.detail).toBe("same single-family home");
+    expect(hh.evidence.find((e) => e.field === "name")!.detail).toBe("different surnames"); // "name and timing" -> name
     const suite = r.clusters.find((c) => c.memberIds.includes("ent_internal_e"))!;
     expect(suite.evidence.find((e) => e.field === "timing")!.detail).toBe("3 agent entries within 5 s");
   });
@@ -194,5 +195,28 @@ describe("simulated crowd", () => {
     expect(strip(b)).toEqual(strip(a));
     expect(a.filter((e) => e.kind === "reshipper_network").every((e) => e.source === "agent")).toBe(true);
     expect(a.filter((e) => e.kind !== "reshipper_network").every((e) => e.source === undefined)).toBe(true);
+  });
+});
+
+describe("resolve: large components", () => {
+  it("splits a component bigger than one call so that look-alikes stay in the same chunk", async () => {
+    // one building, 14 apartments: pairs 2A/2A' are the same unit (rule-certain), all others differ (uncertain)
+    const names = ["Iris Chen", "Noah Silva", "Maya Okafor", "Leo Brennan", "Ana Petrov", "Omar Fischer", "Grace Rossi", "Kenji Walsh", "Elena Kaur", "Diego Moreau", "Hana Novak", "Felix Abara", "Zoe Delgado", "Ravi Haddad"];
+    const building: Identity[] = names.map((name, i) => ident(`ent_${i}`, `E-${String(i).padStart(4, "0")}`, name, "500 Tower Ave", `Apt ${Math.floor(i / 2) + 1}A`, "97209"));
+    const chunks: string[][] = [];
+    const r = await resolve(building, {
+      useLlm: true,
+      chunkSize: 4,
+      adjudicator: async (req) => {
+        const ids = parse(req).entries.map((e) => e.id);
+        chunks.push(ids);
+        return { groups: ids.map((id) => ({ member_ids: [id], verdict: "distinct", confidence: 0.9, evidence: [], explanation: "" })), kept_apart: [] };
+      },
+    });
+    expect(chunks.flat().sort()).toEqual(building.map((b) => b.label).sort());
+    // every same-apartment pair (rule-certain link) is reviewed together
+    for (let i = 0; i < 14; i += 2) expect(chunks.some((c) => c.includes(building[i].label!) && c.includes(building[i + 1].label!))).toBe(true);
+    expect(r.degraded).toBeNull();
+    expect(r.unreviewedPairs).toBeGreaterThan(0); // cross-chunk pairs are honestly counted as not reviewed
   });
 });
