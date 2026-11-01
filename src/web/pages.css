@@ -424,3 +424,6 @@ td code, th code { font-family: var(--mono); font-size: 12px; }
 :focus-visible { outline: 3px solid var(--plum); outline-offset: 2px; }
 .ballot-n { white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; }
 .step.is-current .btn-step:not(.btn-primary):not(:disabled) { background: var(--gold); color: var(--ink); border-color: var(--ink); }
+/* /how: the explainer card runs the full width of the diagram card above it */
+.how .card.narrow { max-width: none; }
+.how .prose p, .how .faq dd { max-width: 78ch; }
