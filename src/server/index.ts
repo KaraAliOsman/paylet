@@ -10,31 +10,36 @@ import { env, unsafeConfig } from "./env";
 import {
   HttpError,
   addSimulatedCrowd,
+  aiSummary,
   analyzeDrop,
   createDrop,
   decideCluster,
-  draw,
   ensureShowcase,
   fileAppeal,
   finalize,
+  freeze,
   handlers,
   listClusters,
   participantView,
   publicDrop,
   refundEntry,
+  scheduleReveal,
   shipEntry,
   startEntry,
   sweep,
+  verifyData,
 } from "./domain";
 import { emit, getDrop, getEntry, listEntries, type DropRow } from "./models";
 import { classify, ensureWebhook } from "./paypal";
 import { paypalCheck } from "./paypalcheck";
-import { maskId, traceFromData } from "./trace";
+import { maskId, toneOf, traceFromData } from "./trace";
 import { handlePayPalWebhook } from "./webhooks";
 import { pendingOps, startWorker } from "./queue";
-import { handleMcp } from "./mcp";
-import { runFanAgent, runSwarm } from "./agent";
+import { handleMcp, paypalState } from "./mcp";
+import { INTERNAL_HEADER, howItWent, internalToken, runFanAgent, runSwarm } from "./agent";
 import { aiConfigured, usageSummary } from "./ai";
+import { dropReport, globalStats } from "./report";
+import { auditSnapshot, ensureProofDrop, exportProof, proofInfo, recordedProof } from "./proof";
 
 const app = new Hono();
 
@@ -42,10 +47,11 @@ const judgeQuota = new Map<string, { n: number; reset: number }>();
 
 // ---------------------------------------------------------------- tiny per-IP rate limiter
 const buckets = new Map<string, { n: number; reset: number }>();
-/** Client IP. Render sits behind Cloudflare, which overwrites CF-Connecting-IP / True-Client-IP with the real client;
- *  otherwise the LAST X-Forwarded-For hop is the one added by the hosting proxy (earlier hops are client-controlled). */
+/** Client IP (P0-02). Render sits behind Cloudflare, which overwrites CF-Connecting-IP / True-Client-IP with the real
+ *  client; otherwise the LAST X-Forwarded-For hop is the one added by the hosting proxy (earlier hops are
+ *  client-controlled). Loopback calls carry none of them: "local". */
 let ipHeadersLogged = false;
-function clientIp(c: Context): string {
+export function clientIp(c: Context): string {
   if (!ipHeadersLogged && c.req.header("x-forwarded-for")) {
     // once per boot, names only: confirms which proxy headers the host really sends
     ipHeadersLogged = true;
@@ -144,10 +150,11 @@ app.get("/api/drops/:slug/events", (c) => {
     real: 0 | 1;
     data_json: string | null;
   }[];
-  // data_json is never sent as is: only the whitelisted, already-masked PayPal trace (P1-01)
+  // data_json is never sent as is: only the whitelisted, already-masked PayPal trace (P1-01) and a "warn" tone
   const events = rows.reverse().map(({ data_json, ...e }) => {
     const trace = traceFromData(data_json);
-    return trace ? { ...e, trace } : e;
+    const tone = toneOf(data_json);
+    return { ...e, ...(trace ? { trace } : {}), ...(tone ? { tone } : {}) };
   });
   return c.json({ events });
 });
@@ -155,6 +162,9 @@ app.get("/api/drops/:slug/events", (c) => {
 app.get("/api/drops/:slug/paypal-check", async (c) => {
   const d = mustDrop(c.req.param("slug"));
   if (!limit(c, "ppcheck", 6)) return c.json({ error: "rate_limited", message: "Ask PayPal at most 6 times a minute." }, 429);
+  // an imported proof run only has masked ids: show what PayPal said when the run was checked (and when)
+  const recorded = d.kind === "proof" ? recordedProof(d) : null;
+  if (recorded) return c.json({ ...(recorded.paypalCheck ?? { checkedAt: null, rows: [], totals: { captured: 0, voided: 0, mismatches: 0 } }), cached: true, recorded: true });
   try {
     return c.json(await paypalCheck(d));
   } catch (e) {
@@ -163,22 +173,31 @@ app.get("/api/drops/:slug/paypal-check", async (c) => {
   }
 });
 
-app.get("/api/drops/:slug/verify", (c) => {
-  const d = mustDrop(c.req.param("slug"));
-  const winners = listEntries(d.id)
-    .filter((e) => ["captured", "won", "capture_failed"].includes(e.status))
-    .map((e) => ({ publicId: e.public_id, status: e.status }));
-  return c.json({
-    title: d.title,
-    status: d.status,
-    units: d.units,
-    waitlistSize: d.waitlist_size,
-    seedHash: d.seed_hash,
-    seed: d.status === "open" ? null : d.seed,
-    frozenHash: d.frozen_hash,
-    frozenList: d.frozen_list ? JSON.parse(d.frozen_list) : null,
-    outcome: winners,
-  });
+app.get("/api/drops/:slug/verify", (c) => c.json(verifyData(mustDrop(c.req.param("slug")))));
+/** alias of /verify (the data behind the /verify page) */
+app.get("/api/drops/:slug/verify-data", (c) => c.json(verifyData(mustDrop(c.req.param("slug")))));
+
+// P1-07: public Drop report (no PII), partial until the drop settles
+app.get("/api/drops/:slug/report", (c) => c.json(dropReport(mustDrop(c.req.param("slug")))));
+
+// landing page counters: real PayPal sandbox activity only
+app.get("/api/stats", (c) => c.json(globalStats()));
+
+// P1-04: the permanent proof drop with real sandbox money
+app.get("/api/proof", (c) => c.json(proofInfo()));
+
+// P1-06: sandbox buyer accounts for judges, only with the code from the Devpost testing instructions (never in the bundle)
+app.get("/api/judge-buyers", (c) => {
+  c.header("Cache-Control", "no-store");
+  if (!limit(c, "judge-buyers", 10)) return c.json({ error: "rate_limited" }, 429);
+  const code = c.req.query("code") ?? "";
+  if (!env.JUDGE_CODE || !code || !safeEq(code, env.JUDGE_CODE)) return c.json({ error: "not_found" }, 404);
+  const buyers = [
+    { label: "Sandbox buyer", email: env.BUYER_EMAIL, password: env.BUYER_PASSWORD },
+    { label: "Sandbox buyer B", email: env.BUYER_B_EMAIL, password: env.BUYER_B_PASSWORD },
+  ].filter((b): b is { label: string; email: string; password: string } => Boolean(b.email && b.password));
+  if (!buyers.length) return c.json({ error: "not_found" }, 404);
+  return c.json({ buyers });
 });
 
 app.post("/api/drops/:slug/entries", async (c) => {
@@ -207,10 +226,29 @@ app.post("/api/entries/:id/appeal", async (c) => {
 });
 
 app.post("/api/judge-drop", async (c) => {
-  if (!limit(c, "judge", 4)) return c.json({ error: "rate_limited" }, 429);
-  const ip = clientIp(c);
   const adminKey = c.req.header("x-seller-key");
   const isOwner = Boolean(env.SELLER_ADMIN_KEY && adminKey && safeEq(adminKey, env.SELLER_ADMIN_KEY)); // test suite / owner
+  if (!isOwner && !limit(c, "judge", 4)) return c.json({ error: "rate_limited" }, 429);
+  const ip = clientIp(c);
+  const body = (await c.req.json().catch(() => ({}))) as { kind?: unknown; units?: unknown; negativeTest?: unknown };
+  if (isOwner && body.kind === "proof") {
+    // P1-04 (owner only): the proof run's drop. Never closes or draws by itself; scripts/proof-run.ts draws it.
+    const units = Math.max(1, Math.min(5, Number(body.units) || 1));
+    const d = await createDrop({
+      title: "Ember Glaze Mug",
+      maker: "Juniper Street Ceramics",
+      blurb: "Wood-fired stoneware mug. A real PayPal sandbox run, kept as proof: every entry here moved real sandbox money.",
+      art: "ember",
+      priceCents: 3800,
+      shipHoldCents: 1000,
+      shipActualCents: 650,
+      units,
+      minutesOpen: 24 * 60,
+      kind: "proof",
+      negativeTest: body.negativeTest === true,
+    });
+    return c.json({ slug: d.slug, sellerKey: d.seller_token });
+  }
   const mine = judgeQuota.get(ip);
   if (!isOwner && mine && mine.reset > Date.now() && mine.n >= 12) return c.json({ error: "judge_drop_quota", message: "You already have several judge drops today — reuse one of them." }, 429);
   const today = (db.prepare("SELECT COUNT(*) n FROM drops WHERE kind = 'judge' AND created_at > ?").get(now() - 86_400_000) as { n: number }).n;
@@ -238,6 +276,32 @@ app.post("/api/agent/chat", async (c) => {
   if (!messages?.length) throw new HttpError(400, "messages_required");
   const clean = messages.filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string").map((m) => ({ role: m.role, content: m.content.slice(0, 1200) }));
   return c.json(await runFanAgent(clean));
+});
+
+// P2-02: "Ask Wren how it went". Wren calls entry_status; the reply is built from that structured result, not by a model
+app.post("/api/agent/how-it-went", async (c) => {
+  if (!limit(c, "agent-status", 20)) return c.json({ error: "rate_limited" }, 429);
+  const { entryRef } = (await c.req.json().catch(() => ({}))) as { entryRef?: unknown };
+  if (typeof entryRef !== "string" || !entryRef || entryRef.length > 80) throw new HttpError(400, "entry_ref_required");
+  const r = await howItWent(entryRef, (ref) => {
+    if (!getEntry(ref)) return null;
+    const v = participantView(ref);
+    const usd = (cents: number | null) => (cents == null ? null : cents / 100);
+    return {
+      public_id: v.publicId,
+      status: v.status === "captured" && v.shipping ? "shipped" : v.status,
+      title: v.drop.title,
+      drop_status: v.drop.status,
+      draw_at: new Date(v.drop.closesAt).toISOString(),
+      hold_usd: usd(v.holdCents),
+      captured_usd: usd(v.capturedCents),
+      refunded_usd: usd(v.refundedCents),
+      paypal_state: paypalState(v.status, v.holdCents, v.capturedCents),
+      shipping: v.shipping,
+    };
+  });
+  if (!r) throw new HttpError(404, "entry_not_found");
+  return c.json(r);
 });
 
 app.get("/api/evals", (c) => {
@@ -277,14 +341,22 @@ app.get("/api/seller/:slug", (c) => {
     refundedCents: e.refunded_cents,
     authorization: e.source === "simulated" ? null : (maskId(e.authorization_id) ?? null),
     // full id for the drop's own seller (the real-sandbox e2e cross-checks it with PayPal); the UI shows `authorization`
-    authorizationId: e.source === "simulated" ? null : e.authorization_id,
+    authorizationId: e.source === "simulated" || d.kind === "proof" ? null : e.authorization_id,
     clusterId: e.cluster_id,
     note: e.note,
     createdAt: e.created_at,
     payerVerified: e.payer_verified == null ? null : e.payer_verified === 1,
     shipping: e.tracking_number ? { carrier: e.carrier ?? "OTHER", tracking: e.tracking_number } : null,
   }));
-  return c.json({ drop: { ...publicDrop(d), negativeTest: d.negative_test === 1 }, entries, clusters: listClusters(d.id), ai: usageSummary() });
+  const usage = usageSummary();
+  return c.json({
+    drop: { ...publicDrop(d), negativeTest: d.negative_test === 1 },
+    entries,
+    clusters: listClusters(d.id),
+    // AiSummary (contract) + today/dailyCap kept for older consoles
+    ai: { ...aiSummary(d.id), today: usage.today, dailyCap: usage.dailyCap },
+    usage,
+  });
 });
 
 app.post("/api/seller/:slug/simulate", (c) => {
@@ -298,14 +370,15 @@ app.post("/api/seller/:slug/swarm", async (c) => {
   const already = (db.prepare("SELECT COUNT(*) n FROM entries WHERE drop_id = ? AND source = 'agent' AND agent_label LIKE 'scalper-bot-%'").get(d.id) as { n: number }).n;
   if (already >= 30) throw new HttpError(409, "swarm_limit", "This drop already met its scalper swarm.");
   const count = Math.max(1, Math.min(25, n ?? 12, 30 - already));
-  void runSwarm(d.slug, count).catch((e) => emit(d.id, "swarm_error", `Swarm stopped: ${String(e).slice(0, 120)}`, false));
+  // runSwarm retries rate-limited calls and always writes the swarm_done line; this only catches a swarm that cannot start
+  void runSwarm(d.slug, count).catch(() => emit(d.id, "swarm_done", `0 of ${count} agents got a PayPal link (the swarm could not start) · 0 holds.`, false, { tone: "warn" }));
   return c.json({ started: count });
 });
 
 app.post("/api/seller/:slug/analyze", async (c) => {
   const d = seller(c);
   const r = await analyzeDrop(d.id);
-  return c.json({ clusters: r.clusters.length, llmCalls: r.llmCalls, uncertainPairs: r.uncertainPairs, ms: r.ms });
+  return c.json({ clusters: r.clusters.length, llmCalls: r.llmCalls, uncertainPairs: r.uncertainPairs, keptApart: r.keptApart, degraded: r.degraded, ms: r.ms });
 });
 
 app.post("/api/seller/:slug/clusters/:id", async (c) => {
@@ -338,15 +411,37 @@ app.post("/api/seller/:slug/entries/:id/refund", async (c) => {
   return c.json({ ok: true });
 });
 
+// P0-03 + P2-10: freezes now (409 pending_reviews / no_eligible_entries / holds_pending), reveals with drand in a few seconds
 app.post("/api/seller/:slug/draw", async (c) => {
   const d = seller(c);
-  const r = await draw(d.id);
-  return c.json({ winners: r.winners, waitlist: r.waitlist, frozenHash: r.frozenHash });
+  const { force } = (await c.req.json().catch(() => ({}))) as { force?: unknown };
+  const f = await freeze(d.id, { force: force === true });
+  if (f.status === "frozen") void scheduleReveal(f.dropId);
+  return c.json({ status: f.status, frozenHash: f.frozenHash, eligible: f.eligible, excluded: f.excluded, round: f.round, revealAt: f.revealAt });
+});
+
+// P1-04: masked, PII-free snapshot of a settled drop (scripts/proof-run.ts saves it as docs/proof-run.json)
+app.get("/api/seller/:slug/export", async (c) => {
+  const d = seller(c);
+  if (d.status !== "settled") throw new HttpError(409, "not_settled", "Only a settled drop can be exported.");
+  const recorded = d.kind === "proof" ? recordedProof(d) : null;
+  const check = recorded ? recorded.paypalCheck : await paypalCheck(d, { force: true }).catch(() => null);
+  const snap = exportProof(d, check ? { checkedAt: check.checkedAt, rows: check.rows, totals: check.totals } : null);
+  const problems = auditSnapshot(JSON.stringify(snap));
+  if (problems.length) throw new HttpError(500, "export_unsafe", `The snapshot would contain ${problems.join(", ")}.`);
+  return c.json(snap);
 });
 
 // ---------------------------------------------------------------- MCP endpoint for AI agents
+// Paylet's own agents (Wren, the scalper swarm) sign their loopback calls; that only selects a separate bucket.
+const MCP_INTERNAL_TOKEN = internalToken();
 app.all("/mcp", async (c) => {
-  if (!limit(c, "mcp", 40)) return c.json({ error: "rate_limited" }, 429);
+  const tok = c.req.header(INTERNAL_HEADER);
+  const internal = Boolean(tok && safeEq(tok, MCP_INTERNAL_TOKEN));
+  if (!(internal ? limit(c, "mcp-int", 300) : limit(c, "mcp", 40))) {
+    c.header("Retry-After", "60");
+    return c.json({ jsonrpc: "2.0", error: { code: -32029, message: "rate_limited" }, id: null }, 429);
+  }
   let parsed: unknown;
   if (c.req.method === "POST") {
     parsed = await c.req.json().catch(() => undefined);
@@ -381,6 +476,9 @@ async function boot() {
     /* ignore */
   }
   console.log(`[paylet] showcase seller console: ${link}`);
+  // P1-04: the proof drop survives deploys (re-imported from docs/proof-run.json); a live one is re-checked with PayPal
+  const proof = ensureProofDrop();
+  if (proof && !proof.proof_json) void paypalCheck(proof, { force: true }).catch((e) => console.warn("[paylet] proof re-check skipped:", String(e).slice(0, 120)));
   if (!env.PAYPAL_WEBHOOK_ID) {
     try {
       const { id: wid, patched } = await ensureWebhook(env.PUBLIC_URL);
@@ -401,7 +499,7 @@ async function boot() {
     setInterval(() => {
       const busy =
         pendingOps() > 0 ||
-        (db.prepare("SELECT COUNT(*) n FROM drops WHERE kind = 'judge' AND status = 'open'").get() as { n: number }).n > 0 ||
+        (db.prepare("SELECT COUNT(*) n FROM drops WHERE (kind = 'judge' AND status = 'open') OR status = 'frozen'").get() as { n: number }).n > 0 ||
         (db.prepare("SELECT COUNT(*) n FROM entries e JOIN drops d ON d.id = e.drop_id WHERE e.source <> 'simulated' AND e.status IN ('held','won','authorizing') AND d.kind = 'judge'").get() as { n: number }).n > 0;
       if (busy) void fetch(`${env.PUBLIC_URL.replace(/\/$/, "")}/api/health`, { signal: AbortSignal.timeout(10_000) }).catch(() => undefined);
     }, 9 * 60_000);

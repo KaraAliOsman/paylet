@@ -1,6 +1,7 @@
 // Public API surface for the PayPal trace (P1-01), "Ask PayPal" (P1-03) and the security headers / boot guard (P2-14).
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { pp } from "./helpers/fakePaypal";
+import { installFakeDrand } from "./helpers/fakeDrand";
 
 vi.hoisted(() => {
   process.env.PAYPAL_OPS_PER_MINUTE = "100000";
@@ -17,6 +18,7 @@ let check: typeof import("../src/server/paypalcheck");
 let app: typeof import("../src/server/index")["app"];
 
 beforeAll(async () => {
+  installFakeDrand();
   domain = await import("../src/server/domain");
   queue = await import("../src/server/queue");
   models = await import("../src/server/models");

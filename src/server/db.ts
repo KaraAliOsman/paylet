@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS drops (
   units INTEGER NOT NULL,
   waitlist_size INTEGER NOT NULL DEFAULT 3,
   closes_at INTEGER NOT NULL,
-  status TEXT NOT NULL DEFAULT 'open',          -- open | drawn | settled
+  status TEXT NOT NULL DEFAULT 'open',          -- open | frozen | drawn | settled
   seed TEXT NOT NULL,                           -- secret until the draw
   seed_hash TEXT NOT NULL,
   frozen_hash TEXT,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS drops (
   forwarder_policy TEXT NOT NULL DEFAULT 'one_per_address',
   negative_test INTEGER NOT NULL DEFAULT 0,     -- simulate one failed capture at settlement
   seller_token TEXT NOT NULL,
-  kind TEXT NOT NULL DEFAULT 'showcase',        -- showcase | judge
+  kind TEXT NOT NULL DEFAULT 'showcase',        -- showcase | judge | proof
   created_at INTEGER NOT NULL,
   drawn_at INTEGER
 );
@@ -148,12 +148,39 @@ const ENTRY_COLUMNS: Record<string, string> = {
   shipped_at: "INTEGER",
   refund_id: "TEXT",
   refunded_cents: "INTEGER",
+  promoted_at: "INTEGER", // when a waitlisted entry was handed a unit after a failed payment (Drop report: recovery time)
 };
+const DROP_COLUMNS: Record<string, string> = {
+  frozen_at: "INTEGER", // P2-10: the list was frozen (status 'frozen') at this time
+  excluded_json: "TEXT", // [{ publicId, reason: "merged" | "duplicate" }] decided at the freeze
+  randomness_round: "INTEGER", // drand quicknet round committed at the freeze (always published after it)
+  randomness_value: "TEXT", // that round's randomness, once fetched
+  randomness_hops: "INTEGER NOT NULL DEFAULT 0", // times drand was unreachable and the next round was used instead
+  final_seed: "TEXT", // SHA-256(seed + ":" + randomness_value): the draw seed after the reveal
+  proof_json: "TEXT", // P1-04: what an imported proof run recorded (masked ids, PayPal check, summary)
+};
+function addColumns(table: string, cols: Record<string, string>) {
+  const have = new Set((db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name));
+  for (const [col, type] of Object.entries(cols)) if (!have.has(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
+}
 {
-  const have = new Set((db.prepare("PRAGMA table_info(entries)").all() as { name: string }[]).map((c) => c.name));
-  for (const [col, type] of Object.entries(ENTRY_COLUMNS)) if (!have.has(col)) db.exec(`ALTER TABLE entries ADD COLUMN ${col} ${type}`);
+  addColumns("entries", ENTRY_COLUMNS);
+  addColumns("drops", DROP_COLUMNS);
+  addColumns("clusters", { normalized_key: "TEXT" }); // e.g. "1200 HARBOR BLVD STE 4B 43215" (address diff in the console)
   db.exec("CREATE INDEX IF NOT EXISTS entries_capture ON entries(capture_id)");
   db.exec("CREATE INDEX IF NOT EXISTS entries_auth ON entries(authorization_id)");
+  // the latest AI review of each drop (seller console panel: reviewed pairs, linked, kept apart, degraded)
+  db.exec(`CREATE TABLE IF NOT EXISTS ai_reviews (
+    drop_id TEXT PRIMARY KEY,
+    ran_at INTEGER NOT NULL,
+    model TEXT NOT NULL,
+    uncertain_pairs INTEGER NOT NULL,
+    linked INTEGER NOT NULL,
+    llm_calls INTEGER NOT NULL,
+    kept_apart_json TEXT NOT NULL,
+    degraded TEXT,
+    ms INTEGER
+  )`);
 }
 
 export function now(): number {

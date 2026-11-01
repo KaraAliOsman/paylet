@@ -1,7 +1,8 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { db, now, tx } from "./db";
 import { env } from "./env";
 import { canonicalList, computeDraw, sha256Hex } from "../shared/draw";
+import { DRAND_CHAIN_HASH, commitRound, fetchRoundWithRetries, finalSeedOf, roundTime, roundUrl } from "./drand";
 import { formatUsd, fromPayPal } from "../shared/money";
 import {
   emit,
@@ -20,9 +21,20 @@ import {
 import * as paypal from "./paypal";
 import { enqueue, opCount, pendingOpsFor, type Handlers, type OpRow } from "./queue";
 import type { Trace } from "./trace";
-import { resolve } from "./er/resolve";
+import { resolve, type ResolvedCluster as ResolvedClusterBase } from "./er/resolve";
 import type { Identity } from "./er/normalize";
-import { syntheticCrowd } from "./simulate";
+import { syntheticCrowd, type LabeledIdentity } from "./simulate";
+
+/** P2-05 (workstream C): syntheticCrowd(seed, counts, tag, { window, simulated }) places every entrant inside the drop's
+ *  window and labels it honestly. Called through this signature so it also runs against the 3-argument version. */
+type CrowdFn = (
+  seed: number,
+  counts: Parameters<typeof syntheticCrowd>[1],
+  tag: string,
+  crowd: { window: { from: number; to: number }; simulated: true },
+) => (LabeledIdentity & { ts?: number; agentLabel?: string | null })[];
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // ---------------------------------------------------------------- drops
 
@@ -36,7 +48,7 @@ export interface NewDrop {
   shipActualCents: number;
   units: number;
   minutesOpen: number;
-  kind: "showcase" | "judge";
+  kind: "showcase" | "judge" | "proof";
   negativeTest?: boolean;
 }
 
@@ -90,6 +102,20 @@ export async function ensureShowcase(): Promise<DropRow> {
   return open ?? createDrop(SHOWCASE);
 }
 
+const revealed = (d: DropRow) => d.status === "drawn" || d.status === "settled";
+
+/** PublicDrop.randomness: the committed drand round (value null until the reveal). Null for drops drawn without drand. */
+export function randomnessOf(d: DropRow): { source: "drand-quicknet"; round: number; value: string | null; chainHash: string; url: string } | null {
+  if (d.status === "open" || d.randomness_round == null) return null;
+  return {
+    source: "drand-quicknet",
+    round: d.randomness_round,
+    value: revealed(d) ? d.randomness_value : null,
+    chainHash: DRAND_CHAIN_HASH,
+    url: roundUrl(d.randomness_round),
+  };
+}
+
 export function publicDrop(d: DropRow) {
   const entries = listEntries(d.id);
   const count = (s: (e: EntryRow) => boolean) => entries.filter(s).length;
@@ -110,10 +136,14 @@ export function publicDrop(d: DropRow) {
     status: d.status,
     kind: d.kind,
     seedHash: d.seed_hash,
-    seed: d.status === "open" ? null : d.seed,
-    frozenHash: d.frozen_hash,
+    // the seed is revealed with the drand value (P2-10): commit → freeze → public randomness → reveal
+    seed: revealed(d) ? d.seed : null,
+    frozenHash: d.status === "open" ? null : d.frozen_hash,
     frozenList: d.status === "open" ? null : d.frozen_list ? (JSON.parse(d.frozen_list) as string[]) : null,
     waitlistSize: d.waitlist_size,
+    randomness: randomnessOf(d),
+    finalSeed: revealed(d) ? d.final_seed : null,
+    pendingReviews: d.status === "open" ? pendingReviews(d.id).suggestions : 0,
     stats: {
       // real-only unless named *Simulated / simulated (contract: PublicDrop.stats)
       realOrders: count(real),
@@ -283,8 +313,15 @@ export function addSimulatedCrowd(dropIdOrSlug: string, seed = Math.floor(Math.r
   if (!dropIsOpen(drop)) throw new HttpError(409, "drop_closed");
   const sims = (db.prepare("SELECT COUNT(*) n FROM entries WHERE drop_id = ? AND source = 'simulated'").get(drop.id) as { n: number }).n;
   if (sims >= 60) throw new HttpError(409, "sim_limit", "This drop already has its simulated crowd.");
-  const crowd = syntheticCrowd(seed, { fans: 12, networks: 1, netSize: 6, households: 1, neighbors: 1, namesakes: 1 }, `sim${seed}`);
   const t = now();
+  const window = { from: drop.created_at, to: t };
+  const crowd = (syntheticCrowd as unknown as CrowdFn)(seed, { fans: 12, networks: 1, netSize: 6, households: 1, neighbors: 1, namesakes: 1 }, `sim${seed}`, { window, simulated: true });
+  // The older simulate.ts gives people no timestamp and a bot network fixed 2023 ones: keep everyone inside the drop's
+  // window anyway (never before it opened). People are spread over it; an out-of-window burst keeps its spacing, ending now.
+  const inWindow = (ts: number) => ts >= window.from && ts <= window.to;
+  const lastOutside = Math.max(0, ...crowd.map((p) => (p.ts != null && !inWindow(p.ts) ? p.ts : 0)));
+  const tsOf = (p: { ts?: number }, i: number) =>
+    p.ts == null ? Math.round(window.from + ((i + 1) / (crowd.length + 1)) * (window.to - window.from)) : inWindow(p.ts) ? p.ts : Math.max(window.from, window.to - (lastOutside - p.ts));
   for (const [i, p] of crowd.entries()) {
     const entryId = id("ent", 8);
     db.prepare(
@@ -294,7 +331,7 @@ export function addSimulatedCrowd(dropIdOrSlug: string, seed = Math.floor(Math.r
       entryId,
       publicId(),
       drop.id,
-      p.kind === "reshipper_network" ? "scalper-bot" : null,
+      p.agentLabel ?? (p.kind === "reshipper_network" ? "simulated-scalper-bot" : null),
       hmac(`sim:${p.id}`),
       p.name,
       `${p.name.split(" ")[0]} ${(p.name.split(" ")[1] ?? "").slice(0, 1)}.`,
@@ -302,7 +339,7 @@ export function addSimulatedCrowd(dropIdOrSlug: string, seed = Math.floor(Math.r
       JSON.stringify(p.address),
       drop.price_cents + drop.ship_hold_cents,
       `SIM-${entryId.slice(-8).toUpperCase()}`,
-      t - (crowd.length - i) * 7000,
+      tsOf(p, i),
       t,
     );
   }
@@ -321,48 +358,100 @@ function identityOf(e: EntryRow): Identity | null {
     email: e.email,
     address: JSON.parse(e.address_json),
     ts: e.created_at,
-    source: e.source === "simulated" && e.agent_label ? "agent" : e.source,
+    // honest provenance for the model and the rules: a simulated entrant is "simulated" (a scripted bot keeps its label)
+    source: e.source,
     agentLabel: e.agent_label,
   };
 }
 
 const analyzing = new Set<string>();
 
+/** What workstream C's resolve() adds over the original result (optional here, so both versions compile). */
+interface ResolveExtras {
+  keptApart?: { a: string; b: string; reason: string; confidence: number }[];
+  degraded?: string | null;
+}
+type ClusterExtras = { normalizedKey?: string | null };
+
+export interface KeptApartView {
+  a: string;
+  b: string;
+  reason: string;
+  confidence: number;
+}
+
+/** AiSummary (contract): the latest AI review of a drop, with public ids only. */
+export function aiSummary(dropId: string) {
+  const r = db.prepare("SELECT * FROM ai_reviews WHERE drop_id = ?").get(dropId) as
+    | { ran_at: number; model: string; uncertain_pairs: number; linked: number; kept_apart_json: string; degraded: string | null }
+    | undefined;
+  const keptApart = r ? (JSON.parse(r.kept_apart_json) as KeptApartView[]) : [];
+  return {
+    model: r?.model ?? env.AI_MODEL,
+    ranAt: r?.ran_at ?? null,
+    uncertainPairs: r?.uncertain_pairs ?? 0,
+    linked: r?.linked ?? 0,
+    keptApartCount: keptApart.length,
+    keptApart: keptApart.slice(0, 5),
+    degraded: r?.degraded ?? null,
+  };
+}
+
 export async function analyzeDrop(dropIdOrSlug: string) {
   const drop = getDrop(dropIdOrSlug);
   if (!drop) throw new HttpError(404, "drop_not_found");
+  if (drop.status !== "open") throw new HttpError(409, "drop_closed", "This drop is already closed: the AI review can no longer change the draw.");
   if (analyzing.has(drop.id)) throw new HttpError(409, "analysis_running", "An AI review is already running for this drop.");
   const entries = listEntries(drop.id).filter((e) => e.status === "held" || e.status === "authorizing");
   if (entries.length > 300) throw new HttpError(413, "too_many_entries");
   const identities = entries.map(identityOf).filter((x): x is Identity => !!x);
   const t0 = Date.now();
   analyzing.add(drop.id);
-  let result;
+  let result: Awaited<ReturnType<typeof resolve>> & ResolveExtras;
   try {
     result = await resolve(identities, { useLlm: true });
   } finally {
     analyzing.delete(drop.id);
   }
   const ms = Date.now() - t0;
+  // resolve() reports pairs by public label; map any internal id defensively so only public ids ever leave the server
+  const pidOf = new Map(listEntries(drop.id).map((e) => [e.id, e.public_id]));
+  const keptApart: KeptApartView[] = (result.keptApart ?? []).map((k) => ({
+    a: pidOf.get(k.a) ?? k.a,
+    b: pidOf.get(k.b) ?? k.b,
+    reason: String(k.reason ?? "").slice(0, 240),
+    confidence: Number(k.confidence) || 0,
+  }));
+  const degraded = result.degraded !== undefined ? result.degraded : result.aiDegraded ? `AI unavailable (${result.aiDegraded}). Showing rule-only suggestions.` : null;
+  const linked = result.clusters.filter((c) => c.method === "ai").length;
   tx(() => {
     // replace previous suggestions (keep seller decisions)
     db.prepare("DELETE FROM clusters WHERE drop_id = ? AND status = 'suggested'").run(drop.id);
     const decided = db.prepare("SELECT member_ids FROM clusters WHERE drop_id = ? AND status <> 'suggested'").all(drop.id) as { member_ids: string }[];
     const decidedKeys = new Set(decided.map((d) => JSON.parse(d.member_ids).sort().join(",")));
-    for (const c of result.clusters) {
+    for (const c of result.clusters as (ResolvedClusterBase & ClusterExtras)[]) {
       if (decidedKeys.has([...c.memberIds].sort().join(","))) continue;
       db.prepare(
-        `INSERT INTO clusters(id, drop_id, kind, status, method, confidence, evidence_json, explanation, member_ids, created_at) VALUES(?, ?, ?, 'suggested', ?, ?, ?, ?, ?, ?)`,
-      ).run(id("clu", 6), drop.id, c.kind, c.method, c.confidence, JSON.stringify(c.evidence), c.explanation, JSON.stringify(c.memberIds), now());
+        `INSERT INTO clusters(id, drop_id, kind, status, method, confidence, evidence_json, explanation, member_ids, normalized_key, created_at) VALUES(?, ?, ?, 'suggested', ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(id("clu", 6), drop.id, c.kind, c.method, c.confidence, JSON.stringify(c.evidence), c.explanation, JSON.stringify(c.memberIds), c.normalizedKey ?? null, now());
     }
+    db.prepare(
+      `INSERT INTO ai_reviews(drop_id, ran_at, model, uncertain_pairs, linked, llm_calls, kept_apart_json, degraded, ms) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(drop_id) DO UPDATE SET ran_at = excluded.ran_at, model = excluded.model, uncertain_pairs = excluded.uncertain_pairs, linked = excluded.linked,
+         llm_calls = excluded.llm_calls, kept_apart_json = excluded.kept_apart_json, degraded = excluded.degraded, ms = excluded.ms`,
+    ).run(drop.id, now(), env.AI_MODEL, result.uncertainPairs, linked, result.llmCalls, JSON.stringify(keptApart), degraded, ms);
   });
+  const pending = pendingReviews(drop.id).suggestions;
   emit(
     drop.id,
     "er_done",
-    `Entity resolution: ${identities.length} entries, ${result.uncertainPairs} fuzzy pairs sent to the AI (${result.llmCalls} call${result.llmCalls === 1 ? "" : "s"}), ${result.clusters.length} cluster(s) suggested in ${(ms / 1000).toFixed(1)}s.${result.aiDegraded ? ` AI unavailable (${result.aiDegraded}) — rules-only suggestions.` : ""} Seller must confirm.`,
+    degraded
+      ? `${/[.!?]$/.test(degraded) ? degraded : `${degraded}.`} ${plural(pending, "group")} ${pending === 1 ? "needs" : "need"} the seller's decision. Nothing merges until the seller confirms.`
+      : `AI reviewed ${plural(result.uncertainPairs, "uncertain pair")} in ${(ms / 1000).toFixed(1)} s: ${plural(pending, "group")} ${pending === 1 ? "needs" : "need"} the seller's decision${keptApart.length ? `, ${plural(keptApart.length, "pair")} kept apart` : ""}. Nothing merges until the seller confirms.`,
     false,
+    degraded ? { tone: "warn" } : undefined,
   );
-  return { ...result, ms };
+  return { ...result, keptApart: keptApart.slice(0, 5), degraded, ms };
 }
 
 export function decideCluster(dropId: string, clusterId: string, decision: "confirmed" | "dismissed") {
@@ -371,82 +460,348 @@ export function decideCluster(dropId: string, clusterId: string, decision: "conf
   const d = getDrop(dropId)!;
   if (d.status !== "open") throw new HttpError(409, "drop_closed");
   db.prepare("UPDATE clusters SET status = ? WHERE id = ? AND drop_id = ?").run(decision, clusterId, dropId);
-  const ids = JSON.parse(c.member_ids) as string[];
-  emit(c.drop_id, "cluster_" + decision, `Seller ${decision} a ${c.kind} cluster of ${ids.length} PayPal accounts.`, false);
+  emit(c.drop_id, "cluster_" + decision, clusterDecisionMessage(c.kind, (JSON.parse(c.member_ids) as string[]).length, decision), false);
 }
 
+/** "Seller confirmed a reseller network of 6 PayPal accounts: they now share one ticket." */
+export function clusterDecisionMessage(kind: ClusterRow["kind"], n: number, decision: "confirmed" | "dismissed"): string {
+  const what = kind === "operator" ? "reseller network" : "household";
+  return decision === "confirmed"
+    ? `Seller confirmed a ${what} of ${n} PayPal accounts: they now share one ticket.`
+    : `Seller dismissed the suggested ${what} of ${n} PayPal accounts: each keeps its own ticket.`;
+}
+
+/** Contract `Cluster` (seller console). Member ids are internal entry ids, like SellerEntry.id. */
 export function listClusters(dropId: string) {
-  return (db.prepare("SELECT * FROM clusters WHERE drop_id = ? ORDER BY confidence DESC").all(dropId) as unknown as ClusterRow[]).map((c) => ({
-    ...c,
-    evidence: JSON.parse(c.evidence_json),
+  return (db.prepare("SELECT * FROM clusters WHERE drop_id = ? ORDER BY CASE kind WHEN 'operator' THEN 0 ELSE 1 END, confidence DESC").all(dropId) as unknown as ClusterRow[]).map((c) => ({
+    id: c.id,
+    kind: c.kind,
+    status: c.status,
+    method: c.method,
+    confidence: c.confidence,
+    evidence: JSON.parse(c.evidence_json) as { field: string; detail: string }[],
+    explanation: c.explanation,
     memberIds: JSON.parse(c.member_ids) as string[],
+    normalizedKey: c.normalized_key ?? null,
+    createdAt: c.created_at,
   }));
 }
 
 // ---------------------------------------------------------------- draw & settlement
+// Two phases (P2-10):
+//   FREEZE: guards (holds still being placed, AI suggestions not reviewed, nobody to draw), confirmed groups merged,
+//           the eligible list hashed and published with every exclusion, and a FUTURE drand round committed.
+//   REVEAL: once that round is published, final seed = SHA-256(seed:randomness), winners computed, money moves.
+// Every step that decides who is in runs synchronously (no await between the checks and the conditional UPDATE),
+// so a concurrent approval can never slip a hold into, or out of, a list that is being frozen or drawn.
 
-export async function draw(dropIdOrSlug: string) {
+const sha256Sync = (s: string) => createHash("sha256").update(s).digest("hex");
+const roundLabel = (r: number) => r.toLocaleString("en-US");
+
+/** Seller decisions are owed on AI suggestions that still change the draw (at least two members holding a ticket). */
+export function pendingReviews(dropId: string): { suggestions: number; accounts: number } {
+  const live = new Set(
+    listEntries(dropId)
+      .filter((e) => e.status === "held" || e.status === "authorizing")
+      .map((e) => e.id),
+  );
+  const rows = db.prepare("SELECT member_ids FROM clusters WHERE drop_id = ? AND status = 'suggested'").all(dropId) as { member_ids: string }[];
+  const accounts = new Set<string>();
+  let suggestions = 0;
+  for (const r of rows) {
+    const members = (JSON.parse(r.member_ids) as string[]).filter((m) => live.has(m));
+    if (members.length < 2) continue;
+    suggestions++;
+    for (const m of members) accounts.add(m);
+  }
+  return { suggestions, accounts: accounts.size };
+}
+
+export function pendingReviewsMessage(p: { suggestions: number; accounts: number }): string {
+  return `${plural(p.suggestions, "AI suggestion")} ${p.suggestions === 1 ? "is" : "are"} still pending: ${p.accounts} accounts would each keep a ticket. Review ${p.suggestions === 1 ? "it" : "them"} first.`;
+}
+
+/** After closing time the seller still gets this long to decide pending AI suggestions before the automatic draw. */
+export const REVIEW_GRACE_MS = 15 * 60_000;
+/** drand unreachable for this long after the freeze: draw with the committed seed alone (said in the ledger). */
+export const DRAND_GIVE_UP_MS = 15 * 60_000;
+const MAX_DRAND_HOPS = 2;
+
+export interface DrawOptions {
+  /** skip the "pending AI suggestions" guard (never for judge drops) */
+  force?: boolean;
+  /** the automatic draw at closing time (sweeper) */
+  auto?: boolean;
+}
+
+export interface FreezeResult {
+  status: "frozen" | "settled";
+  dropId: string;
+  frozenHash: string;
+  eligible: number;
+  excluded: { publicId: string; reason: "merged" | "duplicate" }[];
+  round: number | null;
+  revealAt: number | null;
+}
+
+/** Phase 1. Throws 409 holds_pending / pending_reviews / no_eligible_entries / already_drawn. */
+export async function freeze(dropIdOrSlug: string, opts: DrawOptions = {}): Promise<FreezeResult> {
   const drop = getDrop(dropIdOrSlug);
   if (!drop) throw new HttpError(404, "drop_not_found");
-  if (drop.status !== "open") throw new HttpError(409, "already_drawn");
-  const pendingAuth = listEntries(drop.id).filter((e) => e.status === "authorizing").length;
-  if (pendingAuth) throw new HttpError(409, "holds_pending", `${pendingAuth} hold(s) still being placed — try again in a few seconds`);
-
-  // Close the drop atomically BEFORE any await, so no finalize() can slip a new hold in afterwards.
-  const closed = db.prepare("UPDATE drops SET status = 'drawn', drawn_at = ? WHERE id = ? AND status = 'open'").run(now(), drop.id);
-  if (!closed.changes) throw new HttpError(409, "already_drawn");
+  if (drop.status !== "open") throw new HttpError(409, "already_drawn", "This drop was already closed and drawn.");
   const entries = listEntries(drop.id);
+  const pendingAuth = entries.filter((e) => e.status === "authorizing").length;
+  if (pendingAuth) throw new HttpError(409, "holds_pending", `${plural(pendingAuth, "hold")} still being placed by PayPal. Try again in a few seconds.`);
   const held = entries.filter((e) => e.status === "held");
-  // Confirmed clusters: one allocation per cluster (earliest entry keeps its place).
+  if (!held.length) {
+    if (opts.auto) return closeEmpty(drop);
+    throw new HttpError(409, "no_eligible_entries", "Nobody holds a ticket in this drop yet, so there is nothing to draw. Nothing was closed.");
+  }
+  const pending = pendingReviews(drop.id);
+  const skipReview = Boolean(opts.auto || (opts.force && drop.kind !== "judge"));
+  if (pending.suggestions && !skipReview) {
+    throw new HttpError(409, "pending_reviews", pendingReviewsMessage(pending) + (opts.force ? " Judge drops can't skip the review." : ""));
+  }
+
+  // Confirmed groups: one ticket per group (the earliest entry keeps it).
   const confirmed = (db.prepare("SELECT * FROM clusters WHERE drop_id = ? AND status = 'confirmed'").all(drop.id) as unknown as ClusterRow[]).map((c) => ({
     ...c,
     ids: JSON.parse(c.member_ids) as string[],
   }));
-  const mergedIds = new Set<string>();
+  const merged = new Map<string, { clusterId: string; kind: ClusterRow["kind"]; others: number }>();
+  const keepers = new Map<string, string>();
   for (const c of confirmed) {
     const members = held.filter((e) => c.ids.includes(e.id)).sort((a, b) => a.created_at - b.created_at);
-    for (const m of members.slice(1)) {
-      mergedIds.add(m.id);
-      updateEntry(m.id, {
-        status: "merged",
-        cluster_id: c.id,
-        // templated on purpose: the fan never sees free-form model text or other people's details
-        explanation: `The seller confirmed that this PayPal account belongs to the same ${c.kind === "operator" ? "shipping operation" : "household"} as ${members.length - 1} other entr${members.length - 1 === 1 ? "y" : "ies"} (shared delivery address). One allocation per ${c.kind === "operator" ? "operation" : "household"} — your hold is released, nothing was charged.`,
-      });
-    }
-    if (members[0]) updateEntry(members[0].id, { cluster_id: c.id });
+    for (const m of members.slice(1)) if (!merged.has(m.id)) merged.set(m.id, { clusterId: c.id, kind: c.kind, others: members.length - 1 });
+    if (members[0] && !merged.has(members[0].id)) keepers.set(members[0].id, c.id);
   }
-  const eligible = held.filter((e) => !mergedIds.has(e.id));
+  const eligible = held.filter((e) => !merged.has(e.id));
   const ids = eligible.map((e) => e.public_id);
-  const frozenHash = await sha256Hex(canonicalList(ids));
-  const result = await computeDraw(drop.seed, ids, drop.units, drop.waitlist_size);
-  const byPid = new Map(eligible.map((e) => [e.public_id, e]));
+  const frozenHash = sha256Sync(canonicalList(ids));
+  const excluded: FreezeResult["excluded"] = [
+    ...held.filter((e) => merged.has(e.id)).map((e) => ({ publicId: e.public_id, reason: "merged" as const })),
+    ...entries.filter((e) => e.status === "duplicate").map((e) => ({ publicId: e.public_id, reason: "duplicate" as const })),
+  ];
+  const t = now();
+  const round = commitRound(t);
+  const closed = db
+    .prepare(
+      `UPDATE drops SET status = 'frozen', frozen_at = ?, frozen_hash = ?, frozen_list = ?, excluded_json = ?, randomness_round = ?, randomness_value = NULL,
+         randomness_hops = 0, final_seed = NULL WHERE id = ? AND status = 'open'`,
+    )
+    .run(t, frozenHash, JSON.stringify([...ids].sort()), JSON.stringify(excluded), round, drop.id);
+  if (!closed.changes) throw new HttpError(409, "already_drawn", "This drop was already closed and drawn.");
 
-  db.prepare("UPDATE drops SET frozen_hash = ?, frozen_list = ? WHERE id = ?").run(frozenHash, JSON.stringify([...ids].sort()), drop.id);
-  emit(drop.id, "draw", `Draw: list of ${ids.length} eligible entries frozen (hash ${frozenHash.slice(0, 12)}…), seed revealed. ${result.winners.length} winner(s), ${result.waitlist.length} on waitlist.`, false, {
-    frozenHash,
-    seed: drop.seed,
-  });
-
-  // 1) assign every status first (so settlement bookkeeping never sees a half-drawn drop) …
-  for (const pid of result.winners) updateEntry(byPid.get(pid)!.id, { status: "won" });
-  for (const pid of result.waitlist) updateEntry(byPid.get(pid)!.id, { status: "waitlist" });
-  const losers = eligible.filter((e) => !result.winners.includes(e.public_id) && !result.waitlist.includes(e.public_id));
-  for (const e of losers) updateEntry(e.id, { status: "lost" });
-  // 2) … then move money.
-  // Sandbox negative test: one winner's payment fails so the waitlist hand-off is visible. Prefer a SIMULATED winner
-  // (so a real person's hold is captured normally); only if every winner is real does a real hold get the PayPal 422.
-  const failPid = drop.negative_test === 1 ? (result.winners.find((p) => byPid.get(p)!.source === "simulated") ?? result.winners[0]) : null;
-  for (const pid of result.winners) scheduleCapture(drop, getEntry(byPid.get(pid)!.id)!, pid === failPid);
-  for (const e of losers) scheduleVoid(drop, getEntry(e.id)!, "not selected");
-  for (const idm of mergedIds) scheduleVoid(drop, getEntry(idm)!, "merged into a confirmed cluster");
+  for (const [entryId, m] of merged) {
+    const what = m.kind === "operator" ? "reseller network" : "household";
+    updateEntry(entryId, {
+      status: "merged",
+      cluster_id: m.clusterId,
+      // templated on purpose: the fan never sees free-form model text or other people's details
+      explanation: `The seller confirmed that this PayPal account belongs to the same ${m.kind === "operator" ? "shipping operation" : "household"} as ${plural(m.others, "other entry", "other entries")} (shared delivery address). One ticket per ${m.kind === "operator" ? "operation" : "household"}: your hold is released, nothing was charged.`,
+      note: `Merged into a confirmed ${what}: hold released, nothing charged.`,
+    });
+  }
+  for (const [entryId, clusterId] of keepers) updateEntry(entryId, { cluster_id: clusterId });
   // Pending approvals that never completed simply expire (no hold exists).
-  for (const e of entries.filter((x) => x.status === "awaiting_person")) updateEntry(e.id, { status: "expired", note: "not approved before the draw" });
-  return { ...result, frozenHash };
+  for (const e of entries.filter((x) => x.status === "awaiting_person")) {
+    updateEntry(e.id, { status: "expired", note: e.source === "agent" ? "No person approved in PayPal: no hold was placed." : "Not approved in PayPal before the draw: no hold was placed." });
+  }
+  const mergedEntries = held.filter((e) => merged.has(e.id)).map((e) => getEntry(e.id)!);
+
+  if (pending.suggestions) {
+    emit(
+      drop.id,
+      "review_skipped",
+      `${opts.auto ? "Closing time: drawn automatically." : "The seller drew without reviewing."} ${plural(pending.suggestions, "AI suggestion")} ${pending.suggestions === 1 ? "was" : "were"} not reviewed before the draw, so those ${pending.accounts} accounts keep their own tickets.`,
+      false,
+      { tone: "warn" },
+    );
+  }
+  const dupes = excluded.filter((x) => x.reason === "duplicate").length;
+  const exclusions = [mergedEntries.length ? `${mergedEntries.length} merged into confirmed groups` : "", dupes ? plural(dupes, "same-account duplicate") : ""].filter(Boolean).join(", ");
+  emit(
+    drop.id,
+    "frozen",
+    `List frozen: ${plural(ids.length, "eligible entry", "eligible entries")} (SHA-256 ${frozenHash.slice(0, 12)}…)${exclusions ? `; excluded: ${exclusions}` : ""}. The winners come from drand round ${roundLabel(round)}, published about ${Math.max(1, Math.round((roundTime(round) - t) / 1000))} s from now, after the freeze.`,
+    false,
+    { frozenHash, round },
+  );
+  // the merged accounts' holds are released after the ledger says why (real ones through the PayPal queue)
+  for (const e of mergedEntries.filter((x) => x.source !== "simulated")) scheduleVoid(drop, e, "merged into a confirmed group");
+  releaseSimulated(drop, mergedEntries.filter((x) => x.source === "simulated"), "merged into a confirmed group");
+  return { status: "frozen", dropId: drop.id, frozenHash, eligible: ids.length, excluded, round, revealAt: roundTime(round) };
+}
+
+/** Closing time with nobody holding a ticket: nothing to draw, nobody charged. */
+function closeEmpty(drop: DropRow): FreezeResult {
+  const hash = sha256Sync(canonicalList([]));
+  const t = now();
+  const ch = db
+    .prepare("UPDATE drops SET status = 'settled', frozen_at = ?, drawn_at = ?, frozen_hash = ?, frozen_list = '[]', excluded_json = '[]', randomness_round = NULL WHERE id = ? AND status = 'open'")
+    .run(t, t, hash, drop.id);
+  if (ch.changes) {
+    for (const e of listEntries(drop.id).filter((x) => x.status === "awaiting_person")) {
+      updateEntry(e.id, { status: "expired", note: e.source === "agent" ? "No person approved in PayPal: no hold was placed." : "Not approved in PayPal before the drop closed: no hold was placed." });
+    }
+    emit(drop.id, "settled", "Closing time: nobody held a ticket, so there was nothing to draw. Nobody was charged.", false);
+  }
+  return { status: "settled", dropId: drop.id, frozenHash: hash, eligible: 0, excluded: [], round: null, revealAt: null };
+}
+
+export interface RevealResult {
+  winners: string[];
+  waitlist: string[];
+  round: number | null;
+  finalSeed: string | null;
+}
+
+const reveals = new Map<string, Promise<RevealResult | null>>();
+const revealRetryAt = new Map<string, number>();
+const drandWaitWarned = new Set<string>();
+
+/** Starts (or joins) the reveal of a frozen drop. Never rejects: failures are logged and retried by the sweeper. */
+export function scheduleReveal(dropId: string): Promise<RevealResult | null> {
+  const running = reveals.get(dropId);
+  if (running) return running;
+  const p = reveal(dropId)
+    .catch((e) => {
+      console.warn("[paylet] reveal", dropId, String(e).slice(0, 200));
+      revealRetryAt.set(dropId, now() + 60_000);
+      return null;
+    })
+    .finally(() => reveals.delete(dropId));
+  reveals.set(dropId, p);
+  return p;
+}
+
+/** The reveal in flight for a drop (tests, scripts). */
+export function whenRevealed(dropId: string): Promise<RevealResult | null> {
+  return reveals.get(dropId) ?? Promise.resolve(null);
+}
+
+/** Phase 2: wait for the committed drand round, fetch it (3 tries; then the next round, said in the ledger), draw, settle. */
+async function reveal(dropId: string): Promise<RevealResult | null> {
+  let drop = getDrop(dropId);
+  if (!drop || drop.status !== "frozen") return null;
+  let round = drop.randomness_round;
+  let value: string | null = null;
+  while (round != null) {
+    const beacon = await fetchRoundWithRetries(round);
+    drop = getDrop(dropId)!;
+    if (drop.status !== "frozen") return null;
+    if (beacon) {
+      value = beacon.randomness;
+      break;
+    }
+    if ((drop.randomness_hops ?? 0) < MAX_DRAND_HOPS) {
+      db.prepare("UPDATE drops SET randomness_round = ?, randomness_hops = randomness_hops + 1 WHERE id = ? AND status = 'frozen'").run(round + 1, dropId);
+      emit(
+        dropId,
+        "drand_next_round",
+        `drand round ${roundLabel(round)} could not be fetched after 3 tries, so the draw uses the next round, ${roundLabel(round + 1)} (also published after the freeze).`,
+        false,
+        { tone: "warn" },
+      );
+      round += 1;
+      continue;
+    }
+    if (now() - (drop.frozen_at ?? now()) < DRAND_GIVE_UP_MS) {
+      if (!drandWaitWarned.has(dropId)) {
+        drandWaitWarned.add(dropId);
+        emit(
+          dropId,
+          "drand_unreachable",
+          "drand is unreachable right now. The list stays frozen and Paylet retries every minute; it only draws without public randomness after 15 minutes, and says so here.",
+          false,
+          { tone: "warn" },
+        );
+      }
+      revealRetryAt.set(dropId, now() + 60_000);
+      return null;
+    }
+    // Never silently: the ledger says the draw fell back to the committed seed alone.
+    db.prepare("UPDATE drops SET randomness_round = NULL, randomness_value = NULL WHERE id = ? AND status = 'frozen'").run(dropId);
+    emit(
+      dropId,
+      "drand_fallback",
+      "drand was unreachable for 15 minutes, so this draw uses the committed seed alone. That is weaker: Paylet knew the seed before the list was frozen.",
+      false,
+      { tone: "warn" },
+    );
+    round = null;
+  }
+  drop = getDrop(dropId)!;
+  if (drop.status !== "frozen") return null;
+  const finalSeed = value ? finalSeedOf(drop.seed, value) : null;
+  const ids = JSON.parse(drop.frozen_list ?? "[]") as string[];
+  const result = await computeDraw(finalSeed ?? drop.seed, ids, drop.units, drop.waitlist_size);
+
+  // --- synchronous from here: status, outcome and every scheduled money movement
+  const opened = db
+    .prepare("UPDATE drops SET status = 'drawn', drawn_at = ?, randomness_value = ?, final_seed = ? WHERE id = ? AND status = 'frozen'")
+    .run(now(), value, finalSeed, dropId);
+  if (!opened.changes) return null;
+  revealRetryAt.delete(dropId);
+  drandWaitWarned.delete(dropId);
+  drop = getDrop(dropId)!;
+  const byPid = new Map(listEntries(dropId).map((e) => [e.public_id, e]));
+  const stillHeld = (pid: string) => byPid.get(pid)?.status === "held";
+  if (value && round != null) {
+    emit(
+      dropId,
+      "randomness",
+      `Randomness: League of Entropy drand round ${roundLabel(round)}, published after the list was frozen. Not even Paylet knew the winners in advance.`,
+      false,
+      { round, value },
+    );
+  }
+  const winners = result.winners.filter(stillHeld);
+  const lostHold = result.winners.filter((pid) => !stillHeld(pid));
+  const waitlist = result.waitlist.filter(stillHeld);
+  const losers = ids.filter((pid) => stillHeld(pid) && !result.winners.includes(pid) && !result.waitlist.includes(pid));
+  // 1) every status first (settlement bookkeeping never sees a half-drawn drop) …
+  for (const pid of winners) updateEntry(byPid.get(pid)!.id, { status: "won" });
+  for (const pid of waitlist) updateEntry(byPid.get(pid)!.id, { status: "waitlist" });
+  for (const pid of losers) updateEntry(byPid.get(pid)!.id, { status: "lost" });
+  emit(
+    dropId,
+    "draw",
+    `Seed revealed. ${plural(winners.length, "winner")}, ${waitlist.length} on the waitlist. Settling with PayPal…`,
+    false,
+    { finalSeed, seed: drop.seed },
+  );
+  // 2) … then move money.
+  // Sandbox negative test: one winner's payment fails so the waitlist hand-off is visible. Prefer a simulated winner
+  // (so a real person's hold is captured normally); only if every winner is real does a real hold get the PayPal 422.
+  const failPid = drop.negative_test === 1 ? (winners.find((p) => byPid.get(p)!.source === "simulated") ?? winners[0]) : null;
+  for (const pid of winners) scheduleCapture(drop, getEntry(byPid.get(pid)!.id)!, pid === failPid);
+  const loserRows = losers.map((pid) => getEntry(byPid.get(pid)!.id)!);
+  for (const e of loserRows.filter((x) => x.source !== "simulated")) scheduleVoid(drop, e, "not selected");
+  releaseSimulated(drop, loserRows.filter((x) => x.source === "simulated"), "not selected");
+  // a winner whose hold disappeared between the freeze and the reveal (e.g. voided at PayPal) passes the unit on
+  for (const pid of lostHold) {
+    emit(dropId, "winner_without_hold", `${pid} was drawn but no longer has a live hold, so the unit passes to the waitlist.`, false, { tone: "warn" });
+    await promoteNext(dropId);
+  }
+  settleIfDone(dropId);
+  return { winners, waitlist, round: value ? round : null, finalSeed };
+}
+
+/** Freeze, then wait for the reveal (tests, scripts). The HTTP endpoint and the sweeper freeze and reveal in the background. */
+export async function draw(dropIdOrSlug: string, opts: DrawOptions = {}) {
+  const f = await freeze(dropIdOrSlug, opts);
+  const r = f.status === "frozen" ? await scheduleReveal(f.dropId) : null;
+  return { ...f, status: getDrop(f.dropId)!.status, winners: r?.winners ?? [], waitlist: r?.waitlist ?? [], finalSeed: r?.finalSeed ?? null };
 }
 
 function captureAmount(drop: DropRow): number {
   return drop.price_cents + drop.ship_actual_cents; // partial capture: real shipping < shipping held
+}
+
+/** The seed the ranking uses: the final seed after a drand reveal, the committed seed for older drops. */
+function drawSeed(drop: DropRow): string {
+  return drop.final_seed ?? drop.seed;
 }
 
 /** Sandbox negative test through PayPal's official negative testing (PayPal-Mock-Response header).
@@ -456,14 +811,14 @@ export const NEGATIVE_TEST_CODE = "TRANSACTION_REFUSED";
 
 function scheduleCapture(drop: DropRow, e: EntryRow, injectFailure: boolean) {
   if (e.source === "simulated" && injectFailure) {
-    updateEntry(e.id, { status: "capture_failed", settled_at: now(), note: "Payment failed (simulated negative test). The unit passes to the waitlist." });
-    emit(drop.id, "capture_failed", `Simulated negative test: capture for ${e.public_id} declined — promoting the waitlist.`, false);
+    updateEntry(e.id, { status: "capture_failed", settled_at: now(), note: "Payment failed (negative test on a simulated entrant). The unit passes to the waitlist." });
+    emit(drop.id, "capture_failed", `Negative test: the payment of ${e.public_id} (a simulated entrant) fails, so the unit passes to the waitlist.`, false);
     void promoteNext(drop.id);
     return;
   }
   if (e.source === "simulated") {
     updateEntry(e.id, { status: "captured", settled_at: now(), captured_cents: captureAmount(drop), capture_id: `SIM-CAP-${e.id.slice(-6).toUpperCase()}` });
-    emit(drop.id, "capture_sim", `Simulated capture for ${e.public_id} (${formatUsd(captureAmount(drop))}).`, false);
+    emit(drop.id, "capture_sim", `Captured ${formatUsd(captureAmount(drop))} from ${e.public_id} (simulated entrant, no PayPal call).`, false);
     settleIfDone(drop.id);
     return;
   }
@@ -471,29 +826,42 @@ function scheduleCapture(drop: DropRow, e: EntryRow, injectFailure: boolean) {
 }
 
 function scheduleVoid(drop: DropRow, e: EntryRow, reason: string) {
-  if (e.source === "simulated") {
-    updateEntry(e.id, { status: e.status === "merged" ? "merged" : "voided", settled_at: now() });
-    emit(drop.id, "void_sim", `Simulated hold release for ${e.public_id} (${reason}).`, false);
-    return;
-  }
+  if (e.source === "simulated") return releaseSimulated(drop, [e], reason);
   if (!e.authorization_id) return;
   enqueue("void", `void:${e.authorization_id}`, e.id, { reason });
 }
 
+/** Simulated holds are released in bulk: one ledger line for the whole group, never one per entrant. */
+function releaseSimulated(drop: DropRow, list: EntryRow[], reason: string) {
+  if (!list.length) return;
+  for (const e of list) updateEntry(e.id, { status: e.status === "merged" ? "merged" : "voided", settled_at: now() });
+  emit(
+    drop.id,
+    "void_sim",
+    list.length === 1
+      ? `Released the hold of ${list[0].public_id} (${reason}; simulated entrant, no PayPal call). Nobody was charged.`
+      : `Released ${list.length} simulated holds (${reason}; no PayPal calls). Nobody was charged.`,
+    false,
+  );
+}
+
 async function promoteNext(dropId: string) {
   const drop = getDrop(dropId)!;
-  const ids = (JSON.parse(drop.frozen_list ?? "[]") as string[]);
-  const ranking = (await computeDraw(drop.seed, ids, drop.units, ids.length)).ranking.map((r) => r.publicId);
+  const ids = JSON.parse(drop.frozen_list ?? "[]") as string[];
+  const ranking = (await computeDraw(drawSeed(drop), ids, drop.units, ids.length)).ranking.map((r) => r.publicId);
   const entries = listEntries(dropId);
   const next = ranking.map((pid) => entries.find((e) => e.public_id === pid)!).find((e) => e && e.status === "waitlist");
   if (!next) {
-    emit(dropId, "waitlist_empty", "Capture failed and the waitlist is empty — unit returns to the maker.", false);
+    emit(dropId, "waitlist_empty", "The payment failed and the waitlist is empty, so the unit returns to the maker.", false);
     settleIfDone(dropId);
     return;
   }
-  updateEntry(next.id, { status: "won", note: "Promoted from the waitlist — your hold was already in place." });
-  emit(dropId, "promoted", `Waitlist #1 ${next.public_id} promoted — their hold already exists, capturing now.`, false);
-  scheduleCapture(drop, next, false);
+  const moved = db
+    .prepare("UPDATE entries SET status = 'won', promoted_at = ?, note = ?, updated_at = ? WHERE id = ? AND status = 'waitlist'")
+    .run(now(), "Promoted from the waitlist: your hold was already in place.", now(), next.id);
+  if (!moved.changes) return promoteNext(dropId);
+  emit(dropId, "promoted", `Waitlist #1 ${next.public_id} promoted: their hold already exists, capturing now.`, false);
+  scheduleCapture(drop, getEntry(next.id)!, false);
 }
 
 function settleIfDone(dropId: string) {
@@ -507,13 +875,13 @@ function settleIfDone(dropId: string) {
   const failed = entries.filter((e) => e.status === "capture_failed").length;
   const waiting = entries.filter((e) => e.status === "waitlist").length;
   if (failed > 0 && paid < drop.units && waiting > 0) return;
-  for (const e of entries.filter((x) => x.status === "waitlist")) {
-    updateEntry(e.id, { status: "lost" });
-    scheduleVoid(drop, e, "waitlist released after all units were paid");
-  }
+  const released = entries.filter((x) => x.status === "waitlist");
+  for (const e of released) updateEntry(e.id, { status: "lost" });
+  for (const e of released.filter((x) => x.source !== "simulated")) scheduleVoid(drop, getEntry(e.id)!, "waitlist released after all units were paid");
+  releaseSimulated(drop, released.filter((x) => x.source === "simulated").map((e) => getEntry(e.id)!), "waitlist released after all units were paid");
   if (!db.prepare("UPDATE drops SET status = 'settled' WHERE id = ? AND status = 'drawn'").run(dropId).changes) return;
   const cap = entries.filter((e) => e.status === "captured").length;
-  emit(dropId, "settled", `Settled: ${cap} unit(s) paid. Every other hold released. Nobody who lost was charged.`, false);
+  emit(dropId, "settled", `Settled: ${plural(cap, "unit")} paid. Every other hold released. Nobody who lost was charged.`, false);
 }
 
 // ---------------------------------------------------------------- guarded transitions
@@ -835,9 +1203,10 @@ export async function sweep(): Promise<void> {
     }
   }
   await reconcilePendingCaptures();
-  // Any real hold still "held" in a drop that is no longer open is outside the ballot: release it.
+  // Any real hold still "held" in a drop that has been drawn is outside the ballot: release it.
+  // (While a drop is 'frozen' its held entries ARE the ballot: they wait for the reveal.)
   const strays = db
-    .prepare("SELECT e.* FROM entries e JOIN drops d ON d.id = e.drop_id WHERE e.status = 'held' AND e.source <> 'simulated' AND d.status <> 'open' LIMIT 5")
+    .prepare("SELECT e.* FROM entries e JOIN drops d ON d.id = e.drop_id WHERE e.status = 'held' AND e.source <> 'simulated' AND d.status IN ('drawn','settled') LIMIT 5")
     .all() as unknown as EntryRow[];
   for (const e of strays) {
     updateEntry(e.id, { status: "lost", note: "Hold placed outside the ballot — released." });
@@ -847,11 +1216,17 @@ export async function sweep(): Promise<void> {
   db.prepare(
     "UPDATE ops SET status = 'pending', attempts = 0, next_at = ? WHERE key IN (SELECT key FROM ops WHERE kind = 'void' AND status = 'failed' AND updated_at < ? AND created_at > ? ORDER BY updated_at LIMIT 3)",
   ).run(now(), now() - 10 * 60_000, now() - 28 * 86_400_000);
-  // Expire open drops past their close time (judge drops close after 30 min).
-  const expired = db.prepare("SELECT id FROM drops WHERE status = 'open' AND closes_at < ?").all(now()) as { id: string }[];
+  // Frozen drops waiting for public randomness (a restart, or drand was down): reveal them.
+  const frozen = db.prepare("SELECT id FROM drops WHERE status = 'frozen'").all() as { id: string }[];
+  for (const d of frozen) if (!reveals.has(d.id) && (revealRetryAt.get(d.id) ?? 0) <= now()) void scheduleReveal(d.id);
+  // Draw open drops past their close time (judge drops close after 30 min). Proof drops are never drawn automatically.
+  // Pending AI suggestions give the seller REVIEW_GRACE_MS more to decide; after that the draw says they were not reviewed.
+  const expired = db.prepare("SELECT id, closes_at FROM drops WHERE status = 'open' AND closes_at < ? AND kind <> 'proof'").all(now()) as { id: string; closes_at: number }[];
   for (const d of expired) {
+    if (pendingReviews(d.id).suggestions && d.closes_at > now() - REVIEW_GRACE_MS) continue;
     try {
-      await draw(d.id);
+      const f = await freeze(d.id, { auto: true });
+      if (f.status === "frozen") void scheduleReveal(f.dropId);
     } catch (err) {
       console.warn("auto-draw", d.id, String(err));
     }
@@ -912,7 +1287,7 @@ export function shipEntry(dropId: string, entryId: string, input: { carrier?: un
   const drop = getDrop(dropId)!;
   if (e.source === "simulated") {
     updateEntry(e.id, { carrier, tracking_number: tracking, shipped_at: now() });
-    emit(drop.id, "shipped_sim", `Simulated: ${e.public_id} marked shipped (${carrier} …${tracking.slice(-4)}; no PayPal call).`, false);
+    emit(drop.id, "shipped_sim", `${e.public_id} marked shipped: ${carrier} …${tracking.slice(-4)} (simulated entrant, no PayPal call).`, false);
     return;
   }
   if (!e.capture_id || !e.order_id) throw new HttpError(409, "not_captured", "Only a paid (captured) entry can be marked shipped.");
@@ -936,7 +1311,7 @@ export function refundEntry(dropId: string, entryId: string, reason?: unknown) {
   if (e.source === "simulated") {
     const cents = e.captured_cents ?? 0;
     markRefunded(e, cents, null);
-    emit(drop.id, "refund_sim", `Simulated refund of ${formatUsd(cents)} to ${e.public_id} (${why}; no PayPal call).`, false);
+    emit(drop.id, "refund_sim", `Refunded ${formatUsd(cents)} to ${e.public_id} (${why}; simulated entrant, no PayPal call).`, false);
     return;
   }
   if (!e.capture_id) throw new HttpError(409, "not_captured", "Only a paid (captured) entry can be refunded.");
@@ -968,6 +1343,38 @@ export function participantView(entryId: string) {
     shipping: e.tracking_number ? { carrier: e.carrier ?? "OTHER", tracking: e.tracking_number } : null,
     timeline: { requestedAt: e.created_at, approvedAt: e.approved_at, heldAt: e.held_at, drawAt: d.drawn_at, settledAt: e.settled_at },
     drop: { slug: d.slug, title: d.title, maker: d.maker, status: d.status, closesAt: d.closes_at, units: d.units, art: d.art },
+  };
+}
+
+/** GET /api/drops/:slug/verify: everything a browser needs to re-run the draw, plus the recorded outcome of EVERY
+ *  frozen entry and every exclusion with its reason (so "who was left out, and why" is public too). */
+export function verifyData(d: DropRow) {
+  const entries = listEntries(d.id);
+  const byPid = new Map(entries.map((e) => [e.public_id, e]));
+  const frozenList = d.status === "open" ? null : (JSON.parse(d.frozen_list ?? "[]") as string[]);
+  const excluded = d.status === "open"
+    ? []
+    : d.excluded_json
+      ? (JSON.parse(d.excluded_json) as { publicId: string; reason: "merged" | "duplicate" }[])
+      : entries.filter((e) => e.status === "merged" || e.status === "duplicate").map((e) => ({ publicId: e.public_id, reason: e.status as "merged" | "duplicate" }));
+  return {
+    title: d.title,
+    status: d.status,
+    units: d.units,
+    waitlistSize: d.waitlist_size,
+    closesAt: d.closes_at,
+    seedHash: d.seed_hash,
+    seed: revealed(d) ? d.seed : null,
+    frozenHash: d.status === "open" ? null : d.frozen_hash,
+    frozenList,
+    randomness: randomnessOf(d),
+    finalSeed: revealed(d) ? d.final_seed : null,
+    excluded,
+    outcome: (frozenList ?? []).map((pid) => {
+      const e = byPid.get(pid);
+      const note = e?.note && e.source !== "simulated" ? e.note : e?.status === "capture_failed" || e?.promoted_at ? (e?.note ?? undefined) : undefined;
+      return { publicId: pid, status: e?.status ?? "unknown", ...(note ? { note } : {}) };
+    }),
   };
 }
 

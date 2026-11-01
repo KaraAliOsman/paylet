@@ -61,3 +61,14 @@ export function traceFromData(dataJson: string | null | undefined): Trace | unde
     return undefined;
   }
 }
+
+/** `tone` stored with an event ("warn" for degraded paths: a rate-limited swarm, drand unreachable, unreviewed AI
+ *  suggestions at the draw), exposed in the public ledger next to the trace. */
+export function toneOf(dataJson: string | null | undefined): "warn" | undefined {
+  if (!dataJson) return undefined;
+  try {
+    return (JSON.parse(dataJson) as { tone?: unknown }).tone === "warn" ? "warn" : undefined;
+  } catch {
+    return undefined;
+  }
+}

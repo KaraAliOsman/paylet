@@ -1,0 +1,735 @@
+{
+  "version": 1,
+  "exportedAt": 1793502078856,
+  "drop": {
+    "slug": "ember-glaze-mug-2710",
+    "title": "Ember Glaze Mug",
+    "maker": "Juniper Street Ceramics",
+    "blurb": "Wood-fired stoneware mug. A real PayPal sandbox run, kept as proof: every entry here moved real sandbox money.",
+    "art": "ember",
+    "priceCents": 3800,
+    "shipHoldCents": 1000,
+    "shipActualCents": 650,
+    "units": 1,
+    "waitlistSize": 3,
+    "negativeTest": false,
+    "status": "settled",
+    "createdAt": 1793502008650,
+    "closesAt": 1793588408649,
+    "frozenAt": 1793502062960,
+    "drawnAt": 1793502067885,
+    "seed": "9c00e431246311c2280352fd54dee822a3e18eaf492ec8e0013b562c4b5ca17b",
+    "seedHash": "ca73c75c401cef1df8a8aac6c61165935da8582296b65f88b208ae9e65f6c403",
+    "frozenHash": "fc011fb93a22e3a4c8029f339d45b2f509fc7d378877919a417b22477652244c",
+    "frozenList": [
+      "E-N6PLS"
+    ],
+    "excluded": [
+      {
+        "publicId": "E-BQPSW",
+        "reason": "duplicate"
+      }
+    ],
+    "randomnessRound": 33566234,
+    "randomnessValue": "437546a7113a08f9fc305ac7d349b0dbf4f3f7dfc62ea89ea3e10a7c5463886c",
+    "finalSeed": "b5b280ba233f720c101e9d3231477dadd1783b820449b2223d5ad34b08e31bdc"
+  },
+  "entries": [
+    {
+      "publicId": "E-9C9EM",
+      "source": "agent",
+      "agentLabel": "scalper-bot-01",
+      "status": "expired",
+      "holdCents": null,
+      "capturedCents": null,
+      "refundedCents": null,
+      "authorization": null,
+      "payerVerified": null,
+      "shipping": null,
+      "note": "No person approved in PayPal: no hold was placed.",
+      "explanation": null,
+      "createdAt": 1793502008743,
+      "approvedAt": null,
+      "heldAt": null,
+      "settledAt": null,
+      "promotedAt": null
+    },
+    {
+      "publicId": "E-3WCTS",
+      "source": "agent",
+      "agentLabel": "scalper-bot-02",
+      "status": "expired",
+      "holdCents": null,
+      "capturedCents": null,
+      "refundedCents": null,
+      "authorization": null,
+      "payerVerified": null,
+      "shipping": null,
+      "note": "No person approved in PayPal: no hold was placed.",
+      "explanation": null,
+      "createdAt": 1793502011984,
+      "approvedAt": null,
+      "heldAt": null,
+      "settledAt": null,
+      "promotedAt": null
+    },
+    {
+      "publicId": "E-SKYWP",
+      "source": "agent",
+      "agentLabel": "scalper-bot-03",
+      "status": "expired",
+      "holdCents": null,
+      "capturedCents": null,
+      "refundedCents": null,
+      "authorization": null,
+      "payerVerified": null,
+      "shipping": null,
+      "note": "No person approved in PayPal: no hold was placed.",
+      "explanation": null,
+      "createdAt": 1793502014242,
+      "approvedAt": null,
+      "heldAt": null,
+      "settledAt": null,
+      "promotedAt": null
+    },
+    {
+      "publicId": "E-G3N36",
+      "source": "agent",
+      "agentLabel": "scalper-bot-04",
+      "status": "expired",
+      "holdCents": null,
+      "capturedCents": null,
+      "refundedCents": null,
+      "authorization": null,
+      "payerVerified": null,
+      "shipping": null,
+      "note": "No person approved in PayPal: no hold was placed.",
+      "explanation": null,
+      "createdAt": 1793502016484,
+      "approvedAt": null,
+      "heldAt": null,
+      "settledAt": null,
+      "promotedAt": null
+    },
+    {
+      "publicId": "E-3RC4V",
+      "source": "agent",
+      "agentLabel": "scalper-bot-05",
+      "status": "expired",
+      "holdCents": null,
+      "capturedCents": null,
+      "refundedCents": null,
+      "authorization": null,
+      "payerVerified": null,
+      "shipping": null,
+      "note": "No person approved in PayPal: no hold was placed.",
+      "explanation": null,
+      "createdAt": 1793502018715,
+      "approvedAt": null,
+      "heldAt": null,
+      "settledAt": null,
+      "promotedAt": null
+    },
+    {
+      "publicId": "E-PKT75",
+      "source": "agent",
+      "agentLabel": "scalper-bot-06",
+      "status": "expired",
+      "holdCents": null,
+      "capturedCents": null,
+      "refundedCents": null,
+      "authorization": null,
+      "payerVerified": null,
+      "shipping": null,
+      "note": "No person approved in PayPal: no hold was placed.",
+      "explanation": null,
+      "createdAt": 1793502020948,
+      "approvedAt": null,
+      "heldAt": null,
+      "settledAt": null,
+      "promotedAt": null
+    },
+    {
+      "publicId": "E-49JZB",
+      "source": "agent",
+      "agentLabel": "scalper-bot-07",
+      "status": "expired",
+      "holdCents": null,
+      "capturedCents": null,
+      "refundedCents": null,
+      "authorization": null,
+      "payerVerified": null,
+      "shipping": null,
+      "note": "No person approved in PayPal: no hold was placed.",
+      "explanation": null,
+      "createdAt": 1793502023184,
+      "approvedAt": null,
+      "heldAt": null,
+      "settledAt": null,
+      "promotedAt": null
+    },
+    {
+      "publicId": "E-VYGTX",
+      "source": "agent",
+      "agentLabel": "scalper-bot-08",
+      "status": "expired",
+      "holdCents": null,
+      "capturedCents": null,
+      "refundedCents": null,
+      "authorization": null,
+      "payerVerified": null,
+      "shipping": null,
+      "note": "No person approved in PayPal: no hold was placed.",
+      "explanation": null,
+      "createdAt": 1793502025228,
+      "approvedAt": null,
+      "heldAt": null,
+      "settledAt": null,
+      "promotedAt": null
+    },
+    {
+      "publicId": "E-MR37M",
+      "source": "agent",
+      "agentLabel": "scalper-bot-09",
+      "status": "expired",
+      "holdCents": null,
+      "capturedCents": null,
+      "refundedCents": null,
+      "authorization": null,
+      "payerVerified": null,
+      "shipping": null,
+      "note": "No person approved in PayPal: no hold was placed.",
+      "explanation": null,
+      "createdAt": 1793502027468,
+      "approvedAt": null,
+      "heldAt": null,
+      "settledAt": null,
+      "promotedAt": null
+    },
+    {
+      "publicId": "E-UPPHZ",
+      "source": "agent",
+      "agentLabel": "scalper-bot-10",
+      "status": "expired",
+      "holdCents": null,
+      "capturedCents": null,
+      "refundedCents": null,
+      "authorization": null,
+      "payerVerified": null,
+      "shipping": null,
+      "note": "No person approved in PayPal: no hold was placed.",
+      "explanation": null,
+      "createdAt": 1793502029715,
+      "approvedAt": null,
+      "heldAt": null,
+      "settledAt": null,
+      "promotedAt": null
+    },
+    {
+      "publicId": "E-RZVVW",
+      "source": "agent",
+      "agentLabel": "scalper-bot-11",
+      "status": "expired",
+      "holdCents": null,
+      "capturedCents": null,
+      "refundedCents": null,
+      "authorization": null,
+      "payerVerified": null,
+      "shipping": null,
+      "note": "No person approved in PayPal: no hold was placed.",
+      "explanation": null,
+      "createdAt": 1793502031762,
+      "approvedAt": null,
+      "heldAt": null,
+      "settledAt": null,
+      "promotedAt": null
+    },
+    {
+      "publicId": "E-ALUEK",
+      "source": "agent",
+      "agentLabel": "scalper-bot-12",
+      "status": "expired",
+      "holdCents": null,
+      "capturedCents": null,
+      "refundedCents": null,
+      "authorization": null,
+      "payerVerified": null,
+      "shipping": null,
+      "note": "No person approved in PayPal: no hold was placed.",
+      "explanation": null,
+      "createdAt": 1793502034016,
+      "approvedAt": null,
+      "heldAt": null,
+      "settledAt": null,
+      "promotedAt": null
+    },
+    {
+      "publicId": "E-N6PLS",
+      "source": "agent",
+      "agentLabel": "fan's MCP agent",
+      "status": "captured",
+      "holdCents": 4800,
+      "capturedCents": 4450,
+      "refundedCents": null,
+      "authorization": "…841M",
+      "payerVerified": true,
+      "shipping": {
+        "carrier": "USPS",
+        "tracking": "…8578"
+      },
+      "note": null,
+      "explanation": null,
+      "createdAt": 1793502035832,
+      "approvedAt": 1793502048798,
+      "heldAt": 1793502050547,
+      "settledAt": 1793502070177,
+      "promotedAt": null
+    },
+    {
+      "publicId": "E-BQPSW",
+      "source": "human",
+      "agentLabel": null,
+      "status": "duplicate",
+      "holdCents": null,
+      "capturedCents": null,
+      "refundedCents": null,
+      "authorization": null,
+      "payerVerified": null,
+      "shipping": null,
+      "note": "This PayPal account already holds an entry in this drop — no hold placed.",
+      "explanation": null,
+      "createdAt": 1793502051931,
+      "approvedAt": null,
+      "heldAt": null,
+      "settledAt": null,
+      "promotedAt": null
+    }
+  ],
+  "clusters": [],
+  "events": [
+    {
+      "ts": 1793502008652,
+      "kind": "drop_opened",
+      "message": "Drop opened: 1 × \"Ember Glaze Mug\" at $38.00. Seed commitment published.",
+      "real": 0
+    },
+    {
+      "ts": 1793502008672,
+      "kind": "swarm_start",
+      "message": "Scalper swarm: 12 agents hitting the drop through MCP…",
+      "real": 0
+    },
+    {
+      "ts": 1793502011066,
+      "kind": "order_created",
+      "message": "Agent \"scalper-bot-01\" requested entry E-9C9EM → PayPal approval link issued; agent stops here (it cannot pay).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders",
+        "paypalStatus": "PAYER_ACTION_REQUIRED",
+        "id": "…015E",
+        "requestId": "create:…dff7",
+        "debugId": "f937205c7b2ef",
+        "httpStatus": 200,
+        "ms": 2319
+      }
+    },
+    {
+      "ts": 1793502013325,
+      "kind": "order_created",
+      "message": "Agent \"scalper-bot-02\" requested entry E-3WCTS → PayPal approval link issued; agent stops here (it cannot pay).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders",
+        "paypalStatus": "PAYER_ACTION_REQUIRED",
+        "id": "…8927",
+        "requestId": "create:…d485",
+        "debugId": "f979442626809",
+        "httpStatus": 200,
+        "ms": 1338
+      }
+    },
+    {
+      "ts": 1793502015565,
+      "kind": "order_created",
+      "message": "Agent \"scalper-bot-03\" requested entry E-SKYWP → PayPal approval link issued; agent stops here (it cannot pay).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders",
+        "paypalStatus": "PAYER_ACTION_REQUIRED",
+        "id": "…1053",
+        "requestId": "create:…c605",
+        "debugId": "f806760d14e9c",
+        "httpStatus": 200,
+        "ms": 1320
+      }
+    },
+    {
+      "ts": 1793502017808,
+      "kind": "order_created",
+      "message": "Agent \"scalper-bot-04\" requested entry E-G3N36 → PayPal approval link issued; agent stops here (it cannot pay).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders",
+        "paypalStatus": "PAYER_ACTION_REQUIRED",
+        "id": "…664P",
+        "requestId": "create:…494b",
+        "debugId": "f5525377008a8",
+        "httpStatus": 200,
+        "ms": 1322
+      }
+    },
+    {
+      "ts": 1793502020038,
+      "kind": "order_created",
+      "message": "Agent \"scalper-bot-05\" requested entry E-3RC4V → PayPal approval link issued; agent stops here (it cannot pay).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders",
+        "paypalStatus": "PAYER_ACTION_REQUIRED",
+        "id": "…8711",
+        "requestId": "create:…4d7f",
+        "debugId": "f4432468c3884",
+        "httpStatus": 200,
+        "ms": 1318
+      }
+    },
+    {
+      "ts": 1793502022269,
+      "kind": "order_created",
+      "message": "Agent \"scalper-bot-06\" requested entry E-PKT75 → PayPal approval link issued; agent stops here (it cannot pay).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders",
+        "paypalStatus": "PAYER_ACTION_REQUIRED",
+        "id": "…662A",
+        "requestId": "create:…c4cd",
+        "debugId": "f697804d7f9df",
+        "httpStatus": 200,
+        "ms": 1318
+      }
+    },
+    {
+      "ts": 1793502024308,
+      "kind": "order_created",
+      "message": "Agent \"scalper-bot-07\" requested entry E-49JZB → PayPal approval link issued; agent stops here (it cannot pay).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders",
+        "paypalStatus": "PAYER_ACTION_REQUIRED",
+        "id": "…0905",
+        "requestId": "create:…cf82",
+        "debugId": "f86809334749f",
+        "httpStatus": 200,
+        "ms": 1122
+      }
+    },
+    {
+      "ts": 1793502026553,
+      "kind": "order_created",
+      "message": "Agent \"scalper-bot-08\" requested entry E-VYGTX → PayPal approval link issued; agent stops here (it cannot pay).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders",
+        "paypalStatus": "PAYER_ACTION_REQUIRED",
+        "id": "…101H",
+        "requestId": "create:…bb89",
+        "debugId": "f198906750366",
+        "httpStatus": 200,
+        "ms": 1322
+      }
+    },
+    {
+      "ts": 1793502028800,
+      "kind": "order_created",
+      "message": "Agent \"scalper-bot-09\" requested entry E-MR37M → PayPal approval link issued; agent stops here (it cannot pay).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders",
+        "paypalStatus": "PAYER_ACTION_REQUIRED",
+        "id": "…864K",
+        "requestId": "create:…e974",
+        "debugId": "f4838313e43f8",
+        "httpStatus": 200,
+        "ms": 1325
+      }
+    },
+    {
+      "ts": 1793502030851,
+      "kind": "order_created",
+      "message": "Agent \"scalper-bot-10\" requested entry E-UPPHZ → PayPal approval link issued; agent stops here (it cannot pay).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders",
+        "paypalStatus": "PAYER_ACTION_REQUIRED",
+        "id": "…6018",
+        "requestId": "create:…41a3",
+        "debugId": "f8006557e3ab3",
+        "httpStatus": 200,
+        "ms": 1134
+      }
+    },
+    {
+      "ts": 1793502033099,
+      "kind": "order_created",
+      "message": "Agent \"scalper-bot-11\" requested entry E-RZVVW → PayPal approval link issued; agent stops here (it cannot pay).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders",
+        "paypalStatus": "PAYER_ACTION_REQUIRED",
+        "id": "…4902",
+        "requestId": "create:…d9ef",
+        "debugId": "f4209403579e7",
+        "httpStatus": 200,
+        "ms": 1334
+      }
+    },
+    {
+      "ts": 1793502035350,
+      "kind": "order_created",
+      "message": "Agent \"scalper-bot-12\" requested entry E-ALUEK → PayPal approval link issued; agent stops here (it cannot pay).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders",
+        "paypalStatus": "PAYER_ACTION_REQUIRED",
+        "id": "…601H",
+        "requestId": "create:…e2ba",
+        "debugId": "f93777958ccfb",
+        "httpStatus": 200,
+        "ms": 1332
+      }
+    },
+    {
+      "ts": 1793502035365,
+      "kind": "swarm_done",
+      "message": "12 scalper agents → 12 PayPal approval links · 0 holds. A hold needs a person to approve in PayPal, and only one per PayPal account counts.",
+      "real": 0
+    },
+    {
+      "ts": 1793502037182,
+      "kind": "order_created",
+      "message": "Agent \"fan's MCP agent\" requested entry E-N6PLS → PayPal approval link issued; agent stops here (it cannot pay).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders",
+        "paypalStatus": "PAYER_ACTION_REQUIRED",
+        "id": "…111J",
+        "requestId": "create:…5fd8",
+        "debugId": "f7422436a3f84",
+        "httpStatus": 200,
+        "ms": 1345
+      }
+    },
+    {
+      "ts": 1793502048795,
+      "kind": "order_checked",
+      "message": "GET order for E-N6PLS: APPROVED",
+      "real": 1,
+      "trace": {
+        "method": "GET",
+        "endpoint": "/v2/checkout/orders/…111J",
+        "paypalStatus": "APPROVED",
+        "id": "…111J",
+        "debugId": "f15676585e638",
+        "httpStatus": 200,
+        "ms": 956
+      }
+    },
+    {
+      "ts": 1793502048905,
+      "kind": "order_checked",
+      "message": "GET order for E-N6PLS: APPROVED",
+      "real": 1,
+      "trace": {
+        "method": "GET",
+        "endpoint": "/v2/checkout/orders/…111J",
+        "paypalStatus": "APPROVED",
+        "id": "…111J",
+        "debugId": "f156765988ffd",
+        "httpStatus": 200,
+        "ms": 1051
+      }
+    },
+    {
+      "ts": 1793502050549,
+      "kind": "hold_placed",
+      "message": "Hold placed for E-N6PLS: $48.00 authorized (CREATED). Nothing charged yet.",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders/…111J/authorize",
+        "paypalStatus": "CREATED",
+        "id": "…841M",
+        "requestId": "auth:…5fd8",
+        "debugId": "f267505841fcb",
+        "httpStatus": 201,
+        "ms": 1521
+      }
+    },
+    {
+      "ts": 1793502053258,
+      "kind": "order_created",
+      "message": "Fan opened PayPal for entry E-BQPSW (hold of $48.00 requested).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders",
+        "paypalStatus": "PAYER_ACTION_REQUIRED",
+        "id": "…415E",
+        "requestId": "create:…b640",
+        "debugId": "f632396735ed9",
+        "httpStatus": 200,
+        "ms": 1324
+      }
+    },
+    {
+      "ts": 1793502062940,
+      "kind": "order_checked",
+      "message": "GET order for E-BQPSW: APPROVED",
+      "real": 1,
+      "trace": {
+        "method": "GET",
+        "endpoint": "/v2/checkout/orders/…415E",
+        "paypalStatus": "APPROVED",
+        "id": "…415E",
+        "debugId": "f218848139f6f",
+        "httpStatus": 200,
+        "ms": 949
+      }
+    },
+    {
+      "ts": 1793502062946,
+      "kind": "duplicate_blocked",
+      "message": "Entry E-BQPSW: same PayPal account as an existing entry → no hold placed.",
+      "real": 1
+    },
+    {
+      "ts": 1793502063000,
+      "kind": "frozen",
+      "message": "List frozen: 1 eligible entry (SHA-256 fc011fb93a22…); excluded: 1 same-account duplicate. The winners come from drand round 33,566,234, published about 3 s from now, after the freeze.",
+      "real": 0
+    },
+    {
+      "ts": 1793502067888,
+      "kind": "randomness",
+      "message": "Randomness: League of Entropy drand round 33,566,234, published after the list was frozen. Not even Paylet knew the winners in advance.",
+      "real": 0
+    },
+    {
+      "ts": 1793502067891,
+      "kind": "draw",
+      "message": "Seed revealed. 1 winner, 0 on the waitlist. Settling with PayPal…",
+      "real": 0
+    },
+    {
+      "ts": 1793502070176,
+      "kind": "captured",
+      "message": "Captured $44.50 from E-N6PLS (held $48.00 — $3.50 of unused shipping released).",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/payments/authorizations/…841M/capture",
+        "paypalStatus": "COMPLETED",
+        "id": "…8225",
+        "requestId": "cap:…841M:1",
+        "debugId": "f96431889a9f5",
+        "httpStatus": 201,
+        "ms": 2154
+      }
+    },
+    {
+      "ts": 1793502070179,
+      "kind": "settled",
+      "message": "Settled: 1 unit paid. Every other hold released. Nobody who lost was charged.",
+      "real": 0
+    },
+    {
+      "ts": 1793502073102,
+      "kind": "shipped",
+      "message": "Shipped E-N6PLS: USPS tracking …8578 added to the PayPal order; PayPal shows it to the buyer.",
+      "real": 1,
+      "trace": {
+        "method": "POST",
+        "endpoint": "/v2/checkout/orders/…111J/track",
+        "paypalStatus": "SHIPPED",
+        "id": "…8225",
+        "requestId": "track:…8225",
+        "debugId": "f67303708c610",
+        "httpStatus": 201,
+        "ms": 1529
+      }
+    },
+    {
+      "ts": 1793502076933,
+      "kind": "paypal_check",
+      "message": "Asked PayPal about 1 real hold: 1 captured, 0 voided, all matching the ledger.",
+      "real": 1,
+      "trace": {
+        "method": "GET",
+        "endpoint": "/v2/payments/authorizations/{id}",
+        "paypalStatus": "MATCH"
+      }
+    },
+    {
+      "ts": 1793502078854,
+      "kind": "paypal_check",
+      "message": "Asked PayPal about 1 real hold: 1 captured, 0 voided, all matching the ledger.",
+      "real": 1,
+      "trace": {
+        "method": "GET",
+        "endpoint": "/v2/payments/authorizations/{id}",
+        "paypalStatus": "MATCH"
+      }
+    }
+  ],
+  "report": {
+    "units": 1,
+    "unitsToDistinctPayers": 1,
+    "capturedCents": 4450,
+    "shippingReleasedCents": 350,
+    "holdsVoided": 0,
+    "chargedToLosersCents": 0,
+    "failedPayments": 0,
+    "waitlistRecoverySeconds": null,
+    "agentRequests": 13,
+    "agentHoldsWithoutPerson": 0,
+    "networkAccounts": 0,
+    "networkTickets": 0,
+    "sameAccountDuplicates": 1,
+    "payerVerified": 1,
+    "real": true,
+    "simulatedEntrants": 0
+  },
+  "paypalCheck": {
+    "checkedAt": 1793502078854,
+    "rows": [
+      {
+        "publicId": "E-N6PLS",
+        "authorization": "…841M",
+        "paypalStatus": "CAPTURED",
+        "heldCents": 4800,
+        "capturedCents": 4450,
+        "ledgerStatus": "captured",
+        "matchesLedger": true
+      }
+    ],
+    "totals": {
+      "captured": 1,
+      "voided": 0,
+      "mismatches": 0
+    }
+  }
+}

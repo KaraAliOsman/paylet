@@ -1,7 +1,9 @@
 // End-to-end domain flow with PayPal replaced by a stateful fake (no network):
-// duplicate account → no hold, failed capture → waitlist promotion, losers voided, webhook signature enforced, MCP reachable.
+// duplicate account → no hold, failed capture → waitlist promotion, losers voided, webhook signature enforced, MCP reachable,
+// and the judge journey end to end through the HTTP API (swarm, guard, decisions, drand reveal, report, verify).
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { pp } from "./helpers/fakePaypal";
+import { installFakeDrand } from "./helpers/fakeDrand";
 
 vi.hoisted(() => {
   process.env.PAYPAL_OPS_PER_MINUTE = "100000"; // the token bucket would otherwise throttle the drained queue
@@ -17,6 +19,7 @@ let models: typeof import("../src/server/models");
 let appMod: typeof import("../src/server/index");
 
 beforeAll(async () => {
+  installFakeDrand();
   domain = await import("../src/server/domain");
   queue = await import("../src/server/queue");
   models = await import("../src/server/models");
@@ -104,5 +107,87 @@ describe("allocation flow", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.result.tools.map((t: { name: string }) => t.name).sort()).toEqual(["enter_drop", "entry_status", "list_drops"]);
+  });
+});
+
+// The judge's whole journey through the public API, as /judge drives it: scalper swarm over MCP, a real fan plus the
+// same PayPal account again through an agent, the labelled crowd, the AI review, the review guard, the seller's
+// decisions, the two-phase draw with public randomness, settlement, the Drop report and /verify.
+describe("judge journey through the API (P0-02, P0-03, P2-10, P1-07)", () => {
+  it("swarm → fan + duplicate → crowd → AI review → guard → decide → freeze → drand reveal → settled → report → verify", async () => {
+    const agent = await import("../src/server/agent");
+    const shared = await import("../src/shared/draw");
+    agent._setMcpFetch(async (url, init) => appMod.app.request(String(url), init));
+    const app = appMod.app;
+    const json = (r: Response) => r.json() as Promise<any>;
+    const { slug, sellerKey } = await json(await app.request("/api/judge-drop", { method: "POST", headers: { "cf-connecting-ip": "203.0.113.77" } }));
+    const key = { "x-seller-key": sellerKey, "content-type": "application/json" };
+    const drop = models.getDrop(slug)!;
+    expect(drop.kind).toBe("judge");
+
+    // 1. scalper agents: approval links, 0 holds
+    const swarm = await agent.runSwarm(slug, 12, { delayMs: 0, backoffMs: [1, 1, 1] });
+    expect(swarm.links).toHaveLength(12);
+
+    // 2. a real fan, then the same PayPal account again through an agent → no hold
+    const fan = await json(await app.request(`/api/drops/${slug}/entries`, { method: "POST" }));
+    pp.approve(fan.orderId, "PAYER-JUDGE");
+    expect((await json(await app.request("/api/entries/finalize", { method: "POST", body: JSON.stringify({ orderId: fan.orderId }) }))).outcome).toBe("authorizing");
+    const again = await domain.startEntry(slug, "agent", "Wren (fan's assistant)");
+    pp.approve(again.orderId, "PAYER-JUDGE");
+    expect((await domain.finalize(again.orderId)).outcome).toBe("duplicate");
+    await drain();
+
+    // 3. the labelled crowd and the AI review (no model key in tests: rule-only suggestions, said plainly)
+    expect((await json(await app.request(`/api/seller/${slug}/simulate`, { method: "POST", headers: key }))).added).toBeGreaterThan(10);
+    const sims = models.listEntries(drop.id).filter((e) => e.source === "simulated");
+    expect(sims.every((e) => e.created_at >= drop.created_at && e.created_at <= Date.now())).toBe(true); // inside the drop window
+    const review = await json(await app.request(`/api/seller/${slug}/analyze`, { method: "POST", headers: key }));
+    expect(review.clusters).toBeGreaterThan(0);
+
+    // 4. the guard: a judge drop cannot be drawn (even with force) while suggestions are pending
+    const blocked = await app.request(`/api/seller/${slug}/draw`, { method: "POST", headers: key, body: JSON.stringify({ force: true }) });
+    expect(blocked.status).toBe(409);
+    expect((await json(blocked)).error).toBe("pending_reviews");
+
+    // 5. the seller decides every suggestion: confirm reseller networks, dismiss households
+    const seller = await json(await app.request(`/api/seller/${slug}`, { headers: key }));
+    for (const c of seller.clusters) {
+      const decision = c.kind === "operator" ? "confirmed" : "dismissed";
+      expect((await app.request(`/api/seller/${slug}/clusters/${c.id}`, { method: "POST", headers: key, body: JSON.stringify({ decision }) })).status).toBe(200);
+    }
+    expect((await json(await app.request(`/api/drops/${slug}`))).pendingReviews).toBe(0);
+
+    // 6. freeze now, reveal with drand in the background
+    const frozen = await json(await app.request(`/api/seller/${slug}/draw`, { method: "POST", headers: key, body: "{}" }));
+    expect(frozen).toMatchObject({ status: "frozen", round: expect.any(Number), revealAt: expect.any(Number) });
+    expect(frozen.excluded).toContainEqual({ publicId: again.publicId, reason: "duplicate" });
+    await domain.whenRevealed(drop.id);
+    await drain();
+    const pub = await json(await app.request(`/api/drops/${slug}`));
+    expect(pub.status).toBe("settled");
+    expect(pub.randomness).toMatchObject({ source: "drand-quicknet", round: frozen.round });
+    expect(pub.stats).toMatchObject({ duplicatesBlocked: 1, agents: 13 });
+
+    // 7. the Drop report: two zeros computed from the ledger, networks counted
+    const report = await json(await app.request(`/api/drops/${slug}/report`));
+    expect(report).toMatchObject({ units: 2, unitsToDistinctPayers: 2, chargedToLosersCents: 0, agentRequests: 13, agentHoldsWithoutPerson: 0, sameAccountDuplicates: 1, real: true, failedPayments: 1 });
+    expect(report.simulatedEntrants).toBe(sims.length);
+
+    // 8. /verify: what a browser recomputes
+    const v = await json(await app.request(`/api/drops/${slug}/verify`));
+    expect(await shared.sha256Hex(v.seed)).toBe(v.seedHash);
+    expect(await shared.sha256Hex(shared.canonicalList(v.frozenList))).toBe(v.frozenHash);
+    expect(await shared.sha256Hex(`${v.seed}:${v.randomness.value}`)).toBe(v.finalSeed);
+    const computed = await shared.computeDraw(v.finalSeed, v.frozenList, v.units, v.waitlistSize);
+    const outcome = new Map<string, string>(v.outcome.map((o: { publicId: string; status: string }) => [o.publicId, o.status]));
+    // the negative test fails one winner; everyone else drawn first is paid, and nobody outside the winners + waitlist is
+    for (const pid of computed.winners) expect(["captured", "capture_failed"]).toContain(outcome.get(pid));
+    for (const [pid, st] of outcome) if (st === "captured") expect([...computed.winners, ...computed.waitlist]).toContain(pid);
+
+    // the ledger: human copy, no "SIMULATED" prefix, one line for the bulk simulated releases
+    const { events } = await json(await app.request(`/api/drops/${slug}/events?after=0`));
+    expect(events.some((e: { message: string }) => /^SIMULATED/i.test(e.message))).toBe(false);
+    expect(events.filter((e: { kind: string }) => e.kind === "void_sim").length).toBeLessThanOrEqual(3);
   });
 });

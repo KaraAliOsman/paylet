@@ -3,6 +3,7 @@
 // sources, retries and payer verification.
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { apiError, pp, webhookHeaders } from "./helpers/fakePaypal";
+import { installFakeDrand } from "./helpers/fakeDrand";
 
 vi.hoisted(() => {
   process.env.PAYPAL_OPS_PER_MINUTE = "100000";
@@ -19,6 +20,7 @@ let db: typeof import("../src/server/db");
 let app: typeof import("../src/server/index")["app"];
 
 beforeAll(async () => {
+  installFakeDrand();
   domain = await import("../src/server/domain");
   queue = await import("../src/server/queue");
   models = await import("../src/server/models");
