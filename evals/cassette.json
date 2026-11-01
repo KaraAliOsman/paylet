@@ -48,7 +48,8 @@
  },
  "datasets": {
   "dev": "b8367bedadcf68570acc6e2766bbf3b0bfe00791883d5b131b4a21d04afb0dbd",
-  "heldOut": "01348dbb561db1c18da050a71bc0f719b19ea24ae0eee7dded87480b2c7017e7"
+  "heldOut": "01348dbb561db1c18da050a71bc0f719b19ea24ae0eee7dded87480b2c7017e7",
+  "heldOutAfterFix": "01348dbb561db1c18da050a71bc0f719b19ea24ae0eee7dded87480b2c7017e7"
  },
  "runs": [
   {
@@ -6803,6 +6804,3837 @@
      "ms": 2707
     }
    ]
+  },
+  {
+   "dataset": "heldOutAfterFix",
+   "run": 1,
+   "ms": 114416,
+   "calls": [
+    {
+     "key": "69b65c0c6cf2908111b58cbd",
+     "ok": false,
+     "error": "SyntaxError: Unexpected end of JSON input",
+     "ms": 34710
+    },
+    {
+     "key": "69b65c0c6cf2908111b58cbd",
+     "ok": false,
+     "error": "SyntaxError: Unexpected end of JSON input",
+     "ms": 25771
+    },
+    {
+     "key": "868b5dc09999ea0f61f99d29",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-net4-0",
+         "ho-net4-1",
+         "ho-net4-2",
+         "ho-net4-3",
+         "ho-net4-4"
+        ],
+        "verdict": "same_operator",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "all five at 1348 Logistics Pkwy suite 8B, Tucson 85701"
+         },
+         {
+          "field": "unit",
+          "detail": "typed addresses all say Ste 8B / PMB 8B"
+         },
+         {
+          "field": "care_of",
+          "detail": "ho-net4-3 routes c/o ShipBridge, a reshipper"
+         },
+         {
+          "field": "address_as_typed",
+          "detail": "ho-net4-3 typed 'Bldg 1 ... Ste 8B', so unit is 8B not 1"
+         },
+         {
+          "field": "name",
+          "detail": "four Okafor variants plus one unrelated name at one suite"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "ho-net4-1 and ho-net4-0 share same mailbox"
+         },
+         {
+          "field": "entered_via",
+          "detail": "all five entered via agent"
+         },
+         {
+          "field": "timing",
+          "detail": "five agent entries within 15 seconds"
+         }
+        ],
+        "explanation": "All five holds came through one freight-forwarder suite (PMB/Ste 8B, c/o ShipBridge) in seconds, so it's one reshipper operation."
+       },
+       {
+        "member_ids": [
+         "ho-ns2-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.9,
+        "evidence": [],
+        "explanation": "This is a single human hold at a private home address, unrelated to the reshipper cluster."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-net4-4",
+        "b": "ho-ns2-0",
+        "reason": "Different addresses (1348 Logistics Pkwy suite 8B vs 6517 Juniper Ln home), different mailboxes, agent vs human.",
+        "confidence": 0.85
+       }
+      ]
+     },
+     "ms": 11714
+    },
+    {
+     "key": "d4b34f1e027f9937aa1e31ed",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-net0-0",
+         "ho-net0-1",
+         "ho-net0-2",
+         "ho-net0-3"
+        ],
+        "verdict": "same_operator",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "all four at 1200 HARBOR BLVD, BOISE ID 83702"
+         },
+         {
+          "field": "unit",
+          "detail": "typed forms all resolve to Ste 4-B (ho-net0-0's \"Bldg 1, Ste 4-B\")"
+         },
+         {
+          "field": "care_of",
+          "detail": "c/o \"RAMIREZ FAMILY\" and c/o \"T RAMIREZ NO 4-B\" routing"
+         },
+         {
+          "field": "name",
+          "detail": "Ramirez surname on all four entries"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "ho-net0-1 and ho-net0-0 share the same mailbox"
+         },
+         {
+          "field": "timing",
+          "detail": "four agent entries within 16 seconds"
+         },
+         {
+          "field": "care_of",
+          "detail": "ShipBridge LLC freight-forwarder Attn routing on ho-net0-2"
+         }
+        ],
+        "explanation": "All four are the same Ramirez operation routed through one freight-forwarder suite, so they get one spot."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 3520
+    },
+    {
+     "key": "ef25f4fc5dce9269dfd3da5f",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-p3-b",
+         "hw-p3-a"
+        ],
+        "verdict": "same_household",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "Both at 1504 Peachtree Ct, Savannah GA 31405, no unit"
+         },
+         {
+          "field": "unit",
+          "detail": "No unit on either entry — single-family home"
+         },
+         {
+          "field": "name",
+          "detail": "James Carter Jr. vs James Carter — father/son naming"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "Different mailboxes, consistent with family members"
+         }
+        ],
+        "explanation": "These two look like a father and son sharing one house, so they count as one household."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 1643
+    },
+    {
+     "key": "17d9c35095343faa84d5ab9a",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb5-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 2A"
+         },
+         {
+          "field": "name",
+          "detail": "Lena Brennan"
+         }
+        ],
+        "explanation": "This is a single entry in apartment 2A with no other matching entries."
+       },
+       {
+        "member_ids": [
+         "ho-nb5-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 5C"
+         },
+         {
+          "field": "name",
+          "detail": "Ravi Fischer"
+         }
+        ],
+        "explanation": "This is a single entry in apartment 5C with no other matching entries."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb5-0",
+        "b": "ho-nb5-1",
+        "reason": "Different apartments (2A vs 5C), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 967
+    },
+    {
+     "key": "de026fa074537624f5c46f68",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-net1-0",
+         "ho-net1-1",
+         "ho-net1-2",
+         "ho-net1-3",
+         "ho-net1-4"
+        ],
+        "verdict": "same_operator",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "address_as_typed",
+          "detail": "All five typed suite 5B at 1237 Logistics Pkwy, Austin 78704"
+         },
+         {
+          "field": "care_of",
+          "detail": "ho-net1-3 care_of names ShipBridge Logistics, a freight forwarder at Ste 5B"
+         },
+         {
+          "field": "care_of",
+          "detail": "ho-net1-2 care_of \"Rossi Family\" routes through the same suite"
+         },
+         {
+          "field": "care_of",
+          "detail": "ho-net1-4 typed \"Attn: M. Chen / Unit 5-B\", same suite despite blank unit"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "ho-net1-0 and ho-net1-1 share the same mailbox"
+         },
+         {
+          "field": "name",
+          "detail": "ho-net1-0 \"Diego Rossi Jr\" and ho-net1-1 \"rossi diego m.\" match"
+         },
+         {
+          "field": "name",
+          "detail": "ho-net1-2 and ho-net1-3 share surname Rossi at the same suite"
+         },
+         {
+          "field": "address_as_typed",
+          "detail": "ho-net1-3 typed \"PMB 5B\", a private mailbox box number"
+         }
+        ],
+        "explanation": "Every hold routes through one freight-forwarder suite (Ste 5B at 1237 Logistics Pkwy), so it counts as a single operation."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 6062
+    },
+    {
+     "key": "b10be3bbc7d73da8c27ee8d9",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n12-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 214 vs unit 412, different rooms"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Ethan Miller vs Jacob Wilson, unrelated surnames"
+         }
+        ],
+        "explanation": "Different rooms in the same university building with unrelated names and separate mailboxes."
+       },
+       {
+        "member_ids": [
+         "hw-n12-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 412 vs unit 214, different rooms"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Jacob Wilson vs Ethan Miller, unrelated surnames"
+         }
+        ],
+        "explanation": "Different rooms in the same university building with unrelated names and separate mailboxes."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n12-a",
+        "b": "hw-n12-b",
+        "reason": "Different rooms (214 vs 412), unrelated surnames, different mailboxes — separate occupants.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1109
+    },
+    {
+     "key": "1956c9bb5ec7f41e5ca43fbc",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-p2-a",
+         "hw-p2-b",
+         "hw-p2-c",
+         "hw-n11"
+        ],
+        "verdict": "same_operator",
+        "confidence": 0.85,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "All four at 8240 NW 52nd Ter, Suite 410, Doral FL 33166"
+         },
+         {
+          "field": "address_as_typed",
+          "detail": "hw-p2-c typed 'PMB 88213', a private mailbox marker"
+         },
+         {
+          "field": "address_as_typed",
+          "detail": "hw-p2-a typed 'Ste 410 Box 88213', same private mailbox number"
+         },
+         {
+          "field": "address_as_typed",
+          "detail": "hw-p2-b typed '#410-88213', same suite and mailbox number"
+         },
+         {
+          "field": "address_as_typed",
+          "detail": "hw-n11 typed 'Ste 410 Box 90577', mailbox at the same suite"
+         },
+         {
+          "field": "name",
+          "detail": "hw-p2-a, hw-p2-b, hw-p2-c share surname Andrade"
+         },
+         {
+          "field": "name",
+          "detail": "hw-n11 is a different name at the same freight-forwarder suite"
+         },
+         {
+          "field": "timing",
+          "detail": "hw-p2-a, hw-p2-b, hw-p2-c are agent entries within 6 seconds"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "Four different mailboxes, so tokens do not merge them"
+         }
+        ],
+        "explanation": "This suite is a Doral freight-forwarder mailbox bank, and all four holds route through it like one reshipper operation."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 4568
+    },
+    {
+     "key": "7db0f029f01c361870b32b8c",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb1-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 2A, single entry"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Omar Kowalski in Apt 2A is a separate household from Apt 5C."
+       },
+       {
+        "member_ids": [
+         "ho-nb1-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 5C, single entry"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Ana Hoang in Apt 5C is a separate household from Apt 2A."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb1-0",
+        "b": "ho-nb1-1",
+        "reason": "Different apartments (2A vs 5C), unrelated surnames, different mailboxes",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1039
+    },
+    {
+     "key": "95bcfdb2a2a4afa57e33db15",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-p1-a",
+         "hw-p1-b"
+        ],
+        "verdict": "same_household",
+        "confidence": 0.8,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "same street address 731 Larkspur Ln, no unit, Boise ID 83702"
+         },
+         {
+          "field": "unit",
+          "detail": "neither entry has a unit — single-family home"
+         },
+         {
+          "field": "name",
+          "detail": "different surnames (Park vs Okonkwo), consistent with household members"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes, so not the same person"
+         },
+         {
+          "field": "timing",
+          "detail": "entries roughly 13 minutes apart, no burst pattern"
+         }
+        ],
+        "explanation": "Two different people sharing one single-family home address with no unit, so they count as one household."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 1343
+    },
+    {
+     "key": "10dc4deb82687a751c12fd70",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb2-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 5A vs 2F"
+         },
+         {
+          "field": "name",
+          "detail": "Novak vs Silva"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in one building with unrelated surnames and different mailboxes, so they look like separate neighbours."
+       },
+       {
+        "member_ids": [
+         "ho-nb2-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 2F vs 5A"
+         },
+         {
+          "field": "name",
+          "detail": "Silva vs Novak"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in one building with unrelated surnames and different mailboxes, so they look like separate neighbours."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb2-1",
+        "b": "ho-nb2-0",
+        "reason": "Different apartments (5A vs 2F), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1019
+    },
+    {
+     "key": "5748aa921a5acb322957632a",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n3-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.7,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "hw-n3-a has no unit; hw-n3-b is Unit B"
+         },
+         {
+          "field": "name",
+          "detail": "different surnames: Meyer vs Ibarra"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "seconds_after_first_entry",
+          "detail": "entries about 55 minutes apart"
+         }
+        ],
+        "explanation": "Different units and different mailboxes suggest two separate residents at 18 Alder St."
+       },
+       {
+        "member_ids": [
+         "hw-n3-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.7,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "hw-n3-b is Unit B; hw-n3-a has no unit"
+         },
+         {
+          "field": "name",
+          "detail": "different surnames: Ibarra vs Meyer"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "seconds_after_first_entry",
+          "detail": "entries about 55 minutes apart"
+         }
+        ],
+        "explanation": "Different units and different mailboxes suggest two separate residents at 18 Alder St."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n3-b",
+        "b": "hw-n3-a",
+        "reason": "Different units (B vs none), different surnames, different mailboxes — likely separate residents.",
+        "confidence": 0.7
+       }
+      ]
+     },
+     "ms": 2842
+    },
+    {
+     "key": "6d259ba90bb9185c8dcf717e",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n5-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.8,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "hw-n5-a at 2210 E Cesar Chavez St, hw-n5-b at 908 Willow St"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Maria Garcia is a very common name"
+         }
+        ],
+        "explanation": "These are two different streets in the same ZIP code, and a common name alone isn't enough to link them."
+       },
+       {
+        "member_ids": [
+         "hw-n5-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.8,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "hw-n5-b at 908 Willow St, hw-n5-a at 2210 E Cesar Chavez St"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Maria Garcia is a very common name"
+         }
+        ],
+        "explanation": "These are two different streets in the same ZIP code, and a common name alone isn't enough to link them."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n5-a",
+        "b": "hw-n5-b",
+        "reason": "Different street addresses (2210 E Cesar Chavez St vs 908 Willow St) and different mailboxes.",
+        "confidence": 0.8
+       }
+      ]
+     },
+     "ms": 1609
+    },
+    {
+     "key": "113f099ce832d7979ed05ab4",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n1-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 3B vs 3D, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Keisha Brown vs Tomasz Wojcik, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes — just neighbours."
+       },
+       {
+        "member_ids": [
+         "hw-n1-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 3D vs 3B, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Tomasz Wojcik vs Keisha Brown, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes — just neighbours."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n1-b",
+        "b": "hw-n1-a",
+        "reason": "Different apartments (3D vs 3B), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1032
+    },
+    {
+     "key": "c61b865aefeeb5ca1ad482e1",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb0-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 5C"
+         },
+         {
+          "field": "name",
+          "detail": "Diego Brennan"
+         }
+        ],
+        "explanation": "Diego Brennan is in apartment 5C with his own mailbox."
+       },
+       {
+        "member_ids": [
+         "ho-nb0-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 2A"
+         },
+         {
+          "field": "name",
+          "detail": "Elena Fischer"
+         }
+        ],
+        "explanation": "Elena Fischer is in apartment 2A with her own mailbox."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb0-1",
+        "b": "ho-nb0-0",
+        "reason": "Different apartments (5C vs 2A), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1544
+    },
+    {
+     "key": "44b67389f6917689940a7c40",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb4-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 2C, single entry"
+         },
+         {
+          "field": "name",
+          "detail": "Noah Ramirez"
+         }
+        ],
+        "explanation": "This is one person in apartment 2C with no matching entry."
+       },
+       {
+        "member_ids": [
+         "ho-nb4-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 5A, single entry"
+         },
+         {
+          "field": "name",
+          "detail": "Sofia Brennan"
+         }
+        ],
+        "explanation": "This is one person in apartment 5A with no matching entry."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb4-0",
+        "b": "ho-nb4-1",
+        "reason": "Different apartments (2C vs 5A), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 968
+    },
+    {
+     "key": "a1ef99f03dc486e285f5068e",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n9-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.85,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 250 vs unit 100, different suites"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Marcus Bell vs Sara Lindgren, unrelated surnames"
+         },
+         {
+          "field": "care_of",
+          "detail": "self-Attn vs c/o Acme Robotics, different routing"
+         }
+        ],
+        "explanation": "Different suites in one office building, unrelated names, and different mailboxes — just neighbours."
+       },
+       {
+        "member_ids": [
+         "hw-n9-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.85,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 100 vs unit 250, different suites"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Sara Lindgren vs Marcus Bell, unrelated surnames"
+         },
+         {
+          "field": "care_of",
+          "detail": "c/o Acme Robotics vs self-Attn, different routing"
+         }
+        ],
+        "explanation": "Different suites in one office building, unrelated names, and different mailboxes — just neighbours."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n9-b",
+        "b": "hw-n9-a",
+        "reason": "Different suites (250 vs 100), unrelated names, different mailboxes, no shared household signal.",
+        "confidence": 0.85
+       }
+      ]
+     },
+     "ms": 1814
+    },
+    {
+     "key": "4bf9b0a92646cd35f3405987",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb6-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 2C, single occupant Iris Petrov"
+         }
+        ],
+        "explanation": "This is one person in apartment 2C with their own mailbox."
+       },
+       {
+        "member_ids": [
+         "ho-nb6-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 5F, single occupant Marcus Brennan"
+         }
+        ],
+        "explanation": "This is one person in apartment 5F with their own mailbox."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb6-0",
+        "b": "ho-nb6-1",
+        "reason": "Different apartments (2C vs 5F), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1474
+    },
+    {
+     "key": "d74eb5c0c86a3df79e5fcb81",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n2-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.85,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 12 vs unit 21, different apartments"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Wei vs Lin, different given names"
+         }
+        ],
+        "explanation": "These are two different apartments in the same building, so they're separate households."
+       },
+       {
+        "member_ids": [
+         "hw-n2-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.85,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 21 vs unit 12, different apartments"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Lin vs Wei, different given names"
+         }
+        ],
+        "explanation": "These are two different apartments in the same building, so they're separate households."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n2-a",
+        "b": "hw-n2-b",
+        "reason": "Different apartments (12 vs 21) with different mailboxes; shared surname Zhang is too common to merge.",
+        "confidence": 0.85
+       }
+      ]
+     },
+     "ms": 1783
+    },
+    {
+     "key": "c2954f6186defa1b19dcf63b",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n4-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 200 vs unit 1200, different suites"
+         },
+         {
+          "field": "name",
+          "detail": "Priya Raman vs Dylan Foster, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different suites in one office tower, unrelated names and mailboxes — almost certainly separate people."
+       },
+       {
+        "member_ids": [
+         "hw-n4-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 1200 vs unit 200, different suites"
+         },
+         {
+          "field": "name",
+          "detail": "Dylan Foster vs Priya Raman, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different suites in one office tower, unrelated names and mailboxes — almost certainly separate people."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n4-a",
+        "b": "hw-n4-b",
+        "reason": "Different suites (200 vs 1200), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1069
+    },
+    {
+     "key": "aa502dbb2d4b9cdeb678eee0",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n10-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "hw-n10-b unit 7 vs hw-n10-a unit 5"
+         },
+         {
+          "field": "name",
+          "detail": "Hannah Cohen vs Ibrahim Diallo, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "These are neighbors in different apartments of one building, not one household."
+       },
+       {
+        "member_ids": [
+         "hw-n10-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "hw-n10-a unit 5 vs hw-n10-b unit 7"
+         },
+         {
+          "field": "name",
+          "detail": "Ibrahim Diallo vs Hannah Cohen, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "These are neighbors in different apartments of one building, not one household."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n10-b",
+        "b": "hw-n10-a",
+        "reason": "Different apartments (7 vs 5), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1100
+    },
+    {
+     "key": "1d39f0f323444ffa09b24c3f",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb3-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 2C vs 5C, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Moreau vs Haddad, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       },
+       {
+        "member_ids": [
+         "ho-nb3-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 5C vs 2C, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Haddad vs Moreau, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb3-0",
+        "b": "ho-nb3-1",
+        "reason": "Different apartments (2C vs 5C), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 4324
+    },
+    {
+     "key": "add4a29580533fe527e010c8",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n6-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.85,
+        "evidence": [
+         {
+          "field": "street",
+          "detail": "45 Pleasant St vs 312 Highland Ave, different streets"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Same surname and ZIP, but different streets and mailboxes — likely unrelated people sharing a common name."
+       },
+       {
+        "member_ids": [
+         "hw-n6-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.85,
+        "evidence": [
+         {
+          "field": "street",
+          "detail": "312 Highland Ave vs 45 Pleasant St, different streets"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Same surname and ZIP, but different streets and mailboxes — likely unrelated people sharing a common name."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n6-a",
+        "b": "hw-n6-b",
+        "reason": "Different streets (45 Pleasant St vs 312 Highland Ave) and different mailboxes, only surname matches",
+        "confidence": 0.85
+       }
+      ]
+     },
+     "ms": 1225
+    }
+   ],
+   "recordedAt": "2026-11-01T02:24:43.540Z",
+   "systemSha": "968e492b0bd28fc4c9173cec0a03c6f95a23bcf359699c7039862f323309569c"
+  },
+  {
+   "dataset": "heldOutAfterFix",
+   "run": 2,
+   "ms": 88958,
+   "calls": [
+    {
+     "key": "69b65c0c6cf2908111b58cbd",
+     "ok": false,
+     "error": "SyntaxError: Unexpected end of JSON input",
+     "ms": 20279
+    },
+    {
+     "key": "69b65c0c6cf2908111b58cbd",
+     "ok": false,
+     "error": "SyntaxError: Unexpected end of JSON input",
+     "ms": 19228
+    },
+    {
+     "key": "868b5dc09999ea0f61f99d29",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-net4-0",
+         "ho-net4-1",
+         "ho-net4-2",
+         "ho-net4-3",
+         "ho-net4-4"
+        ],
+        "verdict": "same_operator",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "all five at suite 8B, 1348 Logistics Parkway, Tucson 85701"
+         },
+         {
+          "field": "address_as_typed",
+          "detail": "ho-net4-3 typed 'Ste 8B' despite unit normalising to 1"
+         },
+         {
+          "field": "care_of",
+          "detail": "ho-net4-3 routed c/o ShipBridge at the shared suite"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "ho-net4-1 and ho-net4-0 share same mailbox"
+         },
+         {
+          "field": "name",
+          "detail": "four Okafor name variants plus one Walsh at one suite"
+         },
+         {
+          "field": "entered_via",
+          "detail": "all five entered via agent"
+         },
+         {
+          "field": "timing",
+          "detail": "five agent entries within 15 seconds"
+         }
+        ],
+        "explanation": "All five holds came through one freight-forwarder suite at 1348 Logistics Parkway 8B, placed by agents within seconds of each other."
+       },
+       {
+        "member_ids": [
+         "ho-ns2-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.85,
+        "evidence": [],
+        "explanation": "This is a single human hold at a private home address, unrelated to the reshipper suite."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-net4-4",
+        "b": "ho-ns2-0",
+        "reason": "Different addresses (reshipper suite 8B vs Juniper Ln home), only a similar name links them.",
+        "confidence": 0.75
+       }
+      ]
+     },
+     "ms": 4467
+    },
+    {
+     "key": "d4b34f1e027f9937aa1e31ed",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-net0-0",
+         "ho-net0-1",
+         "ho-net0-2",
+         "ho-net0-3"
+        ],
+        "verdict": "same_operator",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "all four at 1200 HARBOR BLVD, Boise 83702"
+         },
+         {
+          "field": "care_of",
+          "detail": "c/o \"ShipBridge LLC\" reshipper routing on ho-net0-2"
+         },
+         {
+          "field": "care_of",
+          "detail": "c/o \"RAMIREZ FAMILY\" on ho-net0-1"
+         },
+         {
+          "field": "name",
+          "detail": "all four surnames Ramirez at one suite"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "ho-net0-1 and ho-net0-0 share same mailbox"
+         },
+         {
+          "field": "timing",
+          "detail": "four agent entries within 16 seconds"
+         }
+        ],
+        "explanation": "All four are the same reseller operation using one ShipBridge freight-forwarder suite with Ramirez aliases."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 1714
+    },
+    {
+     "key": "ef25f4fc5dce9269dfd3da5f",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-p3-b",
+         "hw-p3-a"
+        ],
+        "verdict": "same_household",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "both 1504 Peachtree Ct, Savannah GA 31405, no unit"
+         },
+         {
+          "field": "name",
+          "detail": "James Carter Jr. and James Carter, likely father/son"
+         },
+         {
+          "field": "unit",
+          "detail": "neither entry has an apartment or suite"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes, but one shared household address"
+         }
+        ],
+        "explanation": "Both entries are the same house with no apartment, and the names look like father and son, so it's one household."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 1242
+    },
+    {
+     "key": "17d9c35095343faa84d5ab9a",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb5-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 2A"
+         },
+         {
+          "field": "name",
+          "detail": "Lena Brennan"
+         }
+        ],
+        "explanation": "Solo entry for Lena Brennan at Apt 2A."
+       },
+       {
+        "member_ids": [
+         "ho-nb5-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 5C"
+         },
+         {
+          "field": "name",
+          "detail": "Ravi Fischer"
+         }
+        ],
+        "explanation": "Solo entry for Ravi Fischer at Apt 5C."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb5-0",
+        "b": "ho-nb5-1",
+        "reason": "Different apartments (2A vs 5C), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 826
+    },
+    {
+     "key": "de026fa074537624f5c46f68",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-net1-0",
+         "ho-net1-1",
+         "ho-net1-2",
+         "ho-net1-3",
+         "ho-net1-4"
+        ],
+        "verdict": "same_operator",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "address/unit",
+          "detail": "All five share street 1237 Logistics Pkwy and unit 5B"
+         },
+         {
+          "field": "mailbox",
+          "detail": "ho-net1-0 and ho-net1-1 share the same mailbox"
+         },
+         {
+          "field": "name",
+          "detail": "ho-net1-0 and ho-net1-1 share name Diego Rossi"
+         },
+         {
+          "field": "care_of",
+          "detail": "ho-net1-3 care_of names ShipBridge Logistics at suite 5B"
+         },
+         {
+          "field": "care_of",
+          "detail": "ho-net1-2 care_of routes to Rossi Family at same suite 5B"
+         },
+         {
+          "field": "care_of",
+          "detail": "ho-net1-4 care_of routes to Unit 5-B at same suite"
+         },
+         {
+          "field": "name",
+          "detail": "Different surnames Rossi and Chen at one freight-forwarder suite"
+         }
+        ],
+        "explanation": "Everyone is shipping to the same reshipper suite, so these are one operation, not five fans."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 11536
+    },
+    {
+     "key": "b10be3bbc7d73da8c27ee8d9",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n12-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 214, a different room from unit 412"
+         },
+         {
+          "field": "name",
+          "detail": "Ethan Miller, unrelated surname to Jacob Wilson"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "This is one person in room 214, separate from the room 412 entrant."
+       },
+       {
+        "member_ids": [
+         "hw-n12-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 412, a different room from unit 214"
+         },
+         {
+          "field": "name",
+          "detail": "Jacob Wilson, unrelated surname to Ethan Miller"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "This is one person in room 412, separate from the room 214 entrant."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n12-a",
+        "b": "hw-n12-b",
+        "reason": "Different units (214 vs 412), unrelated surnames, different mailboxes — just neighbours.",
+        "confidence": 0.9
+       }
+      ]
+     },
+     "ms": 1422
+    },
+    {
+     "key": "1956c9bb5ec7f41e5ca43fbc",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-p2-a",
+         "hw-p2-b",
+         "hw-p2-c",
+         "hw-n11"
+        ],
+        "verdict": "same_operator",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "address_as_typed",
+          "detail": "all four type suite 410 at 8240 NW 52nd Ter, Doral 33166"
+         },
+         {
+          "field": "address_as_typed",
+          "detail": "hw-p2-a, hw-p2-b, hw-p2-c all type PMB box 88213"
+         },
+         {
+          "field": "name",
+          "detail": "hw-p2-a Luis Andrade, hw-p2-b L. Andrade, hw-p2-c Andrade Trading LLC"
+         },
+         {
+          "field": "street",
+          "detail": "same normalised street 8240 NW 52ND TER 33166"
+         },
+         {
+          "field": "unit",
+          "detail": "same normalised unit 410 (hw-p2-b's 41088213 is box 88213)"
+         },
+         {
+          "field": "care_of",
+          "detail": "no care_of, but PMB box format is reshipper-style"
+         },
+         {
+          "field": "entered_via",
+          "detail": "hw-p2-a, hw-p2-b, hw-p2-c all agent entries"
+         },
+         {
+          "field": "timing",
+          "detail": "three agent entries within 6 seconds"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes, but one shared forwarder suite"
+         },
+         {
+          "field": "address_as_typed",
+          "detail": "suite 410 is a known freight-forwarder PMB location"
+         }
+        ],
+        "explanation": "Three Andrade name variants share one PMB box at a freight-forwarder suite, and the fourth name sits at the same suite."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 9421
+    },
+    {
+     "key": "7db0f029f01c361870b32b8c",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb1-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 2A vs Apt 5C, different apartments"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Omar Kowalski vs Ana Hoang, unrelated surnames"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       },
+       {
+        "member_ids": [
+         "ho-nb1-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 5C vs Apt 2A, different apartments"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Ana Hoang vs Omar Kowalski, unrelated surnames"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb1-0",
+        "b": "ho-nb1-1",
+        "reason": "Different apartments (2A vs 5C), unrelated surnames, separate mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 972
+    },
+    {
+     "key": "95bcfdb2a2a4afa57e33db15",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-p1-a",
+         "hw-p1-b"
+        ],
+        "verdict": "same_household",
+        "confidence": 0.8,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "731 LARKSPUR LN, no unit, BOISE ID 83702 matches exactly for both entries"
+         },
+         {
+          "field": "unit",
+          "detail": "neither entry has a unit — single-family home, so one household"
+         },
+         {
+          "field": "name",
+          "detail": "different surnames (Park vs Okonkwo), consistent with two members of one home"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes, but one home address still means one household under the rule"
+         },
+         {
+          "field": "timing",
+          "detail": "two entries roughly 13 minutes apart, no burst pattern either way"
+         }
+        ],
+        "explanation": "Both holds come from the same single-family home with no unit, so they count as one household."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 1599
+    },
+    {
+     "key": "10dc4deb82687a751c12fd70",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb2-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 5A vs 2F, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Clara Novak vs Sofia Silva, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes — separate households."
+       },
+       {
+        "member_ids": [
+         "ho-nb2-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 2F vs 5A, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Sofia Silva vs Clara Novak, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes — separate households."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb2-1",
+        "b": "ho-nb2-0",
+        "reason": "Different apartments (5A vs 2F), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1043
+    },
+    {
+     "key": "5748aa921a5acb322957632a",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n3-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.85,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "hw-n3-a has no unit; hw-n3-b is unit B"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "unrelated surnames (Meyer vs Ibarra)"
+         }
+        ],
+        "explanation": "These look like separate homes in the same building, not one household."
+       },
+       {
+        "member_ids": [
+         "hw-n3-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.85,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "hw-n3-b is unit B; hw-n3-a has no unit"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "unrelated surnames (Ibarra vs Meyer)"
+         }
+        ],
+        "explanation": "These look like separate homes in the same building, not one household."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n3-b",
+        "b": "hw-n3-a",
+        "reason": "Different units (B vs none), unrelated surnames, different mailboxes — likely separate homes.",
+        "confidence": 0.85
+       }
+      ]
+     },
+     "ms": 1247
+    },
+    {
+     "key": "6d259ba90bb9185c8dcf717e",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n5-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.85,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "2210 E Cesar Chavez St, not 908 Willow St"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Same common name in one ZIP, but different streets and different mailboxes, so likely different people."
+       },
+       {
+        "member_ids": [
+         "hw-n5-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.85,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "908 Willow St, not 2210 E Cesar Chavez St"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Same common name in one ZIP, but different streets and different mailboxes, so likely different people."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n5-a",
+        "b": "hw-n5-b",
+        "reason": "Different street addresses (2210 E Cesar Chavez St vs 908 Willow St) and different mailboxes.",
+        "confidence": 0.85
+       }
+      ]
+     },
+     "ms": 1523
+    },
+    {
+     "key": "113f099ce832d7979ed05ab4",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n1-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 3B vs 3D, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Keisha Brown vs Tomasz Wojcik, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       },
+       {
+        "member_ids": [
+         "hw-n1-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 3D vs 3B, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Tomasz Wojcik vs Keisha Brown, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n1-b",
+        "b": "hw-n1-a",
+        "reason": "Different apartments (3D vs 3B), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 964
+    },
+    {
+     "key": "c61b865aefeeb5ca1ad482e1",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb0-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 5C"
+         },
+         {
+          "field": "name",
+          "detail": "Diego Brennan"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Diego Brennan in unit 5C is a separate entrant."
+       },
+       {
+        "member_ids": [
+         "ho-nb0-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 2A"
+         },
+         {
+          "field": "name",
+          "detail": "Elena Fischer"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Elena Fischer in unit 2A is a separate entrant."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb0-1",
+        "b": "ho-nb0-0",
+        "reason": "Different apartments (5C vs 2A), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 854
+    },
+    {
+     "key": "44b67389f6917689940a7c40",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb4-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 2C, different from 5A"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "unrelated surnames (Ramirez vs Brennan)"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and mailboxes, so these look like separate neighbors."
+       },
+       {
+        "member_ids": [
+         "ho-nb4-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 5A, different from 2C"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "unrelated surnames (Brennan vs Ramirez)"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and mailboxes, so these look like separate neighbors."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb4-0",
+        "b": "ho-nb4-1",
+        "reason": "Different apartments (2C vs 5A), unrelated surnames, different mailboxes",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1090
+    },
+    {
+     "key": "a1ef99f03dc486e285f5068e",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n9-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 250 vs unit 100, different suites"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Marcus Bell vs Sara Lindgren, unrelated surnames"
+         },
+         {
+          "field": "care_of",
+          "detail": "self-Attn vs c/o Acme Robotics, different routing"
+         }
+        ],
+        "explanation": "Different suites in the same building with unrelated names and different mailboxes, so they look like separate tenants."
+       },
+       {
+        "member_ids": [
+         "hw-n9-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 100 vs unit 250, different suites"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Sara Lindgren vs Marcus Bell, unrelated surnames"
+         },
+         {
+          "field": "care_of",
+          "detail": "c/o Acme Robotics vs self-Attn, different routing"
+         }
+        ],
+        "explanation": "Different suites in the same building with unrelated names and different mailboxes, so they look like separate tenants."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n9-b",
+        "b": "hw-n9-a",
+        "reason": "Different suites (250 vs 100), unrelated names, different mailboxes, and different care-of routing.",
+        "confidence": 0.9
+       }
+      ]
+     },
+     "ms": 1592
+    },
+    {
+     "key": "4bf9b0a92646cd35f3405987",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb6-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 2C, single entry"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Iris Petrov is one entrant in apartment 2C."
+       },
+       {
+        "member_ids": [
+         "ho-nb6-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 5F, single entry"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Marcus Brennan is one entrant in apartment 5F."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb6-0",
+        "b": "ho-nb6-1",
+        "reason": "Different apartments (2C vs 5F), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 2139
+    },
+    {
+     "key": "d74eb5c0c86a3df79e5fcb81",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n2-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.75,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "hw-n2-a unit 12"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "hw-n2-a different mailboxes from hw-n2-b"
+         }
+        ],
+        "explanation": "This is a single entry on its own."
+       },
+       {
+        "member_ids": [
+         "hw-n2-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.75,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "hw-n2-b unit 21"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "hw-n2-b different mailboxes from hw-n2-a"
+         }
+        ],
+        "explanation": "This is a single entry on its own."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n2-a",
+        "b": "hw-n2-b",
+        "reason": "Different apartments (12 vs 21) and different mailboxes; Zhang is a very common surname.",
+        "confidence": 0.75
+       }
+      ]
+     },
+     "ms": 1511
+    },
+    {
+     "key": "c2954f6186defa1b19dcf63b",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n4-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 200 vs unit 1200, different suites"
+         },
+         {
+          "field": "name",
+          "detail": "Priya Raman vs Dylan Foster, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different suites in one office tower with unrelated names and mailboxes — separate people."
+       },
+       {
+        "member_ids": [
+         "hw-n4-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 1200 vs unit 200, different suites"
+         },
+         {
+          "field": "name",
+          "detail": "Dylan Foster vs Priya Raman, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different suites in one office tower with unrelated names and mailboxes — separate people."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n4-a",
+        "b": "hw-n4-b",
+        "reason": "Different units (200 vs 1200), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 990
+    },
+    {
+     "key": "aa502dbb2d4b9cdeb678eee0",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n10-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 7 vs unit 5, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Hannah Cohen vs Ibrahim Diallo, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       },
+       {
+        "member_ids": [
+         "hw-n10-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 5 vs unit 7, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Ibrahim Diallo vs Hannah Cohen, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n10-b",
+        "b": "hw-n10-a",
+        "reason": "Different apartments (7 vs 5), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 906
+    },
+    {
+     "key": "1d39f0f323444ffa09b24c3f",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb3-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 2C vs 5C, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Moreau vs Haddad, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       },
+       {
+        "member_ids": [
+         "ho-nb3-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 5C vs 2C, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Haddad vs Moreau, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb3-0",
+        "b": "ho-nb3-1",
+        "reason": "Different apartments (2C vs 5C), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 937
+    },
+    {
+     "key": "add4a29580533fe527e010c8",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n6-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 1,
+        "evidence": [],
+        "explanation": "Single entry, no other account shares this household or mailbox."
+       },
+       {
+        "member_ids": [
+         "hw-n6-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 1,
+        "evidence": [],
+        "explanation": "Single entry, no other account shares this household or mailbox."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n6-a",
+        "b": "hw-n6-b",
+        "reason": "Different street addresses (45 Pleasant St vs 312 Highland Ave) and different mailboxes.",
+        "confidence": 0.85
+       }
+      ]
+     },
+     "ms": 1176
+    }
+   ],
+   "recordedAt": "2026-11-01T02:26:37.957Z",
+   "systemSha": "968e492b0bd28fc4c9173cec0a03c6f95a23bcf359699c7039862f323309569c"
+  },
+  {
+   "dataset": "heldOutAfterFix",
+   "run": 3,
+   "ms": 57761,
+   "calls": [
+    {
+     "key": "69b65c0c6cf2908111b58cbd",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-net3-0",
+         "ho-net3-1",
+         "ho-net3-2",
+         "ho-net3-3",
+         "ho-net3-4"
+        ],
+        "verdict": "same_operator",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "address_as_typed",
+          "detail": "ho-net3-3 lists ParcelHop LLC, a parcel-forwarding service"
+         },
+         {
+          "field": "address_as_typed",
+          "detail": "ho-net3-4 reads 'No. 7B', so unit is 7B, not the normalised '1'"
+         },
+         {
+          "field": "street",
+          "detail": "all five share 1311 AIRPORT RD, SPOKANE WA 99201"
+         },
+         {
+          "field": "unit",
+          "detail": "all five resolve to unit 7B once typed text is trusted"
+         },
+         {
+          "field": "care_of",
+          "detail": "ho-net3-0 care_of 'OMAR NGYUEN' routes to the operator contact"
+         },
+         {
+          "field": "care_of",
+          "detail": "ho-net3-1 care_of 'O N' abbreviates that same operator contact"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "ho-net3-0 and ho-net3-1 use the same mailbox"
+         },
+         {
+          "field": "name",
+          "detail": "ho-net3-2 'Omar T. Nguyen' matches the care_of operator contact"
+         },
+         {
+          "field": "name",
+          "detail": "ho-net3-2, ho-net3-3, ho-net3-0, ho-net3-1 share surname Nguyen"
+         },
+         {
+          "field": "name",
+          "detail": "ho-net3-4 'Sam Tanaka' is an unrelated surname at the same suite"
+         },
+         {
+          "field": "address_as_typed",
+          "detail": "ho-net3-2 types 'Apt 7B', ho-net3-3 'Unit 7-B', ho-net3-1 'STE 7B'"
+         }
+        ],
+        "explanation": "All five holds route to one parcel-forwarding suite at 1311 Airport Rd 7B, so they are one reseller operation."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 8228
+    },
+    {
+     "key": "868b5dc09999ea0f61f99d29",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-net4-0",
+         "ho-net4-1",
+         "ho-net4-2",
+         "ho-net4-3",
+         "ho-net4-4"
+        ],
+        "verdict": "same_operator",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "All five at 1348 Logistics Pkwy, suite 8B, Tucson 85701 (PMB/ste reshipper site)."
+         },
+         {
+          "field": "care_of",
+          "detail": "ho-net4-3 routed c/o ShipBridge, a reshipper at that suite."
+         },
+         {
+          "field": "address_as_typed",
+          "detail": "ho-net4-3 typed 'Ste 8B' despite normaliser reading unit 1."
+         },
+         {
+          "field": "name",
+          "detail": "Four different surnames/given names at one suite 8B."
+         },
+         {
+          "field": "entered_via",
+          "detail": "All five arrived via agent."
+         },
+         {
+          "field": "timing",
+          "detail": "Five agent entries within 15 seconds."
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "ho-net4-1 and ho-net4-0 share the same mailbox."
+         },
+         {
+          "field": "name",
+          "detail": "ho-net4-1, ho-net4-2, ho-net4-0 share surname Okafor."
+         }
+        ],
+        "explanation": "All five holds went to one reshipper suite 8B under mixed names, so they're one operation."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-net4-4",
+        "b": "ho-ns2-0",
+        "reason": "Different addresses (reshipper suite 8B vs Juniper Ln home) and different mailboxes.",
+        "confidence": 0.72
+       }
+      ]
+     },
+     "ms": 4583
+    },
+    {
+     "key": "d4b34f1e027f9937aa1e31ed",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-net0-0",
+         "ho-net0-1",
+         "ho-net0-2",
+         "ho-net0-3"
+        ],
+        "verdict": "same_operator",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "all four at 1200 HARBOR BLVD, BOISE ID 83702"
+         },
+         {
+          "field": "unit",
+          "detail": "three entries resolve to unit 4B / 4-B"
+         },
+         {
+          "field": "name",
+          "detail": "all Ramirez, incl. T. Ramirez and Tobias A. Ramirez Jr"
+         },
+         {
+          "field": "care_of",
+          "detail": "c/o \"RAMIREZ FAMILY\" and c/o \"T RAMIREZ NO 4-B\" routing"
+         },
+         {
+          "field": "care_of",
+          "detail": "ShipBridge LLC Attn: T. Ramirez is reshipper-style routing"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "ho-net0-1 and ho-net0-0 share the same mailbox"
+         },
+         {
+          "field": "timing",
+          "detail": "four agent entries within 16 seconds"
+         }
+        ],
+        "explanation": "All four are Ramirez entries at one address/unit, with reshipper-style c/o routing and a shared mailbox linking two of them."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 2395
+    },
+    {
+     "key": "ef25f4fc5dce9269dfd3da5f",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-p3-b",
+         "hw-p3-a"
+        ],
+        "verdict": "same_household",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "both 1504 PEACHTREE CT, no unit, Savannah GA 31405"
+         },
+         {
+          "field": "name",
+          "detail": "James Carter Jr. and James Carter, likely father/son"
+         },
+         {
+          "field": "unit",
+          "detail": "no unit on either entry, single-family home"
+         }
+        ],
+        "explanation": "Both entries sit at the same unit-less home address with matching father/son names, so they're one household."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 1076
+    },
+    {
+     "key": "17d9c35095343faa84d5ab9a",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb5-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 2A"
+         },
+         {
+          "field": "name",
+          "detail": "Lena Brennan"
+         }
+        ],
+        "explanation": "This is a single entry in apartment 2A with no matching household signals."
+       },
+       {
+        "member_ids": [
+         "ho-nb5-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 5C"
+         },
+         {
+          "field": "name",
+          "detail": "Ravi Fischer"
+         }
+        ],
+        "explanation": "This is a single entry in apartment 5C with no matching household signals."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb5-0",
+        "b": "ho-nb5-1",
+        "reason": "Different apartments (2A vs 5C), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 819
+    },
+    {
+     "key": "de026fa074537624f5c46f68",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-net1-0",
+         "ho-net1-1",
+         "ho-net1-2",
+         "ho-net1-3",
+         "ho-net1-4"
+        ],
+        "verdict": "same_operator",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "all five typed 1237 Logistics Parkway unit 5B, Austin 78704"
+         },
+         {
+          "field": "unit",
+          "detail": "ho-net1-4 typed \"Unit 5-B\", matching suite 5B despite normalisation"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "ho-net1-0 and ho-net1-1 share same mailbox"
+         },
+         {
+          "field": "name",
+          "detail": "ho-net1-0 and ho-net1-1 are one name, reordered"
+         },
+         {
+          "field": "name",
+          "detail": "Rossi surname across ho-net1-0, ho-net1-1, ho-net1-2, ho-net1-3"
+         },
+         {
+          "field": "care_of",
+          "detail": "ho-net1-3 c/o ShipBridge Logistics at suite 5B, a freight forwarder"
+         },
+         {
+          "field": "address_as_typed",
+          "detail": "ho-net1-3 typed PMB 5B, private mailbox at that suite"
+         },
+         {
+          "field": "care_of",
+          "detail": "ho-net1-4 Attn routing at the same commercial suite"
+         },
+         {
+          "field": "care_of",
+          "detail": "ho-net1-2 c/o Rossi Family at the same suite"
+         },
+         {
+          "field": "timing",
+          "detail": "five entries within 100 minutes"
+         }
+        ],
+        "explanation": "All five holds route to one freight-forwarder suite (5B at 1237 Logistics Parkway, ShipBridge Logistics), so they count as one operation."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 9361
+    },
+    {
+     "key": "b10be3bbc7d73da8c27ee8d9",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n12-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 214 vs unit 412, different rooms"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Ethan Miller vs Jacob Wilson, unrelated surnames"
+         }
+        ],
+        "explanation": "Different rooms in the same university building with unrelated names and separate mailboxes."
+       },
+       {
+        "member_ids": [
+         "hw-n12-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 412 vs unit 214, different rooms"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Jacob Wilson vs Ethan Miller, unrelated surnames"
+         }
+        ],
+        "explanation": "Different rooms in the same university building with unrelated names and separate mailboxes."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n12-a",
+        "b": "hw-n12-b",
+        "reason": "Different rooms (214 vs 412), unrelated surnames, different mailboxes — separate dorm residents.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1264
+    },
+    {
+     "key": "1956c9bb5ec7f41e5ca43fbc",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-p2-a",
+         "hw-p2-b",
+         "hw-p2-c",
+         "hw-n11"
+        ],
+        "verdict": "same_operator",
+        "confidence": 0.85,
+        "evidence": [
+         {
+          "field": "address_as_typed",
+          "detail": "hw-p2-c shows 'PMB 88213' — private mailbox at a commercial mail suite"
+         },
+         {
+          "field": "address_as_typed",
+          "detail": "hw-p2-a and hw-p2-b show 'Box 88213' / '#410-88213', same mailbox number"
+         },
+         {
+          "field": "unit",
+          "detail": "all four normalize to suite 410 at 8240 NW 52ND TER, 33166"
+         },
+         {
+          "field": "name",
+          "detail": "hw-p2-a/b/c share surname Andrade; hw-n11 is a different name at the same suite"
+         },
+         {
+          "field": "mailbox",
+          "detail": "hw-p2-a, hw-p2-b, hw-p2-c share the same mailbox"
+         },
+         {
+          "field": "entered_via",
+          "detail": "hw-p2-a/b/c are agent entries within 6 seconds of each other"
+         },
+         {
+          "field": "care_of",
+          "detail": "no care_of on any entry, but PMB/Box numbering is reshipper-style routing"
+         }
+        ],
+        "explanation": "Suite 410 is a private-mailbox reshipper suite, and the three Andrade entries share one mailbox while the fourth name uses the same forwarder."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 5163
+    },
+    {
+     "key": "7db0f029f01c361870b32b8c",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb1-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 2A vs Apt 5C, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Omar Kowalski vs Ana Hoang, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes — almost certainly separate households."
+       },
+       {
+        "member_ids": [
+         "ho-nb1-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 5C vs Apt 2A, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Ana Hoang vs Omar Kowalski, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes — almost certainly separate households."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb1-0",
+        "b": "ho-nb1-1",
+        "reason": "Different apartments (2A vs 5C), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1130
+    },
+    {
+     "key": "95bcfdb2a2a4afa57e33db15",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-p1-a",
+         "hw-p1-b"
+        ],
+        "verdict": "same_household",
+        "confidence": 0.8,
+        "evidence": [
+         {
+          "field": "address",
+          "detail": "same street address 731 Larkspur Ln, no unit, Boise 83702"
+         },
+         {
+          "field": "unit",
+          "detail": "no unit on either entry — single-family home"
+         },
+         {
+          "field": "name",
+          "detail": "different surnames (Park vs Okonkwo) — two residents, not one person"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes, so not the same person's alias"
+         }
+        ],
+        "explanation": "Two different people sharing one single-family home address with no unit count as one household."
+       }
+      ],
+      "kept_apart": []
+     },
+     "ms": 1486
+    },
+    {
+     "key": "10dc4deb82687a751c12fd70",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb2-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "different units (5A vs 2F)"
+         },
+         {
+          "field": "name",
+          "detail": "unrelated surnames (Novak vs Silva)"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       },
+       {
+        "member_ids": [
+         "ho-nb2-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "different units (2F vs 5A)"
+         },
+         {
+          "field": "name",
+          "detail": "unrelated surnames (Silva vs Novak)"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb2-1",
+        "b": "ho-nb2-0",
+        "reason": "Different apartments (5A vs 2F), unrelated surnames, separate mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1094
+    },
+    {
+     "key": "5748aa921a5acb322957632a",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n3-b",
+         "hw-n3-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.8,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit B vs no unit at 18 ALDER ST"
+         },
+         {
+          "field": "name",
+          "detail": "Carlos Ibarra vs Ruth Meyer, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "entered_via",
+          "detail": "both human entries"
+         }
+        ],
+        "explanation": "Different dwellings at the same building, unrelated names and separate mailboxes, so likely separate people."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n3-b",
+        "b": "hw-n3-a",
+        "reason": "Different units (B vs none), unrelated surnames, different mailboxes",
+        "confidence": 0.8
+       }
+      ]
+     },
+     "ms": 1360
+    },
+    {
+     "key": "6d259ba90bb9185c8dcf717e",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n5-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "street",
+          "detail": "different streets (2210 E Cesar Chavez St vs 908 Willow St)"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "common name Maria Garcia, no other link"
+         }
+        ],
+        "explanation": "Same common name and ZIP, but different streets and mailboxes — likely different people."
+       },
+       {
+        "member_ids": [
+         "hw-n5-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "street",
+          "detail": "different streets (908 Willow St vs 2210 E Cesar Chavez St)"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "common name Maria Garcia, no other link"
+         }
+        ],
+        "explanation": "Same common name and ZIP, but different streets and mailboxes — likely different people."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n5-a",
+        "b": "hw-n5-b",
+        "reason": "Different streets (2210 E Cesar Chavez St vs 908 Willow St) and different mailboxes; common name only.",
+        "confidence": 0.9
+       }
+      ]
+     },
+     "ms": 1200
+    },
+    {
+     "key": "113f099ce832d7979ed05ab4",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n1-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 3B vs 3D, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Keisha Brown vs Tomasz Wojcik, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes — just neighbors."
+       },
+       {
+        "member_ids": [
+         "hw-n1-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 3D vs 3B, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Tomasz Wojcik vs Keisha Brown, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes — just neighbors."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n1-b",
+        "b": "hw-n1-a",
+        "reason": "Different apartments (3D vs 3B), unrelated surnames, different mailboxes — just neighbors.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 5190
+    },
+    {
+     "key": "c61b865aefeeb5ca1ad482e1",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb0-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 5C vs 2A"
+         },
+         {
+          "field": "name",
+          "detail": "Diego Brennan vs Elena Fischer"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       },
+       {
+        "member_ids": [
+         "ho-nb0-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 2A vs 5C"
+         },
+         {
+          "field": "name",
+          "detail": "Elena Fischer vs Diego Brennan"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb0-1",
+        "b": "ho-nb0-0",
+        "reason": "Different apartments (5C vs 2A), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1381
+    },
+    {
+     "key": "44b67389f6917689940a7c40",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb4-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 2C, one occupant"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "This is a single entrant at apartment 2C."
+       },
+       {
+        "member_ids": [
+         "ho-nb4-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 5A, one occupant"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "This is a single entrant at apartment 5A."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb4-0",
+        "b": "ho-nb4-1",
+        "reason": "Different apartments (2C vs 5A), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1188
+    },
+    {
+     "key": "a1ef99f03dc486e285f5068e",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n9-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 250 vs unit 100, different suites"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "care_of",
+          "detail": "care_of MARCUS BELL vs ACME ROBOTICS"
+         }
+        ],
+        "explanation": "Different suites in the same building with unrelated names and separate mailboxes, so they look like separate tenants."
+       },
+       {
+        "member_ids": [
+         "hw-n9-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.9,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 100 vs unit 250, different suites"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "care_of",
+          "detail": "care_of ACME ROBOTICS vs MARCUS BELL"
+         }
+        ],
+        "explanation": "Different suites in the same building with unrelated names and separate mailboxes, so they look like separate tenants."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n9-b",
+        "b": "hw-n9-a",
+        "reason": "Different suites (250 vs 100), different mailboxes, unrelated names and care_of recipients.",
+        "confidence": 0.9
+       }
+      ]
+     },
+     "ms": 2005
+    },
+    {
+     "key": "4bf9b0a92646cd35f3405987",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb6-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 2C, single entry"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "This is one person in apartment 2C with no matching entry."
+       },
+       {
+        "member_ids": [
+         "ho-nb6-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "Apt 5F, single entry"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "This is one person in apartment 5F with no matching entry."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb6-0",
+        "b": "ho-nb6-1",
+        "reason": "Different apartments (2C vs 5F), unrelated surnames, different mailboxes",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 1021
+    },
+    {
+     "key": "d74eb5c0c86a3df79e5fcb81",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n2-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.75,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 12 vs unit 21, different apartments"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Wei vs Lin, different first names"
+         }
+        ],
+        "explanation": "These look like two neighbors in different apartments of the same building, not one household."
+       },
+       {
+        "member_ids": [
+         "hw-n2-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.75,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 21 vs unit 12, different apartments"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         },
+         {
+          "field": "name",
+          "detail": "Lin vs Wei, different first names"
+         }
+        ],
+        "explanation": "These look like two neighbors in different apartments of the same building, not one household."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n2-a",
+        "b": "hw-n2-b",
+        "reason": "Different apartments (12 vs 21) and different mailboxes; shared common surname alone isn't enough.",
+        "confidence": 0.75
+       }
+      ]
+     },
+     "ms": 1315
+    },
+    {
+     "key": "c2954f6186defa1b19dcf63b",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n4-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 200 vs unit 1200, different suites"
+         },
+         {
+          "field": "name",
+          "detail": "Priya Raman vs Dylan Foster, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different suites in one office tower with unrelated names and separate mailboxes — almost certainly separate people."
+       },
+       {
+        "member_ids": [
+         "hw-n4-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 1200 vs unit 200, different suites"
+         },
+         {
+          "field": "name",
+          "detail": "Dylan Foster vs Priya Raman, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different suites in one office tower with unrelated names and separate mailboxes — almost certainly separate people."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n4-a",
+        "b": "hw-n4-b",
+        "reason": "Different units (200 vs 1200), unrelated surnames, different mailboxes — separate tenants.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 973
+    },
+    {
+     "key": "aa502dbb2d4b9cdeb678eee0",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n10-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 7 vs unit 5, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Hannah Cohen vs Ibrahim Diallo, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       },
+       {
+        "member_ids": [
+         "hw-n10-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 5 vs unit 7, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Ibrahim Diallo vs Hannah Cohen, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n10-b",
+        "b": "hw-n10-a",
+        "reason": "Different apartments (7 vs 5), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 3176
+    },
+    {
+     "key": "1d39f0f323444ffa09b24c3f",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "ho-nb3-0"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 2C vs 5C, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Moreau vs Haddad, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       },
+       {
+        "member_ids": [
+         "ho-nb3-1"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.95,
+        "evidence": [
+         {
+          "field": "unit",
+          "detail": "unit 5C vs 2C, different apartments"
+         },
+         {
+          "field": "name",
+          "detail": "Haddad vs Moreau, unrelated surnames"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Different apartments in the same building with unrelated names and separate mailboxes."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "ho-nb3-0",
+        "b": "ho-nb3-1",
+        "reason": "Different apartments (2C vs 5C), unrelated surnames, different mailboxes.",
+        "confidence": 0.95
+       }
+      ]
+     },
+     "ms": 978
+    },
+    {
+     "key": "add4a29580533fe527e010c8",
+     "ok": true,
+     "response": {
+      "groups": [
+       {
+        "member_ids": [
+         "hw-n6-a"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.85,
+        "evidence": [
+         {
+          "field": "street",
+          "detail": "45 Pleasant St vs 312 Highland Ave, different streets"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Same ZIP and similar name, but different streets and mailboxes — likely different people."
+       },
+       {
+        "member_ids": [
+         "hw-n6-b"
+        ],
+        "verdict": "distinct",
+        "confidence": 0.85,
+        "evidence": [
+         {
+          "field": "street",
+          "detail": "312 Highland Ave vs 45 Pleasant St, different streets"
+         },
+         {
+          "field": "mailbox_token",
+          "detail": "different mailboxes"
+         }
+        ],
+        "explanation": "Same ZIP and similar name, but different streets and mailboxes — likely different people."
+       }
+      ],
+      "kept_apart": [
+       {
+        "a": "hw-n6-a",
+        "b": "hw-n6-b",
+        "reason": "Different street addresses (45 Pleasant St vs 312 Highland Ave) and different mailboxes.",
+        "confidence": 0.85
+       }
+      ]
+     },
+     "ms": 1204
+    }
+   ],
+   "recordedAt": "2026-11-01T02:28:06.916Z",
+   "systemSha": "968e492b0bd28fc4c9173cec0a03c6f95a23bcf359699c7039862f323309569c"
   }
  ]
 }

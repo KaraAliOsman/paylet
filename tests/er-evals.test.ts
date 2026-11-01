@@ -14,6 +14,7 @@ describe("published evals replay from evals/cassette.json", () => {
   const sets = [
     { name: "dev", file: "evals/dataset.json", section: results },
     { name: "heldOut", file: "evals/heldout.json", section: results.heldOut },
+    ...(results.heldOutAfterFix ? [{ name: "heldOutAfterFix", file: "evals/heldout.json", section: results.heldOutAfterFix }] : []),
   ];
   for (const { name, file, section } of sets) {
     it(`${name}: dataset hash, baselines and every recorded model run match results.json`, async () => {

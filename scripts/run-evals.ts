@@ -85,6 +85,8 @@ cassette.model = model;
 const modelShort = model.split("/").pop()!;
 const currentSystem = systemSha();
 const failureNotes: Record<string, string> = existsSync(NOTES_FILE) ? JSON.parse(readFileSync(NOTES_FILE, "utf8")) : {};
+/** Notes are keyed "<failure key>" for the blind held-out set and "<section>:<failure key>" for any other section. */
+const noteFor = (section: SectionName, key: string) => failureNotes[`${section}:${key}`] ?? (section === "heldOut" ? (failureNotes[key] ?? null) : null);
 
 /** Live for this section? (fresh run: dev + heldOut; append: only the named section). Everything else replays. */
 const isLive = (s: Spec) => (fresh ? s.name !== "heldOutAfterFix" && (!ONLY || s.name === ONLY) : APPEND && s.name === ONLY);
@@ -296,7 +298,7 @@ function failures(section: SectionName, data: LabeledIdentity[], outs: RunOutcom
               : `${b.a} ↔ ${b.b} linked by the model (${Math.round((b.confidence ?? 0) * 100)}%): "${b.explanation ?? ""}"`,
           )
           .join(" "),
-        analysis: failureNotes[key] ?? null,
+        analysis: noteFor(section, key),
       }));
     }
 
@@ -342,7 +344,7 @@ function failures(section: SectionName, data: LabeledIdentity[], outs: RunOutcom
         pairsAffected: ps.length,
         entries: data.filter((d) => d.group === g).map(entryOf),
         detail: `Run ${run + 1}: ${ps.length} true pair${ps.length === 1 ? "" : "s"} missed: ${parts.join("; ")}.`,
-        analysis: failureNotes[key] ?? null,
+        analysis: noteFor(section, key),
       }));
     }
   });
