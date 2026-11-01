@@ -51,7 +51,7 @@ async function scene(browser: Browser, name: string, run: (page: Page, ctx: Brow
 
 /** Smooth scroll by `px` over `ms`. */
 async function glide(page: Page, px: number, ms: number) {
-  const steps = Math.max(1, Math.round(ms / 16));
+  const steps = Math.max(1, Math.round(ms / 60)); // each wheel event round-trips the browser (~40 ms)
   for (let i = 0; i < steps; i++) {
     await page.mouse.wheel(0, px / steps);
     await wait(16);
@@ -59,7 +59,7 @@ async function glide(page: Page, px: number, ms: number) {
 }
 
 async function open(page: Page, path: string, settle = 1200) {
-  await page.goto(base + path, { waitUntil: "networkidle" }).catch(() => undefined);
+  await page.goto(base + path, { waitUntil: "load" }).catch(() => undefined);
   await page.mouse.move(W - 40, H / 2);
   await wait(settle);
 }
