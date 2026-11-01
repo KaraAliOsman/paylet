@@ -124,8 +124,9 @@ test("a real loser is voided on PayPal (simulated crowd + AI review + confirmed 
 
 test("cancelling in PayPal places no hold", async ({ page, request }) => {
   const { slug, sellerKey } = await newJudgeDrop(request);
-  const chat = await (await request.post("/api/agent/chat", { data: { messages: [{ role: "user", content: `Please enter me in the Paylet drop with slug "${slug}".` }] } })).json();
-  await page.goto(chat.approveUrl);
+  // deterministic (no LLM): create the order directly, then open PayPal's approval page for it
+  const { orderId } = await (await request.post(`/api/drops/${slug}/entries`)).json();
+  await page.goto(`https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`);
   await page.getByRole("link", { name: /Cancel and return|Cancelar y volver/i }).first().click({ timeout: 60_000 });
   await page.waitForURL(/\/return/, { timeout: 60_000 });
   await expect(page.getByText(/cancelled in PayPal — no hold was placed/)).toBeVisible();
