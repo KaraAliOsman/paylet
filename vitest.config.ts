@@ -22,13 +22,18 @@ export default defineConfig({
       include: ["src/server/**/*.ts", "src/shared/**/*.ts"],
       reporter: ["text-summary", "text", "json-summary", "html", "lcov"],
       reportsDirectory: "test-results/coverage", // already git-ignored
-      // Floors, not goals: CI fails if coverage drops below today's level. Raise them as tests are added.
+      // Floors, not goals: about 5 points under the level measured on 2026-11-01, so CI fails if coverage regresses.
+      // The goal is 80% on domain, queue and paypal; raise these floors as unhappy-path tests land.
+      // paypal.ts has no unit floor: the flow tests mock it, and the real PayPal sandbox suite (e2e/) exercises it.
       thresholds: {
         statements: 40,
         branches: 28,
         functions: 38,
         lines: 44,
-        // The verifiable draw and money helpers are what anyone re-runs in /verify: keep them fully covered.
+        // Money state machine and the PayPal op queue (measured: domain 55/41/59/60, queue 73/50/56/83).
+        "src/server/domain.ts": { statements: 50, branches: 36, functions: 54, lines: 54 },
+        "src/server/queue.ts": { statements: 68, branches: 45, functions: 50, lines: 77 },
+        // The draw and money helpers that anyone re-runs in /verify (measured: 95/82/100/100).
         "src/shared/**": { statements: 90, branches: 75, functions: 90, lines: 90 },
       },
     },
