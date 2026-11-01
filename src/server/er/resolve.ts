@@ -54,6 +54,12 @@ export interface AdjudicationRequest {
 }
 export type Adjudicator = (req: AdjudicationRequest) => Promise<unknown>;
 
+/**
+ * Token budget for one adjudication. MiMo is a reasoning model and its reasoning tokens count against max_tokens:
+ * with 2,000 it sometimes spent the whole budget thinking on hard groups and returned nothing (held-out evals).
+ */
+export const ADJUDICATION_MAX_TOKENS = 6000;
+
 /** Default adjudicator: the configured OpenAI-compatible model (lazy import keeps env/db out of offline evals). */
 export const llmAdjudicator: Adjudicator = async (req) => {
   const { chatJson } = await import("../ai");
@@ -65,6 +71,7 @@ export const llmAdjudicator: Adjudicator = async (req) => {
     ],
     req.schemaName,
     req.schema,
+    ADJUDICATION_MAX_TOKENS,
   );
 };
 
