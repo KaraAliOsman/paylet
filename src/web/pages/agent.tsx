@@ -5,6 +5,7 @@ import { HoldTimeline, timelineInput } from "../hold-timeline";
 import { LockIcon } from "../icons";
 import { Link } from "../router";
 import { approvalExpiresAt } from "../timeline";
+import { Bloub } from "../bloub";
 
 // ---------------------------------------------------------------- Fan's agent (MCP client + MiMo), as a chat
 
@@ -148,7 +149,7 @@ export function AgentPage() {
       <section className="card agent-chat">
         <div className="card-head">
           <div className="wren">
-            <span className="wren-avatar" aria-hidden="true">W</span>
+            <Bloub size={44} busy={!!busy} />
             <h3>Wren · your personal agent</h3>
             <span className="muted small">MiMo V2.6 Pro → Paylet over MCP (list_drops · enter_drop · entry_status)</span>
           </div>
@@ -162,6 +163,7 @@ export function AgentPage() {
           {turns.map((t, i) => (
             <div key={i} className={`turn turn-${t.role}`}>
               <div className={`msg msg-${t.role}`}>
+                {t.role === "assistant" && <Bloub size={28} busy={false} label="Wren" />}
                 <div className={`bubble ${t.error ? "bubble-error" : ""}`}>
                   {clean(t.content, !!t.handoff)
                     .split("\n")
@@ -177,6 +179,7 @@ export function AgentPage() {
           ))}
           {busy && (
             <div className="msg msg-assistant">
+              <Bloub size={28} busy label="Wren is thinking" />
               <div className="bubble typing">{busy === "status" ? "Wren is checking your entry…" : "Wren is calling Paylet over MCP…"}</div>
             </div>
           )}

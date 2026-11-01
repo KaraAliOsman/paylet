@@ -1020,3 +1020,42 @@ a { text-decoration-color: rgba(17, 17, 16, 0.25); }
 
 /* real product photography */
 .art-photo { display: block; object-fit: cover; background: var(--surface-2); }
+
+/* ================================================================= Wren: bloub avatar, plain conversation
+   No aura, no gradients, no glow on this page: a flat sheet, one black bot, white bubbles for Wren and black for you. */
+.shell.is-agent::before { display: none; }
+.bloub { display: block; flex: none; overflow: visible; }
+.bloub-body { fill: #111110; }
+.bloub-eye { fill: #ffffff; transform-box: fill-box; transform-origin: center; animation: bloub-blink 5.6s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
+.bloub-eyes { animation: bloub-gaze 8s cubic-bezier(0.16, 1, 0.3, 1) infinite alternate; }
+.bloub.is-busy .bloub-eyes { animation-duration: 2.2s; }
+.bloub.is-busy .bloub-eye { animation-duration: 3.2s; }
+@keyframes bloub-gaze {
+  0% { transform: translate(-2.4px, 0); }
+  50% { transform: translate(0.8px, -1px); }
+  100% { transform: translate(2.2px, 0.6px); }
+}
+@keyframes bloub-blink {
+  0%, 90%, 100% { transform: scaleY(1); }
+  94% { transform: scaleY(0.1); }
+}
+.agent .wren { grid-template-columns: 44px minmax(0, 1fr); column-gap: 14px; }
+.agent .wren .bloub { grid-row: span 2; }
+.agent .wren h3 { font-size: 16px; }
+.agent-chat { box-shadow: 0 0 0 1px var(--line-2); padding: 26px; }
+.agent .msgs { gap: 16px; }
+.agent .msg-assistant { display: flex; align-items: flex-start; gap: 10px; }
+.agent .msg-assistant .bloub { margin-top: 2px; }
+.agent .bubble { border-radius: 6px 18px 18px 18px; background: #ffffff; box-shadow: 0 0 0 1px var(--line-2); font-size: 15px; }
+.agent .msg-user .bubble { background: var(--ink); color: #ffffff; border-radius: 18px 18px 6px 18px; box-shadow: none; }
+.agent .bubble-error { background: var(--bad-bg); box-shadow: 0 0 0 1px var(--bad-line); }
+.agent .typing { color: var(--muted); }
+.agent .chip { background: #ffffff; box-shadow: 0 0 0 1px var(--line-2); border-radius: 10px; }
+.agent .composer { background: #ffffff; box-shadow: 0 0 0 1px var(--line-2); border-radius: 12px; }
+.agent .composer input { border-radius: 10px; box-shadow: none; }
+.agent .composer button { border-radius: 10px; }
+.agent .handoff { border-radius: 14px; background: #ffffff; box-shadow: 0 0 0 1px var(--line-2); }
+.agent .handoff-lock { border-radius: 10px; background: var(--ink); color: #fff; }
+@media (prefers-reduced-motion: reduce) {
+  .bloub-eye, .bloub-eyes { animation: none !important; }
+}

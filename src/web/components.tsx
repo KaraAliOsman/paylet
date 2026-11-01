@@ -27,7 +27,7 @@ export function Shell({ children }: { children: ReactNode }) {
   }, []);
   const onHero = path === "/" && !scrolled;
   return (
-    <div className={`shell ${path === "/" ? "is-home" : "is-inner"}`}>
+    <div className={`shell ${path === "/" ? "is-home" : path.startsWith("/agent") ? "is-agent" : "is-inner"}`}>
       <header className={`topbar ${onHero ? "topbar-hero" : ""} ${scrolled ? "is-scrolled" : ""}`}>
         <Link href="/" className="brand">
           <BrandMark />
