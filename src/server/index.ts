@@ -39,6 +39,7 @@ import { handleMcp, paypalState } from "./mcp";
 import { INTERNAL_HEADER, howItWent, internalToken, runFanAgent, runSwarm } from "./agent";
 import { aiConfigured, usageSummary } from "./ai";
 import { dropReport, globalStats } from "./report";
+import { auditSnapshot, ensureProofDrop, exportProof, proofInfo, recordedProof } from "./proof";
 
 const app = new Hono();
 
@@ -161,6 +162,9 @@ app.get("/api/drops/:slug/events", (c) => {
 app.get("/api/drops/:slug/paypal-check", async (c) => {
   const d = mustDrop(c.req.param("slug"));
   if (!limit(c, "ppcheck", 6)) return c.json({ error: "rate_limited", message: "Ask PayPal at most 6 times a minute." }, 429);
+  // an imported proof run only has masked ids: show what PayPal said when the run was checked (and when)
+  const recorded = d.kind === "proof" ? recordedProof(d) : null;
+  if (recorded) return c.json({ ...(recorded.paypalCheck ?? { checkedAt: null, rows: [], totals: { captured: 0, voided: 0, mismatches: 0 } }), cached: true, recorded: true });
   try {
     return c.json(await paypalCheck(d));
   } catch (e) {
@@ -178,6 +182,23 @@ app.get("/api/drops/:slug/report", (c) => c.json(dropReport(mustDrop(c.req.param
 
 // landing page counters: real PayPal sandbox activity only
 app.get("/api/stats", (c) => c.json(globalStats()));
+
+// P1-04: the permanent proof drop with real sandbox money
+app.get("/api/proof", (c) => c.json(proofInfo()));
+
+// P1-06: sandbox buyer accounts for judges, only with the code from the Devpost testing instructions (never in the bundle)
+app.get("/api/judge-buyers", (c) => {
+  c.header("Cache-Control", "no-store");
+  if (!limit(c, "judge-buyers", 10)) return c.json({ error: "rate_limited" }, 429);
+  const code = c.req.query("code") ?? "";
+  if (!env.JUDGE_CODE || !code || !safeEq(code, env.JUDGE_CODE)) return c.json({ error: "not_found" }, 404);
+  const buyers = [
+    { label: "Sandbox buyer", email: env.BUYER_EMAIL, password: env.BUYER_PASSWORD },
+    { label: "Sandbox buyer B", email: env.BUYER_B_EMAIL, password: env.BUYER_B_PASSWORD },
+  ].filter((b): b is { label: string; email: string; password: string } => Boolean(b.email && b.password));
+  if (!buyers.length) return c.json({ error: "not_found" }, 404);
+  return c.json({ buyers });
+});
 
 app.post("/api/drops/:slug/entries", async (c) => {
   if (!limit(c, "entry", 20)) return c.json({ error: "rate_limited" }, 429);
@@ -205,10 +226,29 @@ app.post("/api/entries/:id/appeal", async (c) => {
 });
 
 app.post("/api/judge-drop", async (c) => {
-  if (!limit(c, "judge", 4)) return c.json({ error: "rate_limited" }, 429);
-  const ip = clientIp(c);
   const adminKey = c.req.header("x-seller-key");
   const isOwner = Boolean(env.SELLER_ADMIN_KEY && adminKey && safeEq(adminKey, env.SELLER_ADMIN_KEY)); // test suite / owner
+  if (!isOwner && !limit(c, "judge", 4)) return c.json({ error: "rate_limited" }, 429);
+  const ip = clientIp(c);
+  const body = (await c.req.json().catch(() => ({}))) as { kind?: unknown; units?: unknown; negativeTest?: unknown };
+  if (isOwner && body.kind === "proof") {
+    // P1-04 (owner only): the proof run's drop. Never closes or draws by itself; scripts/proof-run.ts draws it.
+    const units = Math.max(1, Math.min(5, Number(body.units) || 1));
+    const d = await createDrop({
+      title: "Ember Glaze Mug",
+      maker: "Juniper Street Ceramics",
+      blurb: "Wood-fired stoneware mug. A real PayPal sandbox run, kept as proof: every entry here moved real sandbox money.",
+      art: "ember",
+      priceCents: 3800,
+      shipHoldCents: 1000,
+      shipActualCents: 650,
+      units,
+      minutesOpen: 24 * 60,
+      kind: "proof",
+      negativeTest: body.negativeTest === true,
+    });
+    return c.json({ slug: d.slug, sellerKey: d.seller_token });
+  }
   const mine = judgeQuota.get(ip);
   if (!isOwner && mine && mine.reset > Date.now() && mine.n >= 12) return c.json({ error: "judge_drop_quota", message: "You already have several judge drops today — reuse one of them." }, 429);
   const today = (db.prepare("SELECT COUNT(*) n FROM drops WHERE kind = 'judge' AND created_at > ?").get(now() - 86_400_000) as { n: number }).n;
@@ -301,7 +341,7 @@ app.get("/api/seller/:slug", (c) => {
     refundedCents: e.refunded_cents,
     authorization: e.source === "simulated" ? null : (maskId(e.authorization_id) ?? null),
     // full id for the drop's own seller (the real-sandbox e2e cross-checks it with PayPal); the UI shows `authorization`
-    authorizationId: e.source === "simulated" ? null : e.authorization_id,
+    authorizationId: e.source === "simulated" || d.kind === "proof" ? null : e.authorization_id,
     clusterId: e.cluster_id,
     note: e.note,
     createdAt: e.created_at,
@@ -380,6 +420,18 @@ app.post("/api/seller/:slug/draw", async (c) => {
   return c.json({ status: f.status, frozenHash: f.frozenHash, eligible: f.eligible, excluded: f.excluded, round: f.round, revealAt: f.revealAt });
 });
 
+// P1-04: masked, PII-free snapshot of a settled drop (scripts/proof-run.ts saves it as docs/proof-run.json)
+app.get("/api/seller/:slug/export", async (c) => {
+  const d = seller(c);
+  if (d.status !== "settled") throw new HttpError(409, "not_settled", "Only a settled drop can be exported.");
+  const recorded = d.kind === "proof" ? recordedProof(d) : null;
+  const check = recorded ? recorded.paypalCheck : await paypalCheck(d, { force: true }).catch(() => null);
+  const snap = exportProof(d, check ? { checkedAt: check.checkedAt, rows: check.rows, totals: check.totals } : null);
+  const problems = auditSnapshot(JSON.stringify(snap));
+  if (problems.length) throw new HttpError(500, "export_unsafe", `The snapshot would contain ${problems.join(", ")}.`);
+  return c.json(snap);
+});
+
 // ---------------------------------------------------------------- MCP endpoint for AI agents
 // Paylet's own agents (Wren, the scalper swarm) sign their loopback calls; that only selects a separate bucket.
 const MCP_INTERNAL_TOKEN = internalToken();
@@ -421,6 +473,9 @@ async function boot() {
     /* ignore */
   }
   console.log(`[paylet] showcase seller console: ${link}`);
+  // P1-04: the proof drop survives deploys (re-imported from docs/proof-run.json); a live one is re-checked with PayPal
+  const proof = ensureProofDrop();
+  if (proof && !proof.proof_json) void paypalCheck(proof, { force: true }).catch((e) => console.warn("[paylet] proof re-check skipped:", String(e).slice(0, 120)));
   if (!env.PAYPAL_WEBHOOK_ID) {
     try {
       const { id: wid, patched } = await ensureWebhook(env.PUBLIC_URL);

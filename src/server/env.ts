@@ -17,6 +17,13 @@ const schema = z.object({
   HASH_SECRET: z.string().min(8).default(DEFAULT_HASH_SECRET),
   /** Optional owner key that opens every seller console (survives restarts on ephemeral hosting). */
   SELLER_ADMIN_KEY: z.string().min(16).optional(),
+  /** P1-06: code in the Devpost testing instructions that unlocks GET /api/judge-buyers (unset = endpoint 404s). */
+  JUDGE_CODE: z.string().min(6).optional(),
+  /** Sandbox buyer shown to judges with the code (both must be set). Sandbox accounts only, never live ones. */
+  BUYER_EMAIL: z.string().optional(),
+  BUYER_PASSWORD: z.string().optional(),
+  BUYER_B_EMAIL: z.string().optional(),
+  BUYER_B_PASSWORD: z.string().optional(),
 });
 
 export const env = schema.parse(process.env);
