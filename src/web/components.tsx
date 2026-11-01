@@ -22,9 +22,12 @@ export function Shell({ children }: { children: ReactNode }) {
           <span className="brand-mark">P</span>
           <span>Paylet</span>
         </Link>
-        <nav>
+        <nav aria-label="Main">
+          <Link href="/how">How it works</Link>
           <Link href="/agent">Fan's agent</Link>
-          <Link href="/evals">Evals</Link>
+          <Link href="/evals" className="nav-evals">
+            Evals
+          </Link>
           <Link href="/judge" className="nav-cta">
             Try to scalp us
           </Link>
@@ -102,6 +105,7 @@ const STATUS: Record<string, [string, string]> = {
   capture_failed: ["Payment failed — unit passed to the waitlist", "bad"],
   expired: ["Not approved in time — no hold was placed", "muted"],
   error: ["PayPal could not place the hold", "bad"],
+  refunded: ["Refunded — you owe nothing", "muted"],
 };
 
 export function StatusPill({ status }: { status: string }) {
@@ -199,7 +203,7 @@ export function PayPalEntryButton({ slug, onEntry }: { slug: string; onEntry: (p
         const session = instance.createPayPalOneTimePaymentSession({
           async onApprove(data: { orderId: string }) {
             setState("busy");
-            setMsg("Approved — checking your PayPal account and placing the hold…");
+            setMsg("Approved. Checking your PayPal account and placing the hold…");
             try {
               const r = await api<{ outcome: string; entry: Participant | null }>("/api/entries/finalize", { method: "POST", json: { orderId: data.orderId } });
               setState("ready");
@@ -217,12 +221,12 @@ export function PayPalEntryButton({ slug, onEntry }: { slug: string; onEntry: (p
           },
           onCancel() {
             setState("ready");
-            setMsg("Cancelled — no hold was placed.");
+            setMsg("Cancelled. No hold was placed.");
           },
           onError(err: unknown) {
             console.error(err);
             setState("ready");
-            setMsg("PayPal reported an error. Please try again.");
+            setMsg("PayPal reported an error. Nothing was charged; please try again.");
           },
         });
         if (cancelled || !ref.current) return;
@@ -256,7 +260,8 @@ export function PayPalEntryButton({ slug, onEntry }: { slug: string; onEntry: (p
   return (
     <div className="pp-wrap">
       {state === "loading" && <div className="skeleton">Loading PayPal…</div>}
-      <paypal-button ref={ref as any} type="pay" hidden />
+      {/* No `type`: the plain PayPal wordmark. "Pay with" / "Buy Now" / "Checkout" all contradict "charged only if you win". */}
+      <paypal-button ref={ref as any} hidden />
       {msg && <p className={state === "error" ? "err" : "hint"}>{msg}</p>}
     </div>
   );
@@ -276,6 +281,43 @@ export function Hash({ value, label }: { value: string | null | undefined; label
     <div className="hash">
       <span>{label}</span>
       <code title={value ?? ""}>{value ? `${value.slice(0, 16)}…${value.slice(-8)}` : "—"}</code>
+    </div>
+  );
+}
+
+/** Copy-to-clipboard button with a short "Copied" confirmation. */
+export function CopyButton({ value, label }: { value: string; label: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      className="btn btn-sm btn-copy"
+      aria-label={`Copy ${label}`}
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setDone(true);
+          setTimeout(() => setDone(false), 1500);
+        } catch {
+          /* clipboard blocked: the value is selectable anyway */
+        }
+      }}
+    >
+      {done ? "Copied" : "Copy"}
+    </button>
+  );
+}
+
+/** A full hash on its own line, selectable, with a Copy button. */
+export function HashFull({ value, label, hint }: { value: string | null | undefined; label: string; hint?: string }) {
+  return (
+    <div className="hashfull">
+      <div className="hashfull-head">
+        <span>{label}</span>
+        {value && <CopyButton value={value} label={label.toLowerCase()} />}
+      </div>
+      <code>{value ?? "—"}</code>
+      {hint && <small>{hint}</small>}
     </div>
   );
 }

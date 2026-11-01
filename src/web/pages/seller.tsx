@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, timeLeft, usd, type PublicDrop } from "../api";
+import { ApiError, api, friendlyError, realOrders, timeLeft, usd, type PublicDrop } from "../api";
 import { Art, Hash, ShortStatus, Stat, Ticker } from "../components";
 import { Link } from "../router";
+import { NotFound } from "./public";
 
 interface SellerEntry {
   id: string;
@@ -42,6 +43,7 @@ export function SellerPage({ slug, sellerKey }: { slug: string; sellerKey: strin
   const [busy, setBusy] = useState<string>("");
   const [flash, setFlash] = useState<string>("");
   const [err, setErr] = useState<string>("");
+  const [gone, setGone] = useState(false);
   const [filter, setFilter] = useState<"all" | "real" | "simulated">("all");
 
   const load = useCallback(async () => {
@@ -49,7 +51,8 @@ export function SellerPage({ slug, sellerKey }: { slug: string; sellerKey: strin
       setData(await api<SellerData>(`/api/seller/${slug}`, { sellerKey }));
       setErr("");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      if (e instanceof ApiError && e.code === "drop_not_found") setGone(true);
+      setErr(friendlyError(e));
     }
   }, [slug, sellerKey]);
 
@@ -73,6 +76,7 @@ export function SellerPage({ slug, sellerKey }: { slug: string; sellerKey: strin
     }
   };
 
+  if (gone) return <NotFound what="drop" />;
   if (err && !data) return <section className="card narrow"><h2>Seller console</h2><p className="err">{err}</p></section>;
   if (!data) return <div className="skeleton tall">Loading console…</div>;
   const { drop, entries, clusters } = data;
@@ -104,7 +108,7 @@ export function SellerPage({ slug, sellerKey }: { slug: string; sellerKey: strin
       </section>
 
       <section className="stats wide">
-        <Stat label="entry requests (real)" value={drop.stats.requests} />
+        <Stat label="entry requests (real)" value={realOrders(drop.stats)} />
         <Stat label="awaiting a person" value={drop.stats.awaitingPerson} />
         <Stat label="PayPal holds (real)" value={drop.stats.holds} tone="good" />
         <Stat label="simulated entrants" value={drop.stats.simulated} />
