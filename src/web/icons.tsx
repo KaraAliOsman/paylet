@@ -111,3 +111,70 @@ export const UserIcon = (p: P) => (
     <path d="M5 20c.8-3.5 3.6-5.5 7-5.5s6.2 2 7 5.5" />
   </Svg>
 );
+export const UsersIcon = (p: P) => (
+  <Svg {...p}>
+    <circle cx="9" cy="8.5" r="3.2" />
+    <path d="M3 19.5c.7-3.2 3.1-5 6-5s5.3 1.8 6 5" />
+    <path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8M17.5 14.8c1.8.6 3 2.2 3.5 4.7" />
+  </Svg>
+);
+export const TruckIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M3 6.5h11v9.5H3zM14 10h3.8l3.2 3.3V16H14z" />
+    <circle cx="7" cy="17.5" r="1.8" />
+    <circle cx="17.5" cy="17.5" r="1.8" />
+  </Svg>
+);
+export const RefundIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 9h11a5 5 0 0 1 0 10H9" />
+    <path d="M8 5L4 9l4 4" />
+  </Svg>
+);
+export const AlertIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M12 4l9 16H3z" />
+    <path d="M12 10v4.5M12 17.5h.01" />
+  </Svg>
+);
+export const TerminalIcon = (p: P) => (
+  <Svg {...p}>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+    <path d="M7.5 9.5l3 2.5-3 2.5M12.5 15h4" />
+  </Svg>
+);
+export const ExternalIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M14 5h5v5M19 5l-8 8" />
+    <path d="M17 13.5V18a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 5 18V8.5A1.5 1.5 0 0 1 6.5 7H11" />
+  </Svg>
+);
+export const EyeIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+    <circle cx="12" cy="12" r="2.8" />
+  </Svg>
+);
+export const KeyIcon = (p: P) => (
+  <Svg {...p}>
+    <circle cx="8" cy="15" r="3.8" />
+    <path d="M10.8 12.2L19 4M15.5 7.5l2.5 2.5M17.5 5.5L20 8" />
+  </Svg>
+);
+export const ReceiptIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M6 3.5h12v17l-2.5-1.5-2 1.5-1.5-1.5-1.5 1.5-2-1.5L6 20.5z" />
+    <path d="M9 8.5h6M9 12h6M9 15.5h3.5" />
+  </Svg>
+);
+export const ScaleIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M12 4v16M8 20h8M5 7h14" />
+    <path d="M5 7l-2.5 6a2.5 2.5 0 0 0 5 0zM19 7l-2.5 6a2.5 2.5 0 0 0 5 0z" />
+  </Svg>
+);
+export const PlayIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M8 5.5v13l10.5-6.5z" />
+  </Svg>
+);

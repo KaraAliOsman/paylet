@@ -4,7 +4,7 @@ import { clock, usd, usdShort, type EntryTimeline } from "./api";
 export type StepState = "done" | "current" | "todo" | "bad" | "win";
 
 export interface Step {
-  key: "requested" | "approved" | "hold" | "draw" | "outcome";
+  key: "requested" | "approved" | "hold" | "draw" | "outcome" | "shipped";
   label: string;
   detail?: string;
   state: StepState;
@@ -20,6 +20,7 @@ export interface TimelineInput {
   closesAt: number;
   dropStatus: string;
   agentLabel?: string | null;
+  shipping?: { carrier: string; tracking: string } | null;
 }
 
 const PRE_DRAW = new Set(["awaiting_person", "authorizing", "held"]);
@@ -101,6 +102,13 @@ export function holdSteps(i: TimelineInput, opts: { compact?: boolean } = {}): S
         state: "win",
         at: t?.settledAt,
       });
+      if (i.shipping)
+        steps.push({
+          key: "shipped",
+          label: `Shipped · ${i.shipping.carrier}`,
+          detail: opts.compact ? undefined : "The maker added tracking to your PayPal order.",
+          state: "done",
+        });
       break;
     case "refunded":
       steps.push({ key: "outcome", label: `Refunded ${usd(i.refundedCents ?? i.capturedCents)}`, detail: "You owe nothing.", state: "done", at: t?.settledAt });

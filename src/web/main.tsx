@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
+import "./console.css";
 import { Shell } from "./components";
 import { usePath } from "./router";
 import { DropPage, MePage, NotFound, ReturnPage } from "./pages/public";
@@ -9,7 +10,8 @@ import { SellerPage } from "./pages/seller";
 import { AgentPage } from "./pages/agent";
 import { HowPage } from "./pages/how";
 import { VerifyPage } from "./pages/verify";
-import { EvalsPage, JudgePage } from "./pages/misc";
+import { EvalsPage } from "./pages/misc";
+import { JudgePage } from "./pages/judge";
 
 function App() {
   const { path, query } = usePath();
@@ -17,7 +19,7 @@ function App() {
   let page;
   if (seg.length === 0) page = <Home />;
   else if (seg[0] === "d" && seg[1]) page = <DropPage slug={seg[1]} />;
-  else if (seg[0] === "seller" && seg[1]) page = <SellerPage slug={seg[1]} sellerKey={query.get("k") ?? ""} />;
+  else if (seg[0] === "seller" && seg[1]) page = <SellerPage key={seg[1]} slug={seg[1]} />;
   else if (seg[0] === "verify" && seg[1]) page = <VerifyPage slug={seg[1]} />;
   else if (seg[0] === "me" && seg[1]) page = <MePage entryId={seg[1]} />;
   else if (seg[0] === "return") page = <ReturnPage entryId={query.get("entry") ?? ""} cancelled={query.get("cancelled") === "1"} />;

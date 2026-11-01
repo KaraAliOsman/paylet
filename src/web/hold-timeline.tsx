@@ -14,6 +14,7 @@ export function timelineInput(p: Participant, holdHint?: number | null): Timelin
     closesAt: p.drop.closesAt,
     dropStatus: p.drop.status,
     agentLabel: p.source === "agent" ? p.agentLabel : null,
+    shipping: p.shipping ?? null,
   };
 }
 

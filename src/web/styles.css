@@ -13,6 +13,9 @@
   --bad: #c0392b;
   --real: #0b63ce;
   --sim: #8a849e;
+  --gold-text: #8a5a00;
+  --good-text: #17704a;
+  --bad-text: #a2271b;
   --radius: 16px;
   --shadow: 0 1px 2px rgba(23, 19, 50, 0.06), 0 8px 24px rgba(23, 19, 50, 0.06);
   font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -55,7 +58,7 @@ p { line-height: 1.55; margin: 6px 0; }
 .center { align-items: center; }
 .grow { flex: 1; }
 .plain { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
-.eyebrow { text-transform: uppercase; letter-spacing: 0.12em; font-size: 12px; font-weight: 700; color: var(--gold-d); margin: 0 0 6px; }
+.eyebrow { text-transform: uppercase; letter-spacing: 0.12em; font-size: 12px; font-weight: 700; color: var(--gold-text); margin: 0 0 6px; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 12px; border: 1px solid var(--line); background: #fff; color: var(--ink); font-weight: 650; font-size: 14px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease; }
 .btn:hover { text-decoration: none; transform: translateY(-1px); box-shadow: var(--shadow); }
@@ -95,23 +98,18 @@ paypal-button { display: block; }
 
 .pill { display: inline-block; padding: 6px 12px; border-radius: 999px; font-weight: 650; font-size: 14px; background: #eee; }
 .pill-sm { padding: 2px 8px; font-size: 12px; text-transform: capitalize; }
-.pill-ok { background: #e3f5ec; color: var(--good); }
+.pill-ok { background: #e3f5ec; color: var(--good-text); }
 .pill-win { background: linear-gradient(120deg, #fff1c9, #ffe08a); color: #6b4a00; }
 .pill-wait { background: #eef0fb; color: #4048a8; }
-.pill-warn { background: #fdf0dc; color: var(--warn); }
-.pill-bad { background: #fde6e3; color: var(--bad); }
-.pill-muted { background: #f0eef3; color: var(--muted); }
+.pill-warn { background: #fdf0dc; color: #8a5300; }
+.pill-bad { background: #fde6e3; color: var(--bad-text); }
+.pill-muted { background: #f0eef3; color: #5d5872; }
 
 .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; margin: 0 4px; white-space: nowrap; }
 .tag-real { background: #e2efff; color: var(--real); }
-.tag-sim { background: #efedf3; color: var(--sim); }
+.tag-sim { background: #efedf3; color: #5f5a73; }
 .tag-agent { background: #f1eaff; color: var(--plum); }
-.legend { display: flex; gap: 6px; }
 
-.ticker ol { list-style: none; margin: 0; padding: 0; max-height: 380px; overflow: auto; display: grid; gap: 4px; }
-.ticker li { display: grid; grid-template-columns: 72px auto 1fr; gap: 6px; align-items: start; font-size: 13px; padding: 6px 4px; border-bottom: 1px solid #f3f0ea; animation: fadein 0.35s ease; }
-.ticker time { color: var(--muted); font-variant-numeric: tabular-nums; }
-.ev-sim .ev-msg { color: var(--muted); }
 @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
 .seller-head { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
@@ -123,10 +121,10 @@ paypal-button { display: block; }
 .cluster-confirmed { border-color: #f0d9a8; background: #fffaf0; }
 .cluster-dismissed { opacity: 0.6; }
 .badge { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
-.badge-operator { background: #fde6e3; color: var(--bad); }
+.badge-operator { background: #fde6e3; color: var(--bad-text); }
 .badge-household { background: #eef0fb; color: #4048a8; }
 .badge-ai { background: linear-gradient(135deg, #efe8ff, #f6e9ff); color: var(--plum); }
-.badge-rules { background: #efedf3; color: var(--muted); }
+.badge-rules { background: #efedf3; color: #5d5872; }
 .explain { background: #f7f4ff; border-left: 3px solid #a48bf3; padding: 8px 12px; border-radius: 8px; font-size: 14px; margin: 10px 0; }
 .members, .evidence { margin: 6px 0; padding-left: 18px; font-size: 13px; }
 .evidence li b { text-transform: uppercase; font-size: 11px; color: var(--plum); margin-right: 6px; }
@@ -137,7 +135,8 @@ th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 650; p
 td { padding: 7px 6px; border-bottom: 1px solid #f3f0ea; }
 tr.hl td { background: #fff8e4; font-weight: 600; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.seg button { border: 0; background: #fff; padding: 5px 10px; font-size: 12px; cursor: pointer; text-transform: capitalize; }
+.seg button { border: 0; background: #fff; padding: 5px 10px; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; font-variant-numeric: tabular-nums; }
+.seg button + button { border-left: 1px solid var(--line); }
 .seg button.on { background: var(--ink); color: var(--gold); }
 
 .agent-chat { max-width: 760px; margin: 0 auto; display: grid; gap: 12px; }
@@ -192,7 +191,6 @@ tr.hl td { background: #fff8e4; font-weight: 600; }
 .note { background: #fbf9f5; border-radius: 10px; padding: 10px; }
 .appeal { display: grid; gap: 8px; }
 .appeal textarea { min-height: 70px; border-radius: 10px; border: 1px solid var(--line); padding: 10px; font: inherit; }
-.judge ol { line-height: 1.8; }
 .prose h3 { margin-top: 18px; }
 .skeleton { background: linear-gradient(90deg, #f1ede5, #faf7f2, #f1ede5); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 12px; padding: 14px; color: var(--muted); }
 .skeleton.tall { min-height: 200px; }
