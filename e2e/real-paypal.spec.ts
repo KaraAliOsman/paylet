@@ -110,8 +110,13 @@ test("a real loser is voided on PayPal (simulated crowd + AI review + confirmed 
   const h = { headers: { "x-seller-key": sellerKey } };
   await request.post(`/api/seller/${slug}/simulate`, h);
   await request.post(`/api/seller/${slug}/analyze`, h);
+  // the draw refuses while AI suggestions are pending (P0-03): the seller confirms every group first
+  const { clusters } = (await (await request.get(`/api/seller/${slug}`, h)).json()) as { clusters: { id: string; status: string }[] };
+  for (const c of clusters.filter((x) => x.status === "suggested")) {
+    expect((await request.post(`/api/seller/${slug}/clusters/${c.id}`, { ...h, data: { decision: "confirmed" } })).ok()).toBeTruthy();
+  }
   await request.post(`/api/seller/${slug}/negative-test`, { ...h, data: { on: false } });
-  await request.post(`/api/seller/${slug}/draw`, h);
+  expect((await request.post(`/api/seller/${slug}/draw`, h)).ok()).toBeTruthy();
   await waitFor(async () => (await seller(request, slug, sellerKey)).drop.status === "settled", 90_000);
   const e = (await seller(request, slug, sellerKey)).entries.find((x) => x.source === "human")!;
   const pp = await paypalAuthStatus(e.authorizationId!);
