@@ -284,3 +284,40 @@ export function Hash({ value, label }: { value: string | null | undefined; label
     </div>
   );
 }
+
+/** Copy-to-clipboard button with a short "Copied" confirmation. */
+export function CopyButton({ value, label }: { value: string; label: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      className="btn btn-sm btn-copy"
+      aria-label={`Copy ${label}`}
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setDone(true);
+          setTimeout(() => setDone(false), 1500);
+        } catch {
+          /* clipboard blocked: the value is selectable anyway */
+        }
+      }}
+    >
+      {done ? "Copied" : "Copy"}
+    </button>
+  );
+}
+
+/** A full hash on its own line, selectable, with a Copy button. */
+export function HashFull({ value, label, hint }: { value: string | null | undefined; label: string; hint?: string }) {
+  return (
+    <div className="hashfull">
+      <div className="hashfull-head">
+        <span>{label}</span>
+        {value && <CopyButton value={value} label={label.toLowerCase()} />}
+      </div>
+      <code>{value ?? "—"}</code>
+      {hint && <small>{hint}</small>}
+    </div>
+  );
+}

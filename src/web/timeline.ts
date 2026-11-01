@@ -40,24 +40,43 @@ export function holdSteps(i: TimelineInput, opts: { compact?: boolean } = {}): S
   });
 
   // 2 · the person approves in PayPal (agents can't)
-  if (s === "awaiting_person") steps.push({ key: "approved", label: "You approve in PayPal", detail: opts.compact ? undefined : "Only you can approve. Agents can't.", state: "current" });
+  if (s === "awaiting_person")
+    steps.push({ key: "approved", label: "You approve in PayPal", detail: opts.compact ? undefined : "Only you can approve. Agents can't.", state: "current" });
   else if (s === "expired") steps.push({ key: "approved", label: "Not approved in time", detail: "No hold was placed. $0 charged.", state: "bad" });
-  else steps.push({ key: "approved", label: "Approved in PayPal", detail: !opts.compact && i.agentLabel ? "By you, not the agent." : undefined, state: "done", at: t?.approvedAt });
+  else
+    steps.push({
+      key: "approved",
+      label: "Approved in PayPal",
+      detail: !opts.compact && i.agentLabel ? "By you, not the agent." : undefined,
+      state: "done",
+      at: t?.approvedAt,
+    });
   if (s === "expired") return steps;
 
   // 3 · the hold
   const holdLabel = hold != null ? `Hold ${usdShort(hold)} placed` : "Hold placed";
   if (s === "awaiting_person") steps.push({ key: "hold", label: holdLabel, state: "todo" });
-  else if (s === "authorizing") steps.push({ key: "hold", label: "Placing the hold", detail: opts.compact ? undefined : "PayPal is authorizing it now.", state: "current" });
+  else if (s === "authorizing")
+    steps.push({ key: "hold", label: "Placing the hold", detail: opts.compact ? undefined : "PayPal is authorizing it now.", state: "current" });
   else if (s === "duplicate")
     return [...steps, { key: "hold", label: "No hold placed", detail: "This PayPal account already has an entry in this drop. $0 charged.", state: "bad" }];
   else if (s === "error") return [...steps, { key: "hold", label: "PayPal couldn't place the hold", detail: "Nothing was charged.", state: "bad" }];
-  else steps.push({ key: "hold", label: holdLabel, detail: !opts.compact && (s === "held" || s === "waitlist") ? "Nothing charged yet." : undefined, state: "done", at: t?.heldAt });
+  else
+    steps.push({
+      key: "hold",
+      label: holdLabel,
+      detail: !opts.compact && (s === "held" || s === "waitlist") ? "Nothing charged yet." : undefined,
+      state: "done",
+      at: t?.heldAt,
+    });
 
   // 4 · the draw
   const drawAt = `Draw ${clock(i.closesAt)}`;
   if (s === "merged")
-    return [...steps, { key: "draw", label: "Merged before the draw", detail: "One unit per household or operation. Hold released, $0 charged.", state: "bad" }];
+    return [
+      ...steps,
+      { key: "draw", label: "Merged before the draw", detail: "One unit per household or operation. Hold released, $0 charged.", state: "bad" },
+    ];
   if (PRE_DRAW.has(s)) {
     const frozen = i.dropStatus === "frozen" || i.dropStatus === "drawn";
     steps.push({
@@ -67,7 +86,8 @@ export function holdSteps(i: TimelineInput, opts: { compact?: boolean } = {}): S
       state: s === "held" ? "current" : "todo",
     });
   } else if (SELECTED.has(s)) steps.push({ key: "draw", label: "Selected", state: "done", at: t?.drawAt });
-  else if (s === "waitlist") steps.push({ key: "draw", label: "On the waitlist", detail: "You get a unit only if a winner's payment fails.", state: "done", at: t?.drawAt });
+  else if (s === "waitlist")
+    steps.push({ key: "draw", label: "On the waitlist", detail: "You get a unit only if a winner's payment fails.", state: "done", at: t?.drawAt });
   else steps.push({ key: "draw", label: "Not selected", state: "done", at: t?.drawAt });
 
   // 5 · the money
@@ -95,7 +115,13 @@ export function holdSteps(i: TimelineInput, opts: { compact?: boolean } = {}): S
       steps.push({ key: "outcome", label: "Releasing your hold", detail: "$0 charged.", state: "current" });
       break;
     case "voided":
-      steps.push({ key: "outcome", label: "Voided, $0 charged", detail: opts.compact ? undefined : "PayPal released the whole hold.", state: "done", at: t?.settledAt });
+      steps.push({
+        key: "outcome",
+        label: "Voided, $0 charged",
+        detail: opts.compact ? undefined : "PayPal released the whole hold.",
+        state: "done",
+        at: t?.settledAt,
+      });
       break;
     case "waitlist":
       steps.push({ key: "outcome", label: "Waiting for the winners to pay", detail: "If nobody's payment fails, your hold is voided: $0.", state: "current" });

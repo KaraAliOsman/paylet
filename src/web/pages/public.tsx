@@ -64,7 +64,9 @@ export function DropPage({ slug }: { slug: string }) {
       <section className="card drop-main">
         <Art art={drop.art} size={260} />
         <div className="drop-info">
-          <p className="eyebrow">{drop.kind === "judge" ? "Judge drop · 30 minutes" : drop.kind === "proof" ? "Proof drop · real PayPal sandbox run" : "Limited drop"}</p>
+          <p className="eyebrow">
+            {drop.kind === "judge" ? "Judge drop · 30 minutes" : drop.kind === "proof" ? "Proof drop · real PayPal sandbox run" : "Limited drop"}
+          </p>
           <h1>{drop.title}</h1>
           <p className="maker">by {drop.maker}</p>
           <p>{drop.blurb}</p>
@@ -72,7 +74,7 @@ export function DropPage({ slug }: { slug: string }) {
             <Stat label="units" value={drop.units} />
             <Stat label="price" value={usd(drop.priceCents)} />
             <Stat label="hold (incl. max shipping)" value={usd(hold)} />
-            <Stat label={open ? "closes in" : "status"} value={open ? timeLeft(drop.closesAt - now) : DROP_STATUS[drop.status] ?? drop.status} />
+            <Stat label={open ? "closes in" : "status"} value={open ? timeLeft(drop.closesAt - now) : (DROP_STATUS[drop.status] ?? drop.status)} />
           </div>
           {open ? (
             entry ? (
@@ -85,7 +87,9 @@ export function DropPage({ slug }: { slug: string }) {
                 </div>
                 <HoldTimeline input={timelineInput(entry.p, hold)} />
                 {entry.outcome === "duplicate" && (
-                  <p className="small">Paylet checked PayPal's own record of who approved: that PayPal account already has an entry in this drop, so no second hold was placed.</p>
+                  <p className="small">
+                    Paylet checked PayPal's own record of who approved: that PayPal account already has an entry in this drop, so no second hold was placed.
+                  </p>
                 )}
                 <div className="row gap wrap">
                   <Link href={`/me/${entry.p.entryId}`}>Track this entry →</Link>
@@ -121,8 +125,8 @@ export function DropPage({ slug }: { slug: string }) {
                 </ol>
                 <PayPalEntryButton slug={drop.slug} onEntry={onEntry} />
                 <p className="hint small">
-                  One entry per PayPal account. The hold covers the price plus max shipping; a winner pays the real shipping ({usd(drop.shipActualCents)}) and the rest is
-                  released.
+                  One entry per PayPal account. The hold covers the price plus max shipping; a winner pays the real shipping ({usd(drop.shipActualCents)}) and
+                  the rest is released.
                 </p>
                 <Link href={`/agent?drop=${drop.slug}`} className="small agent-link">
                   <BotIcon size={16} /> …or let your AI agent request it (it can't pay: you approve)
@@ -279,7 +283,9 @@ export function MePage({ entryId }: { entryId: string }) {
               </span>
             </>
           ) : (
-            <span className="muted small">{p.approveUrl ? "This approval link has expired. No hold was placed." : "Use the approval link your agent gave you."}</span>
+            <span className="muted small">
+              {p.approveUrl ? "This approval link has expired. No hold was placed." : "Use the approval link your agent gave you."}
+            </span>
           )}
         </div>
       )}

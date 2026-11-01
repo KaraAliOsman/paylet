@@ -18,14 +18,17 @@ interface Turn {
 
 const GREETING: Turn = {
   role: "assistant",
-  content: "Hi, I'm Wren, your shopping assistant. I can find limited drops on Paylet and request an entry for you. I can't pay: you approve any hold yourself in PayPal.",
+  content:
+    "Hi, I'm Wren, your shopping assistant. I can find limited drops on Paylet and request an entry for you. I can't pay: you approve any hold yourself in PayPal.",
 };
 const STORE = "paylet.wren.v1";
 
 /** Accepts both the v2 contract ({trace:{tool,summary,raw}[], handoff}) and the older shape ({trace:{tool,args,result}[], approveUrl, entryRef}). */
 export function normalizeChat(r: Record<string, any>): AgentChatResponse {
   const legacy = Array.isArray(r.trace) && r.trace.some((t: any) => t && !("summary" in t));
-  const trace: AgentTraceItem[] = (r.trace ?? []).map((t: any) => (legacy ? { tool: t.tool, summary: summarize(t.tool, t.args, t.result), raw: { args: t.args, result: t.result } } : t));
+  const trace: AgentTraceItem[] = (r.trace ?? []).map((t: any) =>
+    legacy ? { tool: t.tool, summary: summarize(t.tool, t.args, t.result), raw: { args: t.args, result: t.result } } : t,
+  );
   let handoff: AgentHandoff | null = r.handoff ?? null;
   if (!handoff && typeof r.approveUrl === "string") {
     const entered = (r.trace ?? []).find((t: any) => t?.result?.approve_url)?.result ?? {};
@@ -127,11 +130,7 @@ export function AgentPage() {
     [busy],
   );
 
-  const chips = [
-    ...(drop ? [`Get me into this drop: ${window.location.origin}/d/${drop}`] : []),
-    "What drops are open?",
-    "Can you pay for me?",
-  ];
+  const chips = [...(drop ? [`Get me into this drop: ${window.location.origin}/d/${drop}`] : []), "What drops are open?", "Can you pay for me?"];
   const started = turns.some((t) => t.role === "user");
 
   return (
@@ -217,7 +216,13 @@ function TraceChips({ trace }: { trace: AgentTraceItem[] }) {
       </ul>
       <details className="trace-raw">
         <summary>raw</summary>
-        <pre>{JSON.stringify(trace.map((x) => ({ tool: x.tool, raw: x.raw })), null, 2).slice(0, 4000)}</pre>
+        <pre>
+          {JSON.stringify(
+            trace.map((x) => ({ tool: x.tool, raw: x.raw })),
+            null,
+            2,
+          ).slice(0, 4000)}
+        </pre>
       </details>
     </div>
   );
@@ -285,9 +290,7 @@ export function HandoffCard({ h, onAsk, busy }: { h: AgentHandoff; onAsk: (entry
           <a className="btn btn-paypal btn-lg" href={h.approveUrl} target="_blank" rel="noopener">
             Approve {hold ? usd(hold) : "the"} hold in PayPal
           </a>
-          <p className="small muted handoff-fine">
-            Charged only if you win{expiresAt > now ? ` · link expires in ${timeLeft(expiresAt - now)}` : ""}
-          </p>
+          <p className="small muted handoff-fine">Charged only if you win{expiresAt > now ? ` · link expires in ${timeLeft(expiresAt - now)}` : ""}</p>
         </>
       ) : expired ? (
         <p className="small">This approval link expired. No hold was placed, nothing was charged.</p>

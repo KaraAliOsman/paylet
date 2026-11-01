@@ -8,7 +8,8 @@ import { Home } from "./pages/home";
 import { SellerPage } from "./pages/seller";
 import { AgentPage } from "./pages/agent";
 import { HowPage } from "./pages/how";
-import { EvalsPage, JudgePage, VerifyPage } from "./pages/misc";
+import { VerifyPage } from "./pages/verify";
+import { EvalsPage, JudgePage } from "./pages/misc";
 
 function App() {
   const { path, query } = usePath();

@@ -243,7 +243,7 @@ export async function api<T>(path: string, init?: RequestInit & { json?: unknown
   }
   if (!res.ok) {
     const code = typeof data.error === "string" ? data.error : "error";
-    throw new ApiError(res.status, code, typeof data.message === "string" ? data.message : FRIENDLY[code] ?? `HTTP ${res.status}`);
+    throw new ApiError(res.status, code, typeof data.message === "string" ? data.message : (FRIENDLY[code] ?? `HTTP ${res.status}`));
   }
   return data as T;
 }

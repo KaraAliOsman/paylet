@@ -1,78 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiError, api, friendlyError, usd } from "../api";
-import { Hash } from "../components";
 import { Link } from "../router";
-import { canonicalList, computeDraw, sha256Hex } from "../../shared/draw";
-
-// ---------------------------------------------------------------- Verify (runs the shared draw code in the browser)
-
-interface VerifyData {
-  title: string;
-  status: string;
-  units: number;
-  waitlistSize: number;
-  seedHash: string;
-  seed: string | null;
-  frozenHash: string | null;
-  frozenList: string[] | null;
-  outcome: { publicId: string; status: string }[];
-}
-
-export function VerifyPage({ slug }: { slug: string }) {
-  const [d, setD] = useState<VerifyData | null>(null);
-  const [missing, setMissing] = useState(false);
-  const [res, setRes] = useState<{ seedOk: boolean; listOk: boolean; winners: string[]; waitlist: string[] } | null>(null);
-  useEffect(() => {
-    void api<VerifyData>(`/api/drops/${slug}/verify`)
-      .then(setD)
-      .catch((e) => e instanceof ApiError && e.status === 404 && setMissing(true));
-  }, [slug]);
-  const run = async () => {
-    if (!d?.seed || !d.frozenList) return;
-    const seedOk = (await sha256Hex(d.seed)) === d.seedHash;
-    const listOk = (await sha256Hex(canonicalList(d.frozenList))) === d.frozenHash;
-    const r = await computeDraw(d.seed, d.frozenList, d.units, d.waitlistSize);
-    setRes({ seedOk, listOk, winners: r.winners, waitlist: r.waitlist });
-  };
-  if (missing) return <section className="card narrow"><h2>Drop not found</h2><p>The public demo resets its data after it sleeps. <Link href="/judge">Start a fresh judge drop</Link>.</p></section>;
-  if (!d) return <div className="skeleton tall">Loading…</div>;
-  const actual = new Set(d.outcome.map((o) => o.publicId));
-  return (
-    <section className="card narrow verify">
-      <p className="eyebrow">Verify the draw</p>
-      <h2>{d.title}</h2>
-      <Hash label="Seed commitment (published at open)" value={d.seedHash} />
-      <Hash label="Revealed seed" value={d.seed} />
-      <Hash label="Frozen eligible list hash" value={d.frozenHash} />
-      {d.status === "open" ? (
-        <p className="muted">The draw hasn't happened yet. The seed stays secret until the list is frozen.</p>
-      ) : (
-        <>
-          <p>
-            {d.frozenList?.length} eligible entries · {d.units} units. This page re-computes everything in your browser with the same code the server used:
-            rank = SHA-256(seed:entryId).
-          </p>
-          <button className="btn btn-primary" onClick={run}>
-            Re-run the draw here
-          </button>
-          {res && (
-            <div className="verify-res">
-              <p>{res.seedOk ? "✅ SHA-256(seed) matches the commitment published before entries opened." : "❌ Seed does not match commitment."}</p>
-              <p>{res.listOk ? "✅ The eligible list matches the hash frozen before the reveal." : "❌ List hash mismatch."}</p>
-              <p>
-                Winners by your computation: {res.winners.map((w) => <code key={w}>{w} </code>)}
-              </p>
-              <p className="muted small">
-                Waitlist: {res.waitlist.join(", ") || "—"}. Paid outcome on record: {[...actual].join(", ") || "—"} (a waitlisted entry replaces a winner only if that winner's
-                payment failed).
-              </p>
-            </div>
-          )}
-        </>
-      )}
-    </section>
-  );
-}
 
 // ---------------------------------------------------------------- Evals
 
@@ -88,19 +16,34 @@ interface EvalRow {
 }
 
 export function EvalsPage() {
-  const [d, setD] = useState<{ available: boolean; dataset?: { entries: number; groups: number; sha256: string; generator: string }; results?: EvalRow[]; byKind?: Record<string, Record<string, number>>; ranAt?: string; model?: string; notes?: string[] } | null>(null);
+  const [d, setD] = useState<{
+    available: boolean;
+    dataset?: { entries: number; groups: number; sha256: string; generator: string };
+    results?: EvalRow[];
+    byKind?: Record<string, Record<string, number>>;
+    ranAt?: string;
+    model?: string;
+    notes?: string[];
+  } | null>(null);
   useEffect(() => {
     void api<typeof d>("/api/evals").then(setD);
   }, []);
   if (!d) return <div className="skeleton tall">Loading…</div>;
-  if (!d.available) return <section className="card narrow"><h2>Evals</h2><p>No eval run published yet.</p></section>;
+  if (!d.available)
+    return (
+      <section className="card narrow">
+        <h2>Evals</h2>
+        <p>No eval run published yet.</p>
+      </section>
+    );
   return (
     <section className="card evals">
       <p className="eyebrow">Measured, not vibes</p>
       <h2>Entity-resolution evals</h2>
       <p>
-        Frozen adversarial dataset: <b>{d.dataset!.entries}</b> PayPal-account entries in <b>{d.dataset!.groups}</b> true people/operations ({d.dataset!.generator}).
-        SHA-256 <code>{d.dataset!.sha256.slice(0, 16)}…</code>. Pairwise metrics: a "link" means "these two accounts should share one allocation".
+        Frozen adversarial dataset: <b>{d.dataset!.entries}</b> PayPal-account entries in <b>{d.dataset!.groups}</b> true people/operations (
+        {d.dataset!.generator}). SHA-256 <code>{d.dataset!.sha256.slice(0, 16)}…</code>. Pairwise metrics: a "link" means "these two accounts should share one
+        allocation".
       </p>
       <div className="table-wrap">
         <table>
@@ -142,7 +85,8 @@ export function EvalsPage() {
         </ul>
       )}
       <p className="muted small">
-        Model: {d.model} · run {d.ranAt}. Reproduce: <code>pnpm evals</code>. A false merge costs a real fan their chance, so Paylet never auto-merges — the seller confirms.
+        Model: {d.model} · run {d.ranAt}. Reproduce: <code>pnpm evals</code>. A false merge costs a real fan their chance, so Paylet never auto-merges — the
+        seller confirms.
       </p>
     </section>
   );

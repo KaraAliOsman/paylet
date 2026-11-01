@@ -107,7 +107,9 @@ export function Home() {
         </div>
         <div className="card">
           <h3>Judges: try to scalp us</h3>
-          <p>Spin up your own 30-minute drop with its own seller console, then try to get two units with one PayPal account. A checklist walks you through it.</p>
+          <p>
+            Spin up your own 30-minute drop with its own seller console, then try to get two units with one PayPal account. A checklist walks you through it.
+          </p>
           <Link className="btn btn-primary" href="/judge">
             Start a judge drop
           </Link>
@@ -121,8 +123,8 @@ export function Home() {
             {data.past.map((d) => (
               <li key={d.id}>
                 <Link href={`/verify/${d.slug}`}>
-                  {d.title}: {d.stats.captured + (d.stats.capturedSimulated ?? 0)}/{d.units} paid · {d.stats.duplicatesBlocked} duplicates blocked · {d.stats.merged} merged · re-run
-                  the draw
+                  {d.title}: {d.stats.captured + (d.stats.capturedSimulated ?? 0)}/{d.units} paid · {d.stats.duplicatesBlocked} duplicates blocked ·{" "}
+                  {d.stats.merged} merged · re-run the draw
                 </Link>
               </li>
             ))}
@@ -188,8 +190,19 @@ function ProofCard({ proof }: { proof: ProofInfo }) {
 const FLOW: { icon: ReactNode; title: string; text: string; api?: string; local?: boolean }[] = [
   { icon: <UserIcon />, title: "Request", text: "A fan, or their AI agent over MCP, asks for an entry.", api: "MCP enter_drop", local: true },
   { icon: <ShieldIcon />, title: "Approve a hold", text: "The person approves a hold in PayPal. Agents can't.", api: "Orders v2 · AUTHORIZE" },
-  { icon: <CheckIcon />, title: "One per account", text: "PayPal's order record says who approved. A second entry from that account gets no hold.", api: "payer_id" },
-  { icon: <DiceIcon />, title: "Public draw", text: "The list is frozen, then public randomness picks the winners. Re-run it yourself.", api: "SHA-256 + drand", local: true },
+  {
+    icon: <CheckIcon />,
+    title: "One per account",
+    text: "PayPal's order record says who approved. A second entry from that account gets no hold.",
+    api: "payer_id",
+  },
+  {
+    icon: <DiceIcon />,
+    title: "Public draw",
+    text: "The list is frozen, then public randomness picks the winners. Re-run it yourself.",
+    api: "SHA-256 + drand",
+    local: true,
+  },
   { icon: <ArrowIcon />, title: "Settle", text: "Winners pay price + real shipping. Everyone else: hold voided, $0.", api: "capture · void" },
 ];
 
