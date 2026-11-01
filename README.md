@@ -137,8 +137,8 @@ stateDiagram-v2
 ## Proven against the real PayPal sandbox
 Mocked tests prove our logic; these prove PayPal agrees. [`e2e/real-paypal.spec.ts`](e2e/real-paypal.spec.ts) logs in as a
 sandbox buyer **inside PayPal's own window**, and every hold, capture and void it produces is cross-checked with PayPal
-(`GET /v2/payments/authorizations/{id}`), on top of Paylet's own records. Last recorded run: **5/5 passed on 2026-10-31
-(commit `4e11af4`)** against https://paylet.onrender.com ([record](docs/e2e-real/latest.json)).
+(`GET /v2/payments/authorizations/{id}`), on top of Paylet's own records. Last recorded run: **5/5 passed on 2026-11-01
+(commit `b1090e1`)** against https://paylet.onrender.com ([record](docs/e2e-real/latest.json)).
 
 | # | Real scenario | What the test asserts | Checked with |
 |---|---|---|---|
