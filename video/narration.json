@@ -1,0 +1,54 @@
+[
+  {
+    "id": "01",
+    "text": "[thoughtful] So... limited drops have a problem. Scalpers show up with dozens of accounts. And soon, uh... AI agents. Blocking bots mostly hurts real fans. [short pause] So we flipped it. One unit per PayPal account. And agents? [chuckles] Welcome."
+  },
+  {
+    "id": "02",
+    "text": "Every entry is a PayPal hold. Not a charge. You only pay if you win."
+  },
+  {
+    "id": "03a",
+    "text": "[curious] This is my assistant, Wren. It connects over MCP, asks for my entry, gets a PayPal link... and then it just stops. [short pause] Because an agent can enter. But only a person can pay."
+  },
+  {
+    "id": "03b",
+    "text": "So I approve in PayPal. Hold placed. Nothing charged."
+  },
+  {
+    "id": "04a",
+    "text": "Same PayPal account again? [chuckles] PayPal knows it's the same payer. No hold."
+  },
+  {
+    "id": "04b",
+    "text": "Twelve scalper bots? Twelve links... zero holds."
+  },
+  {
+    "id": "05a",
+    "text": "To show scale, I add a labelled, simulated crowd. One reseller hides behind six accounts at the same forwarding suite. [thoughtful] Rules catch the obvious stuff. The AI handles the fuzzy cases, shows its evidence... and the seller decides."
+  },
+  {
+    "id": "05b",
+    "text": "On a blind test set, AI cuts false merges from eleven to under three. And we publish every failure. If you can't measure it... you're just guessing."
+  },
+  {
+    "id": "06a",
+    "text": "At close, the list gets frozen, and public randomness picks the winners. Winners pay the price plus real shipping, and the rest of the hold is released. If a payment fails, the next fan already has a hold, so they get the unit instantly. Everyone else? Voided. Never charged."
+  },
+  {
+    "id": "06b",
+    "text": "And this one is real sandbox money. Forty-four fifty captured. Three fifty released."
+  },
+  {
+    "id": "07",
+    "text": "And you don't have to trust us. Anyone can re-run the draw, and ask PayPal directly."
+  },
+  {
+    "id": "08",
+    "text": "Under the hood: PayPal Orders v2. Authorize, partial capture, void. Signed webhooks, and an MCP server for agents. [short pause] Pretty simple, actually."
+  },
+  {
+    "id": "09",
+    "text": "Paylet. Fair drops for the agent era."
+  }
+]

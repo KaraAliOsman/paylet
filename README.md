@@ -19,8 +19,10 @@ shipping); everyone else's hold is **voided**. If a winner's payment fails, the 
 already exists, gets the unit.
 
 > **Live demo:** https://paylet.onrender.com · **Judges:** [`/judge`](https://paylet.onrender.com/judge), a guided 2-minute run ("try to scalp us")
-> **Finished real run, no login needed:** https://paylet.onrender.com/d/ember-glaze-mug-2710 · **Video:** see the Devpost submission
+> **Finished real run, no login needed:** https://paylet.onrender.com/d/ember-glaze-mug-2710 · **Demo video (2:40):** [paylet-demo.mp4](https://github.com/KaraAliOsman/paylet/releases/download/v1.0.0/paylet-demo.mp4) ([how it was made](video/README.md))
 > PayPal **sandbox only**: no real money moves. The demo runs on a free instance: the first request after it sleeps takes about a minute.
+
+![Paylet home: one unit per PayPal account, the proof drop's real PayPal ledger replayed](docs/img/hero.png)
 
 ![Paylet seller console: AI-adjudicated reseller network, confirmed by the seller, then settled](docs/img/settled.png)
 
