@@ -1,0 +1,24 @@
+{
+  "sha256": "01348dbb561db1c18da050a71bc0f719b19ea24ae0eee7dded87480b2c7017e7",
+  "entries": 162,
+  "groups": 127,
+  "kinds": {
+    "household": 22,
+    "reshipper_network": 29,
+    "fan": 60,
+    "neighbor": 31,
+    "namesake": 20
+  },
+  "generator": "syntheticCrowd(seed 20261101) + LLM red-team template v2 (23 rewrites accepted; half the networks human-paced) + 33 hand-written hard cases",
+  "frozenAt": "2026-11-01T02:12:44.744Z",
+  "seed": 20261101,
+  "redTeamTemplate": "v2",
+  "origins": {
+    "generated": 104,
+    "redteam": 25,
+    "handwritten": 33
+  },
+  "frozenSystemSha": "4a19fe329f53ae17ce159f2d1f9fef50a392263aaa0b4b5aa054446bd8dae1e5",
+  "frozenSystemCommit": "bc72dd4",
+  "protocol": "Generated after the system files (normalize.ts, rules.ts, resolve.ts incl. the prompt) were frozen at frozenSystemSha. Not used for tuning."
+}
