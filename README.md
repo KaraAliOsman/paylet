@@ -92,7 +92,7 @@ Native support would enforce the limit inside PayPal, before the approval, acros
 | 2. One per account | After approval Paylet reads the payer **server-side**, stores only an HMAC, and enforces a unique constraint per drop before authorizing. A second approval from the same account places **no hold**. | `GET /v2/checkout/orders/{id}` → `POST …/authorize` |
 | 3. Households & networks | Rules normalize addresses (suffixes, `Ste/Unit/#`, `c/o`, mailbox aliases). Only fuzzy pairs go to the model, which must cite fields and may keep pairs apart. **Nothing is auto-merged**: the seller confirms, and the draw is blocked while suggestions are pending. | — |
 | 4. Freeze | At close, the eligible list is frozen and its SHA-256 published, together with every exclusion and its reason. The seed's SHA-256 was published when the drop opened. | — |
-| 5. Public randomness | Paylet waits for a future [drand](https://drand.love) quicknet round that nobody could know at freeze time, then reveals the seed. `finalSeed = SHA-256(seed + ":" + round randomness)`; each entry ranks by `SHA-256(finalSeed + ":" + entryId)`. Not even Paylet knew the winners in advance. | — |
+| 5. Public randomness | Paylet waits for a future [drand](https://drand.love) quicknet round that nobody could know at freeze time, then reveals the seed. `finalSeed = SHA-256(seed + ":" + round randomness)`; each entry ranks by `SHA-256(finalSeed + ":" + publicId)`. Not even Paylet knew the winners in advance. | — |
 | 6. Settle | Winners: **partial capture** (price + *actual* shipping, the rest of the hold released). Everyone else: **void**. Failed capture → next on the waitlist, whose hold already exists. Signed webhooks move state; a sweeper re-checks with GETs. | `…/authorizations/{id}/capture`, `…/void`, webhooks + `verify-webhook-signature` |
 | 7. After the sale | The maker marks the order shipped (tracking appears in the buyer's PayPal account) or refunds if they can't ship. | `POST /v2/checkout/orders/{id}/track`, `POST /v2/payments/captures/{id}/refund` |
 | 8. Verify | `/verify/<drop>` recomputes every hash and the draw in your browser, and **Ask PayPal** re-checks each hold against PayPal's records. | `GET /v2/payments/authorizations/{id}` |
@@ -171,8 +171,8 @@ a timeout or a 429 replays the same request and can never charge twice.
 | Scenario | What Paylet does | Proven by |
 |---|---|---|
 | Same PayPal account enters again (another tab, `/agent`, or 40 agents) | Order approved, but no `/authorize`: "no hold placed", counted as a blocked duplicate | unit [`flow.test.ts`](tests/flow.test.ts) · real sandbox #1 |
-| An agent requests an entry and nobody approves | No hold ever exists; the entry expires at the draw ("No person approved: no hold") | unit (MCP) · `e2e-prod`: 3 agents → 3 PayPal links, 0 holds |
-| Buyer cancels in PayPal | "Cancelled. No hold was placed." | real sandbox #5 |
+| An agent requests an entry and nobody approves | No hold ever exists; the request expires at the draw and never enters the ballot | unit (MCP) · `e2e-prod`: 3 agents → 3 PayPal links, 0 holds |
+| Buyer cancels in PayPal | No hold is placed, and the return page says so | real sandbox #5 |
 | A winner's capture is declined | GET the authorization, void it if still alive, promote waitlist #1 (hold already in place) | unit [`flow.test.ts`](tests/flow.test.ts) · real sandbox #3 |
 | Capture comes back `PENDING` | Entry waits; `PAYMENT.CAPTURE.COMPLETED` / `DENIED` webhooks, or the sweeper's GET, settle it | code: webhook routing + sweeper in [`domain.ts`](src/server/domain.ts) |
 | PayPal answers 429, 5xx or times out | Retried with the same `PayPal-Request-Id`, honoring `Retry-After`; configuration errors never consume the waitlist | code: [`queue.ts`](src/server/queue.ts), `classify()` in [`paypal.ts`](src/server/paypal.ts) |
