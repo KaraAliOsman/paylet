@@ -192,7 +192,7 @@ export function SellerPage({ slug }: { slug: string }) {
         markReviewed(slug);
         const d = await load();
         if (r.status === "frozen" || d?.drop.status === "frozen") {
-          const round = d?.drop.randomness?.round;
+          const round = r.round ?? d?.drop.randomness?.round;
           push({
             tone: "info",
             text: round

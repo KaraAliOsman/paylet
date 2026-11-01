@@ -387,7 +387,7 @@ function Checklist({ res, drop, busy, onStart }: { res: JudgeDrop | null; drop: 
             <span className="sr-only"> ({it.done ? "done" : skipped(it) ? "skipped" : i === current ? "next" : "not yet"})</span>
             <small>{skipped(it) ? "Not done in this drop: entries are closed. Start another drop to try it." : it.result}</small>
           </div>
-          <div className="check-action">{it.action}</div>
+          <div className="check-action">{skipped(it) ? null : it.action}</div>
         </li>
       ))}
     </ol>
@@ -422,7 +422,7 @@ function BuyersCard({ code }: { code: string }) {
       <p className="muted small">Fictitious PayPal sandbox accounts. They only work in the sandbox popup.</p>
       {!code ? (
         <p className="small" data-testid="buyers-locked">
-          Credentials are in the Devpost testing instructions. Open the <code>/judge?code=…</code> link from there.
+          Credentials are in the Devpost testing instructions. Open the <code className="nowrap">/judge?code=…</code> link from there.
         </p>
       ) : state.error ? (
         <p className="alert small">{state.error}</p>

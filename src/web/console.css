@@ -5,6 +5,7 @@
 .seg button:focus-visible { outline-offset: -3px; }
 .split > *, .two > *, .drop-main > *, .judge-grid > *, .stats-groups > *, .hero > * { min-width: 0; }
 .gap-sm { gap: 6px; }
+.nowrap { white-space: nowrap; }
 .empty { padding: 6px 0; }
 .badge { display: inline-flex; align-items: center; gap: 4px; }
 .alert-warn { background: #fdf0dc; border-color: #f3d9a8; color: #6b4a00; }
