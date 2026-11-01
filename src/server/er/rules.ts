@@ -41,6 +41,23 @@ function nameSim(a: string[], b: string[]): number {
   return Math.min(score(a, b), score(b, a));
 }
 
+const unitLabel = (u: string) => (u ? `unit ${u}` : "no unit");
+
+/** Entries placed by software: a real agent (MCP / API), or a simulated entrant scripted as a bot. */
+export function isAutomated(i: Identity): boolean {
+  return i.source === "agent" || (i.source === "simulated" && Boolean(i.agentLabel));
+}
+
+/** "0 s", "12 s", "2 min 5 s", "1 h 3 min" — relative durations only, so evidence never quotes a clock time in some other zone. */
+export function formatDuration(ms: number): string {
+  const s = Math.round(Math.abs(ms) / 1000);
+  if (s < 60) return `${s} s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return s % 60 ? `${m} min ${s % 60} s` : `${m} min`;
+  const h = Math.floor(m / 60);
+  return m % 60 ? `${h} h ${m % 60} min` : `${h} h`;
+}
+
 export const LINK_THRESHOLD = 0.85;
 export const UNCERTAIN_THRESHOLD = 0.35;
 
@@ -62,10 +79,14 @@ export function scorePair(p: Prepared, q: Prepared): PairScore {
 
   if (sameStreet && sameUnit) {
     const w = p.addr.unit ? 0.9 : 0.75; // single-family homes are weaker evidence than an exact suite
-    signals.push({ field: "address", detail: `same street + unit "${p.addr.unit || "—"}" in ${p.addr.zip5}`, weight: w });
+    signals.push({
+      field: "address",
+      detail: p.addr.unit ? `same street and unit ${p.addr.unit} in ${p.addr.zip5}` : `same street address, no unit, in ${p.addr.zip5}`,
+      weight: w,
+    });
     score = Math.max(score, w);
   } else if (sameStreet) {
-    signals.push({ field: "address", detail: `same building ${p.addr.street} ${p.addr.zip5}, different unit (${p.addr.unit || "—"} vs ${q.addr.unit || "—"})`, weight: 0.4 });
+    signals.push({ field: "address", detail: `same building ${p.addr.street} ${p.addr.zip5}, different units (${unitLabel(p.addr.unit)} vs ${unitLabel(q.addr.unit)})`, weight: 0.4 });
     score = Math.max(score, 0.4);
   }
 
@@ -86,8 +107,9 @@ export function scorePair(p: Prepared, q: Prepared): PairScore {
   }
 
   const dt = Math.abs((p.raw.ts ?? 0) - (q.raw.ts ?? 0));
-  if (p.raw.ts && q.raw.ts && dt < 15_000 && p.raw.source === "agent" && q.raw.source === "agent") {
-    signals.push({ field: "timing", detail: `agent entries ${Math.round(dt / 1000)}s apart`, weight: 0.1 });
+  if (p.raw.ts && q.raw.ts && dt < 15_000 && isAutomated(p.raw) && isAutomated(q.raw)) {
+    const who = p.raw.source === "simulated" || q.raw.source === "simulated" ? "simulated bot entries" : "agent entries";
+    signals.push({ field: "timing", detail: `${who} ${formatDuration(dt)} apart`, weight: 0.1 });
     score = Math.min(1, score + 0.1);
   }
 
