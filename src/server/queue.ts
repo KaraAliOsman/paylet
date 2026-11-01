@@ -1,11 +1,13 @@
 // Persistent, throttled queue for every money-moving PayPal call.
 // - The op key doubles as the PayPal-Request-Id, so a retry after a crash can never double-charge.
 // - Throttled with a token bucket (the sandbox rate-limits aggressively).
-// - Retries only RETRYABLE failures (429 / 5xx / network) with exponential backoff.
+// - Retries only RETRYABLE failures (429 / 5xx / network) with exponential backoff (or PayPal's Retry-After).
+// - Handlers write each call's PayPal trace (endpoint, status, debug_id, ms, masked request id) to the ledger;
+//   a terminal failure reaches onTerminal with the failed call's trace on `failure.trace`.
 import { db, now } from "./db";
 import { classify, type PayPalFailure } from "./paypal";
 
-export type OpKind = "authorize" | "capture" | "void";
+export type OpKind = "authorize" | "capture" | "void" | "track" | "refund";
 
 export interface OpRow {
   key: string;
@@ -96,4 +98,14 @@ export function startWorker(h: Handlers): () => void {
 
 export function pendingOps(): number {
   return (db.prepare("SELECT COUNT(*) n FROM ops WHERE status = 'pending'").get() as { n: number }).n;
+}
+
+/** Pending ops for one entry (a ledger/PayPal mismatch while one is queued is "in flight", not an error). */
+export function pendingOpsFor(entryId: string): OpKind[] {
+  return (db.prepare("SELECT kind FROM ops WHERE entry_id = ? AND status = 'pending'").all(entryId) as { kind: OpKind }[]).map((r) => r.kind);
+}
+
+/** Number of ops of one kind ever created for an entry (used to mint a fresh PayPal-Request-Id for a new attempt). */
+export function opCount(entryId: string, kind: OpKind): number {
+  return (db.prepare("SELECT COUNT(*) n FROM ops WHERE entry_id = ? AND kind = ?").get(entryId, kind) as { n: number }).n;
 }

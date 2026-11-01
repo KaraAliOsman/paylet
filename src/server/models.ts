@@ -41,7 +41,8 @@ export type EntryStatus =
   | "voided"
   | "capture_failed"
   | "expired"
-  | "error";
+  | "error"
+  | "refunded";
 
 export interface EntryRow {
   id: string;
@@ -67,6 +68,17 @@ export interface EntryRow {
   note: string | null;
   created_at: number;
   updated_at: number;
+  approve_url: string | null;
+  needs_reapproval: number | null;
+  payer_verified: number | null;
+  approved_at: number | null;
+  held_at: number | null;
+  settled_at: number | null;
+  carrier: string | null;
+  tracking_number: string | null;
+  shipped_at: number | null;
+  refund_id: string | null;
+  refunded_cents: number | null;
 }
 
 export interface ClusterRow {

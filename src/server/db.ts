@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS entries (
   name TEXT,
   email TEXT,
   address_json TEXT,
-  status TEXT NOT NULL,                         -- awaiting_person | authorizing | held | duplicate | merged | won | waitlist | lost | captured | voided | capture_failed | expired | error
+  status TEXT NOT NULL,                         -- awaiting_person | authorizing | held | duplicate | merged | won | waitlist | lost | captured | voided | capture_failed | expired | error | refunded
   authorization_id TEXT,
   hold_cents INTEGER,
   capture_id TEXT,
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS appeals (
 
 CREATE TABLE IF NOT EXISTS ops (
   key TEXT PRIMARY KEY,                         -- also the PayPal-Request-Id
-  kind TEXT NOT NULL,                           -- authorize | capture | void
+  kind TEXT NOT NULL,                           -- authorize | capture | void | track | refund
   entry_id TEXT NOT NULL,
   payload TEXT NOT NULL DEFAULT '{}',
   status TEXT NOT NULL DEFAULT 'pending',       -- pending | done | failed
@@ -134,6 +134,27 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 `);
+
+// Additive migrations: columns added after the first deploy (ALTER TABLE only when missing, so old databases upgrade in place).
+const ENTRY_COLUMNS: Record<string, string> = {
+  approve_url: "TEXT", // PayPal payer-action link, shown again only while awaiting_person (resume approval)
+  needs_reapproval: "INTEGER", // 1 after PayPal declined the funding source at authorize time
+  payer_verified: "INTEGER", // PayPal wallet account_status: 1 VERIFIED, 0 UNVERIFIED, NULL unknown (KYA-lite)
+  approved_at: "INTEGER",
+  held_at: "INTEGER",
+  settled_at: "INTEGER",
+  carrier: "TEXT",
+  tracking_number: "TEXT",
+  shipped_at: "INTEGER",
+  refund_id: "TEXT",
+  refunded_cents: "INTEGER",
+};
+{
+  const have = new Set((db.prepare("PRAGMA table_info(entries)").all() as { name: string }[]).map((c) => c.name));
+  for (const [col, type] of Object.entries(ENTRY_COLUMNS)) if (!have.has(col)) db.exec(`ALTER TABLE entries ADD COLUMN ${col} ${type}`);
+  db.exec("CREATE INDEX IF NOT EXISTS entries_capture ON entries(capture_id)");
+  db.exec("CREATE INDEX IF NOT EXISTS entries_auth ON entries(authorization_id)");
+}
 
 export function now(): number {
   return Date.now();
