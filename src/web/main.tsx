@@ -6,7 +6,8 @@ import { usePath } from "./router";
 import { DropPage, Home, MePage, NotFound, ReturnPage } from "./pages/public";
 import { SellerPage } from "./pages/seller";
 import { AgentPage } from "./pages/agent";
-import { EvalsPage, HowPage, JudgePage, VerifyPage } from "./pages/misc";
+import { HowPage } from "./pages/how";
+import { EvalsPage, JudgePage, VerifyPage } from "./pages/misc";
 
 function App() {
   const { path, query } = usePath();

@@ -22,9 +22,12 @@ export function Shell({ children }: { children: ReactNode }) {
           <span className="brand-mark">P</span>
           <span>Paylet</span>
         </Link>
-        <nav>
+        <nav aria-label="Main">
+          <Link href="/how">How it works</Link>
           <Link href="/agent">Fan's agent</Link>
-          <Link href="/evals">Evals</Link>
+          <Link href="/evals" className="nav-evals">
+            Evals
+          </Link>
           <Link href="/judge" className="nav-cta">
             Try to scalp us
           </Link>

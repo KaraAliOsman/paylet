@@ -276,3 +276,27 @@ paypal-button { width: 100%; }
   .htl-row { display: grid; gap: 6px; }
   .htl-row .htl-step:not(:last-child)::after { display: none; }
 }
+
+/* ---------------------------------------------------------------- /how */
+.how-top { display: grid; gap: 4px; }
+.how-top .lede { margin: 6px 0 14px; }
+.seq-fig { margin: 0 auto; display: grid; gap: 8px; width: 100%; max-width: 960px; }
+.swipe-hint { display: none; }
+@media (max-width: 760px) { .swipe-hint { display: inline; } }
+.seq-wrap { overflow-x: auto; border-radius: 18px; border: 1px solid var(--line); --seq-bg: #fffdf9; }
+.seq-wrap svg { display: block; width: 100%; height: auto; min-width: 720px; }
+.how-sec { margin-top: 18px; }
+.how-h { display: flex; justify-content: space-between; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; }
+.how-h h3 { margin: 0; }
+.code-link { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.code-link code { font-size: 11.5px; }
+.faq-title { margin-top: 28px; font-size: 22px; }
+.faq { margin: 0; display: grid; gap: 4px; }
+.faq div { padding: 10px 0; border-bottom: 1px solid #f3f0ea; }
+.faq dt { font-weight: 700; }
+.faq dd { margin: 4px 0 0; color: var(--ink-2); line-height: 1.55; }
+@media (max-width: 640px) {
+  .topbar { flex-wrap: wrap; gap: 10px; }
+  .topbar nav { flex-wrap: wrap; gap: 12px; }
+  .nav-evals { display: none; }
+}

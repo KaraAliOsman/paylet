@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="paylet-seq" viewBox="0 0 960 930" width="960" height="930" role="img" aria-labelledby="paylet-seq-title paylet-seq-desc" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+<title id="paylet-seq-title">Paylet: one PayPal hold per account, losers never charged</title>
+<desc id="paylet-seq-desc">Sequence between the fan (or their AI agent), Paylet and PayPal. 1: request an entry; Paylet creates an Orders v2 order with intent AUTHORIZE. 2: the person approves the hold in PayPal; agents cannot. 3: Paylet reads payer_id from PayPal's order and enforces one hold per PayPal account. 4: authorize, placing the hold. 5: freeze the list, wait for a public drand round, rank entries. 6: capture the winners (partial capture). 7: void everyone else. 8: PayPal webhook, signature verified. Money: a $48 hold becomes $44.50 captured plus $3.50 released for a winner, and $0 for everyone else.</desc>
+<!-- Steps are <g class="seq-step step-N"> (N = 1..8). Add class "reveal" to the <svg> to dim them all, then class "on" to a step to show it. -->
+<style>
+#paylet-seq .bg { fill: var(--seq-bg, #fffdf9); }
+#paylet-seq .life { stroke: #d9d3c7; stroke-width: 1.5; stroke-dasharray: 4 5; }
+#paylet-seq .hd { stroke-width: 1.5; }
+#paylet-seq .hd.fan { fill: #ffffff; stroke: #d9d3c7; }
+#paylet-seq .hd.paylet { fill: #171332; stroke: #171332; }
+#paylet-seq .hd.paypal { fill: var(--real, #0b63ce); stroke: var(--real, #0b63ce); }
+#paylet-seq .hdt { font-size: 15px; font-weight: 750; fill: #171332; }
+#paylet-seq .hds { font-size: 11px; fill: #6f6a86; }
+#paylet-seq .hdt.paylet { fill: #f6c86a; }
+#paylet-seq .hds.paylet { fill: #c9c4e3; }
+#paylet-seq .hdt.paypal, #paylet-seq .hds.paypal { fill: #ffffff; }
+#paylet-seq .ln { stroke-width: 2; fill: none; }
+#paylet-seq .ln.real { stroke: var(--real, #0b63ce); }
+#paylet-seq .ln.person { stroke: var(--plum, #5b3fd1); }
+#paylet-seq .ln.dash { stroke-dasharray: 6 5; }
+#paylet-seq .lbl { font-size: 12.5px; font-weight: 600; paint-order: stroke; stroke: var(--seq-bg, #fffdf9); stroke-width: 4px; stroke-linejoin: round; }
+#paylet-seq .lbl.mono { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: 12px; }
+#paylet-seq .lbl.real { fill: var(--real, #0b63ce); }
+#paylet-seq .lbl.person { fill: var(--plum, #5b3fd1); }
+#paylet-seq .lbl.local { fill: #5d5872; font-weight: 500; font-size: 12px; stroke: none; }
+#paylet-seq .lbl.strong { font-weight: 700; fill: #171332; }
+#paylet-seq .cap { font-size: 11.5px; fill: #6f6a86; }
+#paylet-seq .note { fill: #f3f0ea; stroke: #d9d3c7; stroke-width: 1; }
+#paylet-seq .num { fill: #f6c86a; }
+#paylet-seq .numt { font-size: 12px; font-weight: 800; fill: #171332; }
+#paylet-seq .m-cap { fill: var(--real, #0b63ce); }
+#paylet-seq .m-rel { fill: #9cc3f2; }
+#paylet-seq .m-zero { fill: #e9f6ef; stroke: #bfe3cf; }
+#paylet-seq .mt { font-size: 13px; font-weight: 700; fill: #171332; }
+#paylet-seq .mt.w { fill: #ffffff; }
+#paylet-seq .mt.z { fill: #145c3d; }
+#paylet-seq.reveal .seq-step { opacity: 0.08; transition: opacity 0.45s ease; }
+#paylet-seq.reveal .seq-step.on { opacity: 1; }
+</style>
+<defs>
+  <marker id="ah-real" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#0b63ce"/></marker>
+  <marker id="ah-person" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#5b3fd1"/></marker>
+</defs>
+<rect class="bg" x="0" y="0" width="960" height="930" rx="18"/>
+<rect class="hd fan" x="20" y="22" width="220" height="50" rx="12"/><text class="hdt fan" x="130" y="44" text-anchor="middle">Fan</text><text class="hds fan" x="130" y="61" text-anchor="middle">or their AI agent</text>
+<rect class="hd paylet" x="370" y="22" width="220" height="50" rx="12"/><text class="hdt paylet" x="480" y="44" text-anchor="middle">Paylet</text><text class="hds paylet" x="480" y="61" text-anchor="middle">allocation · op queue · ledger</text>
+<rect class="hd paypal" x="720" y="22" width="220" height="50" rx="12"/><text class="hdt paypal" x="830" y="44" text-anchor="middle">PayPal</text><text class="hds paypal" x="830" y="61" text-anchor="middle">Orders v2 · Payments v2 · Webhooks</text>
+<line class="life" x1="130" y1="72" x2="130" y2="762"/>
+<line class="life" x1="480" y1="72" x2="480" y2="762"/>
+<line class="life" x1="830" y1="72" x2="830" y2="762"/>
+<g class="seq-step step-1"><circle class="num" cx="26" cy="116" r="11"/><text class="numt" x="26" y="120" text-anchor="middle">1</text><line class="ln person" x1="136" y1="116" x2="472" y2="116" marker-end="url(#ah-person)"/><text class="lbl person" x="305" y="108" text-anchor="middle">Request an entry</text><text class="cap" x="305" y="133" text-anchor="middle">PayPal button, or an agent calling MCP enter_drop</text><line class="ln real" x1="486" y1="162" x2="822" y2="162" marker-end="url(#ah-real)"/><text class="lbl real mono" x="655" y="154" text-anchor="middle">POST /v2/checkout/orders</text><text class="cap" x="655" y="179" text-anchor="middle">intent: AUTHORIZE → payer-action approval link</text></g>
+<g class="seq-step step-2"><circle class="num" cx="26" cy="216" r="11"/><text class="numt" x="26" y="220" text-anchor="middle">2</text><line class="ln person" x1="136" y1="216" x2="822" y2="216" marker-end="url(#ah-person)"/><text class="lbl person" x="305" y="208" text-anchor="middle">The person approves the $48.00 hold in PayPal</text><text class="cap" x="305" y="233" text-anchor="middle">only a person can do this · agents stop at the link</text></g>
+<g class="seq-step step-3"><circle class="num" cx="26" cy="276" r="11"/><text class="numt" x="26" y="280" text-anchor="middle">3</text><line class="ln real" x1="486" y1="276" x2="822" y2="276" marker-end="url(#ah-real)"/><text class="lbl real mono" x="655" y="268" text-anchor="middle">GET /v2/checkout/orders/{id}</text><text class="cap" x="655" y="293" text-anchor="middle">PayPal's own record of who approved: payer.payer_id</text><rect class="note" x="315" y="308" width="330" height="48" rx="10"/><text class="lbl local strong" x="480" y="329" text-anchor="middle">HMAC(payer_id) · one hold per PayPal account per drop</text><text class="lbl local" x="480" y="346" text-anchor="middle">a second approval from the same account: no hold</text></g>
+<g class="seq-step step-4"><circle class="num" cx="26" cy="400" r="11"/><text class="numt" x="26" y="404" text-anchor="middle">4</text><line class="ln real" x1="486" y1="400" x2="822" y2="400" marker-end="url(#ah-real)"/><text class="lbl real mono" x="655" y="392" text-anchor="middle">POST /v2/checkout/orders/{id}/authorize</text><text class="cap" x="655" y="417" text-anchor="middle">hold placed · nothing charged yet</text></g>
+<g class="seq-step step-5"><circle class="num" cx="26" cy="462" r="11"/><text class="numt" x="26" y="466" text-anchor="middle">5</text><rect class="note" x="285" y="448" width="390" height="65" rx="10"/><text class="lbl local strong" x="480" y="469" text-anchor="middle">Close &amp; draw</text><text class="lbl local" x="480" y="486" text-anchor="middle">freeze the eligible list + SHA-256 → wait for drand round R</text><text class="lbl local" x="480" y="503" text-anchor="middle">final seed = SHA-256(seed:randomness) → rank every entry</text></g>
+<g class="seq-step step-6"><circle class="num" cx="26" cy="566" r="11"/><text class="numt" x="26" y="570" text-anchor="middle">6</text><line class="ln real" x1="486" y1="566" x2="822" y2="566" marker-end="url(#ah-real)"/><text class="lbl real mono" x="655" y="558" text-anchor="middle">POST /v2/payments/authorizations/{id}/capture</text><text class="cap" x="655" y="583" text-anchor="middle">winners: partial capture $44.50 (price + real shipping)</text></g>
+<g class="seq-step step-7"><circle class="num" cx="26" cy="626" r="11"/><text class="numt" x="26" y="630" text-anchor="middle">7</text><line class="ln real" x1="486" y1="626" x2="822" y2="626" marker-end="url(#ah-real)"/><text class="lbl real mono" x="655" y="618" text-anchor="middle">POST /v2/payments/authorizations/{id}/void</text><text class="cap" x="655" y="643" text-anchor="middle">everyone else: hold voided, $0 charged</text></g>
+<g class="seq-step step-8"><circle class="num" cx="26" cy="686" r="11"/><text class="numt" x="26" y="690" text-anchor="middle">8</text><line class="ln real dash" x1="824" y1="686" x2="488" y2="686" marker-end="url(#ah-real)"/><text class="lbl real mono" x="655" y="678" text-anchor="middle">Webhook PAYMENT.CAPTURE.COMPLETED</text><line class="ln real" x1="486" y1="728" x2="822" y2="728" marker-end="url(#ah-real)"/><text class="lbl real mono" x="655" y="720" text-anchor="middle">POST /v1/notifications/verify-webhook-signature</text><text class="cap" x="655" y="745" text-anchor="middle">signature verified before the ledger changes</text></g>
+<g class="money">
+  <text class="lbl strong" x="40" y="794">Where the money goes</text>
+  <rect class="m-cap" x="40" y="804" width="560" height="44" rx="10"/>
+  <path class="m-rel" d="M548 804h42a10 10 0 0 1 10 10v24a10 10 0 0 1-10 10h-42z"/>
+  <text class="mt w" x="56" y="831">$48.00 hold → $44.50 captured</text>
+  <text class="mt" x="574" y="831" text-anchor="middle">+$3.50</text>
+  <text class="cap" x="40" y="868">winner: price + real shipping; the unused $3.50 of the hold is released</text>
+  <rect class="m-zero" x="636" y="804" width="284" height="44" rx="10"/>
+  <text class="mt z" x="778" y="831" text-anchor="middle">not selected: $0 charged</text>
+  <text class="cap" x="636" y="868">hold voided · same for duplicates and merges</text>
+</g>
+<g class="legend" transform="translate(40 908)">
+  <line class="ln real" x1="0" y1="-4" x2="28" y2="-4"/><text class="cap" x="36" y="0">PayPal API call (real, sandbox)</text>
+  <line class="ln person" x1="232" y1="-4" x2="260" y2="-4"/><text class="cap" x="268" y="0">the person (or their agent)</text>
+  <rect class="note" x="444" y="-12" width="28" height="16" rx="4"/><text class="cap" x="480" y="0">Paylet logic (local)</text>
+</g>
+</svg>
