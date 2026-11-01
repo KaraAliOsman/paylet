@@ -39,6 +39,17 @@ test("the checklist ticks itself from the drop's stats, with deep links and a co
   expect(errors).toEqual([]);
 });
 
+test("after the draw, steps that never happened read as skipped and Verify becomes the next step", async ({ page }) => {
+  await remember(page);
+  const settled = (await import("./ui-mocks")).publicDrop("settled");
+  await mockDrop(page, { status: "settled", stage: "settled", dropOver: { stats: { ...settled.stats, holds: 0, duplicatesBlocked: 0 } } });
+  await page.goto("/judge");
+  await expect(page.getByTestId("check-draw")).toHaveAttribute("data-done", "1");
+  await expect(page.getByTestId("check-enter")).toHaveClass(/skipped/);
+  await expect(page.getByTestId("check-enter")).toContainText("Not done in this drop: entries are closed.");
+  await expect(page.getByTestId("check-verify")).toHaveAttribute("aria-current", "step");
+});
+
 test("starting a drop: the drop and its key ride in the URL fragment, never the query", async ({ page }) => {
   await page.route("**/api/judge-drop", (r) => r.fulfill({ contentType: "application/json", body: JSON.stringify({ slug: SLUG, sellerKey: KEY }) }));
   await mockDrop(page, { status: "open", stage: "mid" });

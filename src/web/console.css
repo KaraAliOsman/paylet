@@ -59,7 +59,7 @@
 }
 
 /* ---------------------------------------------------------------- toasts + dialog */
-.toasts { position: fixed; right: 20px; bottom: 20px; z-index: 50; display: grid; gap: 10px; width: min(420px, calc(100vw - 32px)); pointer-events: none; }
+.toasts { position: fixed; left: 20px; bottom: 20px; z-index: 50; display: grid; gap: 10px; width: min(420px, calc(100vw - 32px)); pointer-events: none; }
 .toast { pointer-events: auto; display: grid; grid-template-columns: 22px minmax(0, 1fr) 24px; gap: 10px; align-items: start; padding: 12px 10px 12px 14px; border-radius: 14px; background: #fff; border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(23, 19, 50, 0.16); font-size: 14px; animation: toast-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .toast p { margin: 0; line-height: 1.45; }
 .toast-icon { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; }
@@ -200,6 +200,8 @@ td .auth { display: block; font: 11px/1.4 ui-monospace, "SF Mono", Consolas, mon
 .check li.done .step-n { background: var(--good); color: #fff; }
 .check li.current { background: #fff; border-color: var(--plum); box-shadow: 0 0 0 3px #ece6ff; }
 .check li.current .step-n { background: var(--plum); color: #fff; }
+.check li.skipped { border-style: dashed; background: transparent; }
+.check li.skipped .check-text b, .check li.skipped .check-text small { color: var(--muted); }
 .check li.is-live .check-text small { color: #4048a8; font-weight: 650; }
 .check-text { display: grid; gap: 2px; min-width: 0; }
 .check-text b { font-size: 15px; }

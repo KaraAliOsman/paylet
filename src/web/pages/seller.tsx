@@ -204,7 +204,6 @@ export function SellerPage({ slug }: { slug: string }) {
           const k = r.waitlist?.length ?? 0;
           push({ tone: "info", text: `Drawn: ${w} winner${w === 1 ? "" : "s"}, ${k} on the waitlist. Settling with PayPal…` });
         }
-        prevStatus.current = d?.drop.status ?? prevStatus.current;
       } catch (e) {
         if (e instanceof ApiError && e.code === "pending_reviews")
           fail(e, data ? pendingCopy(data.clusters) : undefined, { label: "Review them", onClick: scrollToClusters });

@@ -372,6 +372,8 @@ export interface ConsoleState {
   entries?: unknown[];
   clusters?: unknown[];
   events?: unknown[];
+  /** fields merged over the public drop (e.g. other stats) */
+  dropOver?: Record<string, unknown>;
 }
 
 /**
@@ -379,7 +381,12 @@ export interface ConsoleState {
  * request, so a test can move the drop forward (state.status = "frozen" …) and the UI follows on its next poll.
  */
 export async function mockDrop(page: Page, state: ConsoleState, onPost?: (path: string, body: unknown, route: Route) => boolean | Promise<boolean>) {
-  const drop = () => publicDrop(state.status, { negativeTest: !!state.negativeTest, pendingReviews: (state.clusters ?? clusters(state.stage)).filter((c: any) => c.status === "suggested").length });
+  const drop = () =>
+    publicDrop(state.status, {
+      negativeTest: !!state.negativeTest,
+      pendingReviews: (state.clusters ?? clusters(state.stage)).filter((c: any) => c.status === "suggested").length,
+      ...state.dropOver,
+    });
   await page.route(`**/api/drops/${SLUG}`, (r) => r.fulfill({ contentType: "application/json", body: JSON.stringify(drop()) }));
   await page.route(`**/api/drops/${SLUG}/events*`, (r) => {
     const after = Number(new URL(r.request().url()).searchParams.get("after") ?? 0);

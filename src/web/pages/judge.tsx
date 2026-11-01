@@ -360,13 +360,16 @@ function Checklist({ res, drop, busy, onStart }: { res: JudgeDrop | null; drop: 
       ),
     },
   ];
-  const current = items.findIndex((i) => !i.done);
+  // once entries close, the entry steps that didn't happen can't happen any more: say so instead of pointing at them
+  const SKIPPABLE = new Set(["enter", "again", "agents", "review"]);
+  const skipped = (it: Item) => closed && !it.done && SKIPPABLE.has(it.key);
+  const current = items.findIndex((i) => !i.done && !skipped(i));
   return (
     <ol className="check" data-testid="judge-checklist">
       {items.map((it, i) => (
         <li
           key={it.key}
-          className={`${it.done ? "done" : i === current ? "current" : ""} ${it.live && !it.done ? "is-live" : ""}`}
+          className={`${it.done ? "done" : skipped(it) ? "skipped" : i === current ? "current" : ""} ${it.live && !it.done ? "is-live" : ""}`}
           data-testid={`check-${it.key}`}
           data-done={it.done ? "1" : "0"}
           aria-current={i === current ? "step" : undefined}
@@ -376,8 +379,8 @@ function Checklist({ res, drop, busy, onStart }: { res: JudgeDrop | null; drop: 
           </span>
           <div className="check-text">
             <b>{it.title}</b>
-            <span className="sr-only"> ({it.done ? "done" : i === current ? "next" : "not yet"})</span>
-            <small>{it.result}</small>
+            <span className="sr-only"> ({it.done ? "done" : skipped(it) ? "skipped" : i === current ? "next" : "not yet"})</span>
+            <small>{skipped(it) ? "Not done in this drop: entries are closed. Start another drop to try it." : it.result}</small>
           </div>
           <div className="check-action">{it.action}</div>
         </li>

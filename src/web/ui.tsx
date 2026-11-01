@@ -23,7 +23,7 @@ export function useToasts() {
       const id = ++seq.current;
       setToasts((l) => [...l.slice(-2), { ...t, id }]);
       // good news fades; problems stay until dismissed
-      if (t.tone === "ok" || t.tone === "info") setTimeout(() => dismiss(id), 9000);
+      if (t.tone === "ok" || t.tone === "info") setTimeout(() => dismiss(id), 7000);
       return id;
     },
     [dismiss],
