@@ -219,10 +219,12 @@ const FRIENDLY: Record<string, string> = {
   judge_drop_quota: "You already have several judge drops today. Reuse one of them.",
   paypal_error: "PayPal didn't accept the request.",
   not_available: "This server doesn't offer that yet.",
+  server_unavailable: "The demo server is waking up or restarting. Try again in a moment.",
 };
 
 export function friendlyError(e: unknown): string {
-  if (e instanceof ApiError) return FRIENDLY[e.code] ?? e.message;
+  // a specific message from the server wins (e.g. "3 AI suggestions are waiting for your decision"); bare codes get our copy
+  if (e instanceof ApiError) return e.message && e.message !== e.code ? e.message : (FRIENDLY[e.code] ?? e.message);
   return e instanceof Error ? e.message : String(e);
 }
 
@@ -237,8 +239,10 @@ export async function api<T>(path: string, init?: RequestInit & { json?: unknown
     try {
       data = JSON.parse(text);
     } catch {
-      // An endpoint this server doesn't have yet answers with the SPA's index.html (GET) or a plain 404 (POST).
-      throw new ApiError(res.ok ? 404 : res.status, "not_available", FRIENDLY.not_available);
+      // An endpoint this server doesn't have yet answers with the SPA's index.html (GET) or a plain 404/405 (POST).
+      if (res.ok || res.status === 404 || res.status === 405) throw new ApiError(404, "not_available", FRIENDLY.not_available);
+      // anything else that isn't JSON comes from the hosting proxy (cold start, restart)
+      throw new ApiError(res.status, "server_unavailable", FRIENDLY.server_unavailable);
     }
   }
   if (!res.ok) {
@@ -274,10 +278,10 @@ export function timeLeft(ms: number): string {
 /** "6:30 PM", or "Fri 6:30 PM" when it is not today. */
 export function clock(ts: number, withSeconds = false): string {
   const d = new Date(ts);
-  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", ...(withSeconds ? { second: "2-digit" } : {}) });
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", ...(withSeconds ? { second: "2-digit" } : {}) });
   const today = new Date();
   if (d.toDateString() === today.toDateString()) return time;
-  return `${d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} ${time}`;
+  return `${d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} ${time}`;
 }
 
 export const nf = (n: number) => n.toLocaleString("en-US");

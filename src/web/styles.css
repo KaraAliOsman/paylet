@@ -210,7 +210,7 @@ tr.hl td { background: #fff8e4; font-weight: 600; }
 .alert { background: #fdf0dc; border: 1px solid #f3d9a8; color: #6b4a00; border-radius: 12px; padding: 10px 14px; margin: 8px 0; font-size: 14px; }
 .alert-ok { background: #e9f6ef; border-color: #c4e6d3; color: #145c3d; }
 .alert-bad { background: #fde6e3; border-color: #f4c6bf; color: #8c2a1f; }
-.linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--plum); cursor: pointer; font-weight: 600; }
+.linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--plum); cursor: pointer; }
 .linklike:hover { text-decoration: underline; }
 .not-found { display: grid; gap: 6px; }
 

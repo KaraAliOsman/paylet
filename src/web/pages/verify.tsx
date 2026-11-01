@@ -56,6 +56,14 @@ export function VerifyPage({ slug }: { slug: string }) {
     return () => clearInterval(t);
   }, [waiting, load]);
 
+  // a 1 s clock for the countdown while the drop is open
+  const isOpen = d?.status === "open";
+  useEffect(() => {
+    if (!isOpen) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [isOpen]);
+
   const run = async () => {
     if (!d?.seed || !d.frozenList) return;
     setRunning(true);
