@@ -928,7 +928,7 @@ export function refundEntry(dropId: string, entryId: string, reason?: unknown) {
   // the reason is public (ledger) and goes to the buyer: plain words only
   const why =
     (typeof reason === "string" ? reason : "")
-      .replace(/[^\p{L}\p{N} .,'!?()-]/gu, " ")
+      .replace(/[^\p{L}\p{N} .,:;&'!?()-]/gu, " ")
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 120) || "the maker could not ship";
