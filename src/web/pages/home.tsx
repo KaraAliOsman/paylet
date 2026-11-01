@@ -26,6 +26,15 @@ function usePolled<T>(path: string, ms: number): T | null | undefined {
   return v;
 }
 
+/** Decorative ticket serial ("№ 0042") derived from the drop id. */
+function serial(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 10000;
+  return `№ ${String(h).padStart(4, "0")}`;
+}
+
+const MARQUEE = ["One unit per PayPal account", "Losers are never charged", "Agents welcome", "Public, re-runnable draw", "Holds, not charges"];
+
 export function Home() {
   const [data, setData] = useState<{ open: PublicDrop[]; past: PublicDrop[] } | null>(null);
   const [mcp, setMcp] = useState("");
@@ -43,9 +52,9 @@ export function Home() {
   return (
     <>
       <section className="hero">
-        <div>
+        <div className="hero-copy">
           <p className="eyebrow">Fair drops for the agent era</p>
-          <h1>
+          <h1 className="hero-title">
             One unit per PayPal account.
             <br />
             <em>Agents welcome.</em>
@@ -75,22 +84,48 @@ export function Home() {
           <LiveCounters stats={stats} />
         </div>
         {drop ? (
-          <Link href={`/d/${drop.slug}`} className="hero-card">
-            <Art art={drop.art} size={240} />
-            <div>
+          <Link href={`/d/${drop.slug}`} className="hero-card ticket">
+            <span className="ticket-head" aria-hidden="true">
+              <span>Paylet · Limited drop</span>
+              <span className="ticket-serial">{serial(drop.id)}</span>
+            </span>
+            <span className="ticket-art">
+              <Art art={drop.art} size={240} />
+            </span>
+            <span className="ticket-perf" aria-hidden="true" />
+            <div className="ticket-body">
               <b>{drop.title}</b>
-              <span>{drop.maker}</span>
-              <span>
+              <span className="ticket-maker">{drop.maker}</span>
+              <span className="ticket-meta">
                 {drop.units} units · {usd(drop.priceCents)}
               </span>
             </div>
+            <span className="ticket-stamp" aria-hidden="true">
+              Admit one
+              <br />
+              per PayPal account
+            </span>
           </Link>
         ) : (
-          <div className="hero-card hero-card-empty" aria-hidden="true">
+          <div className="hero-card ticket hero-card-empty" aria-hidden="true">
             <div className="skeleton" style={{ width: 240, height: 240 }} />
           </div>
         )}
       </section>
+
+      <div className="marquee" aria-hidden="true">
+        <div className="marquee-track">
+          {[0, 1].map((k) => (
+            <span key={k} className="marquee-group">
+              {MARQUEE.map((m) => (
+                <span key={m}>
+                  {m} <i>✦</i>
+                </span>
+              ))}
+            </span>
+          ))}
+        </div>
+      </div>
 
       {proof?.slug && <ProofCard proof={proof} />}
 
@@ -219,8 +254,8 @@ function FlowStrip() {
         {FLOW.map((f, i) => (
           <li key={f.title} className="flow-step">
             <span className={`flow-icon ${f.local ? "" : "flow-icon-real"}`}>{f.icon}</span>
-            <b>
-              {i + 1}. {f.title}
+            <b className="flow-title">
+              <span className="flow-num">{i + 1}.</span> {f.title}
             </b>
             <p>{f.text}</p>
             {f.api && <span className={`tag ${f.local ? "tag-sim" : "tag-real"}`}>{f.api}</span>}

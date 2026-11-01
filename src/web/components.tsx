@@ -20,7 +20,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <header className="topbar">
         <Link href="/" className="brand">
           <span className="brand-mark">P</span>
-          <span>Paylet</span>
+          <span className="brand-word">Paylet</span>
         </Link>
         <nav aria-label="Main">
           <Link href="/how">How it works</Link>
@@ -35,10 +35,10 @@ export function Shell({ children }: { children: ReactNode }) {
       </header>
       <main>{children}</main>
       <footer className="foot">
-        <span>
+        <span className="foot-note">
           PayPal <b>sandbox</b> only · no real money moves · AI: MiMo V2.6 Pro
         </span>
-        <span>
+        <span className="foot-links">
           <Link href="/how">How it works</Link> · <a href="https://github.com/KaraAliOsman/paylet">Source (MIT)</a>
         </span>
       </footer>
