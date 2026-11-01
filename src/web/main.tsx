@@ -1,9 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "./styles.css";
-import "./console.css";
-import "./home.css";
-import "./pages.css";
+import "./theme.css";
 import { Shell } from "./components";
 import { usePath } from "./router";
 import { DropPage, MePage, NotFound, ReturnPage } from "./pages/public";

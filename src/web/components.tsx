@@ -19,11 +19,13 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="shell">
       <header className="topbar">
         <Link href="/" className="brand">
-          <span className="brand-mark">P</span>
+          <BrandMark />
           <span className="brand-word">Paylet</span>
         </Link>
         <nav aria-label="Main">
-          <Link href="/how">How it works</Link>
+          <Link href="/how" className="nav-how">
+            How it works
+          </Link>
           <Link href="/agent">Fan's agent</Link>
           <Link href="/evals" className="nav-evals">
             Evals
@@ -43,6 +45,17 @@ export function Shell({ children }: { children: ReactNode }) {
         </span>
       </footer>
     </div>
+  );
+}
+
+/** The mark: one unit (the dot) inside a PayPal hold (the dashed ring). */
+export function BrandMark({ size = 26 }: { size?: number }) {
+  return (
+    <svg className="brand-mark" width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+      <rect width="32" height="32" rx="9" fill="#141414" />
+      <circle cx="16" cy="16" r="8.6" fill="none" stroke="#fff" strokeWidth="2.2" strokeDasharray="3.4 2.35" strokeLinecap="round" />
+      <circle cx="16" cy="16" r="3.6" fill="#ff5a1f" />
+    </svg>
   );
 }
 

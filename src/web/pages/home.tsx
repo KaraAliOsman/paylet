@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { api, apiOptional, clock, nf, usd, type GlobalStats, type ProofInfo, type PublicDrop } from "../api";
-import { Art } from "../components";
+import { HoldDemo } from "../hold-demo";
 import { ArrowIcon, BotIcon, CheckIcon, DiceIcon, PlayIcon, ShieldIcon, UserIcon } from "../icons";
 import { Link } from "../router";
 
@@ -26,15 +26,6 @@ function usePolled<T>(path: string, ms: number): T | null | undefined {
   return v;
 }
 
-/** Decorative ticket serial ("№ 0042") derived from the drop id. */
-function serial(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 10000;
-  return `№ ${String(h).padStart(4, "0")}`;
-}
-
-const MARQUEE = ["One unit per PayPal account", "Losers are never charged", "Agents welcome", "Public, re-runnable draw", "Holds, not charges"];
-
 export function Home() {
   const [data, setData] = useState<{ open: PublicDrop[]; past: PublicDrop[] } | null>(null);
   const [mcp, setMcp] = useState("");
@@ -49,32 +40,38 @@ export function Home() {
       .catch(() => undefined);
   }, []);
   const drop = data?.open[0];
+  const verifyHref = proof?.slug ? `/verify/${proof.slug}` : null;
   return (
     <>
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">Fair drops for the agent era</p>
+          {verifyHref ? (
+            <Link className="hero-eyebrow" href={verifyHref}>
+              <i>Proof</i> A finished run with real PayPal sandbox money <ArrowIcon size={13} />
+            </Link>
+          ) : (
+            <p className="hero-eyebrow">
+              <i>Sandbox</i> Fair drops for the agent era
+            </p>
+          )}
           <h1 className="hero-title">
-            One unit per PayPal account.
-            <br />
-            <em>Agents welcome.</em>
+            One unit per PayPal account. <span>Agents welcome.</span>
           </h1>
-          <p className="lede lede-one">Every entry is a PayPal hold. One per PayPal account. Losers are never charged.</p>
+          <p className="hero-lede">
+            Every entry is a PayPal hold. One per PayPal account. Losers are never charged.
+          </p>
           <div className="cta">
             <Link className="btn btn-primary btn-lg" href="/judge">
-              Judges: 2-minute guided demo <ArrowIcon size={16} />
+              Judges: 2-minute guided demo
             </Link>
-            <div className="row gap wrap fan-ctas">
-              <span className="muted small">Or as a fan:</span>
-              {drop && (
-                <Link className="btn btn-sm" href={`/d/${drop.slug}`}>
-                  Enter the {drop.title} drop
-                </Link>
-              )}
-              <Link className="btn btn-sm" href="/agent">
-                <BotIcon size={15} /> Let my AI agent enter
+            {drop && (
+              <Link className="btn btn-lg" href={`/d/${drop.slug}`}>
+                Enter the {drop.title} drop
               </Link>
-            </div>
+            )}
+            <Link className="cta-link" href="/agent">
+              <BotIcon size={16} /> Let my AI agent enter <ArrowIcon size={14} />
+            </Link>
           </div>
           {VIDEO_URL && (
             <a className="video-link" href={VIDEO_URL} target="_blank" rel="noopener">
@@ -83,56 +80,44 @@ export function Home() {
           )}
           <LiveCounters stats={stats} />
         </div>
-        {drop ? (
-          <Link href={`/d/${drop.slug}`} className="hero-card ticket">
-            <span className="ticket-head" aria-hidden="true">
-              <span>Paylet · Limited drop</span>
-              <span className="ticket-serial">{serial(drop.id)}</span>
-            </span>
-            <span className="ticket-art">
-              <Art art={drop.art} size={240} />
-            </span>
-            <span className="ticket-perf" aria-hidden="true" />
-            <div className="ticket-body">
-              <b>{drop.title}</b>
-              <span className="ticket-maker">{drop.maker}</span>
-              <span className="ticket-meta">
-                {drop.units} units · {usd(drop.priceCents)}
-              </span>
-            </div>
-            <span className="ticket-stamp" aria-hidden="true">
-              Admit one
-              <br />
-              per PayPal account
-            </span>
-          </Link>
-        ) : (
-          <div className="hero-card ticket hero-card-empty" aria-hidden="true">
-            <div className="skeleton" style={{ width: 240, height: 240 }} />
-          </div>
-        )}
+        <HoldDemo verifyHref={verifyHref} />
       </section>
 
-      <div className="marquee" aria-hidden="true">
-        <div className="marquee-track">
-          {[0, 1].map((k) => (
-            <span key={k} className="marquee-group">
-              {MARQUEE.map((m) => (
-                <span key={m}>
-                  {m} <i>✦</i>
-                </span>
-              ))}
-            </span>
-          ))}
+      <section className="sec" aria-labelledby="flow-title">
+        <div className="sec-head">
+          <div>
+            <h2 id="flow-title">How a drop works</h2>
+            <p>An agent can ask. Only a person can approve. PayPal's own records decide who is who.</p>
+          </div>
+          <Link href="/how#sequence">
+            Every PayPal call, in order <ArrowIcon size={13} />
+          </Link>
         </div>
-      </div>
+        <ol className="flow-steps">
+          {FLOW.map((f, i) => (
+            <li key={f.title} className="flow-step">
+              <span className={`flow-icon ${f.local ? "" : "flow-icon-real"}`}>{f.icon}</span>
+              <b className="flow-title">
+                <span className="flow-num">{String(i + 1).padStart(2, "0")}</span> {f.title}
+              </b>
+              <p>{f.text}</p>
+              {f.api && <span className={`tag ${f.local ? "tag-local" : "tag-real"}`}>{f.api}</span>}
+            </li>
+          ))}
+        </ol>
+      </section>
 
-      {proof?.slug && <ProofCard proof={proof} />}
+      {proof?.slug && (
+        <section className="sec">
+          <ProofCard proof={proof} />
+        </section>
+      )}
 
-      <FlowStrip />
-
-      <section className="two">
+      <section className="sec two">
         <div className="card">
+          <span className="flow-icon">
+            <BotIcon />
+          </span>
           <h3>For AI agents (MCP)</h3>
           <p>
             Any assistant can enter drops for its person through Paylet's MCP server. It can <b>request</b> an entry. It can never approve or pay.
@@ -141,6 +126,9 @@ export function Home() {
           <p className="muted small">Tools: list_drops · enter_drop · entry_status (Streamable HTTP)</p>
         </div>
         <div className="card">
+          <span className="flow-icon">
+            <ShieldIcon />
+          </span>
           <h3>Judges: try to scalp us</h3>
           <p>
             Spin up your own 30-minute drop with its own seller console, then try to get two units with one PayPal account. A checklist walks you through it.
@@ -152,7 +140,7 @@ export function Home() {
       </section>
 
       {data && data.past.length > 0 && (
-        <section className="card">
+        <section className="sec card">
           <h3>Past drops (verifiable)</h3>
           <ul className="plain">
             {data.past.map((d) => (
@@ -202,8 +190,8 @@ function LiveCounters({ stats }: { stats: GlobalStats | null | undefined }) {
 function ProofCard({ proof }: { proof: ProofInfo }) {
   return (
     <section className="card proof" aria-labelledby="proof-title">
-      <span className="proof-badge">
-        <ShieldIcon size={16} /> Proof
+      <span className="proof-badge" aria-hidden="true">
+        <ShieldIcon size={20} />
       </span>
       <div className="proof-body">
         <h3 id="proof-title">A finished run with real PayPal sandbox money</h3>
@@ -240,28 +228,3 @@ const FLOW: { icon: ReactNode; title: string; text: string; api?: string; local?
   },
   { icon: <ArrowIcon />, title: "Settle", text: "Winners pay price + real shipping. Everyone else: hold voided, $0.", api: "capture · void" },
 ];
-
-function FlowStrip() {
-  return (
-    <section className="card flow" aria-labelledby="flow-title">
-      <div className="card-head">
-        <h3 id="flow-title">How a drop works</h3>
-        <Link href="/how#sequence" className="small">
-          Every PayPal call, in order →
-        </Link>
-      </div>
-      <ol className="flow-steps">
-        {FLOW.map((f, i) => (
-          <li key={f.title} className="flow-step">
-            <span className={`flow-icon ${f.local ? "" : "flow-icon-real"}`}>{f.icon}</span>
-            <b className="flow-title">
-              <span className="flow-num">{i + 1}.</span> {f.title}
-            </b>
-            <p>{f.text}</p>
-            {f.api && <span className={`tag ${f.local ? "tag-sim" : "tag-real"}`}>{f.api}</span>}
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}

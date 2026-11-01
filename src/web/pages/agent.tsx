@@ -135,9 +135,20 @@ export function AgentPage() {
 
   return (
     <div className="agent">
+      <header className="page-intro">
+        <p className="eyebrow">Fan's agent</p>
+        <h1>
+          Your agent can enter. <span>Only you can pay.</span>
+        </h1>
+        <p className="lede">
+          Wren is an AI assistant that talks to Paylet over MCP, the way any agent would. It can request an entry and hand you a PayPal link.
+          It can't approve a payment.
+        </p>
+      </header>
       <section className="card agent-chat">
         <div className="card-head">
-          <div>
+          <div className="wren">
+            <span className="wren-avatar" aria-hidden="true">W</span>
             <h3>Wren · your personal agent</h3>
             <span className="muted small">MiMo V2.6 Pro → Paylet over MCP (list_drops · enter_drop · entry_status)</span>
           </div>
