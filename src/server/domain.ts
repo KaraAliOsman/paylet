@@ -23,7 +23,16 @@ import { enqueue, opCount, pendingOpsFor, type Handlers, type OpRow } from "./qu
 import type { Trace } from "./trace";
 import { resolve, type ResolvedCluster as ResolvedClusterBase } from "./er/resolve";
 import type { Identity } from "./er/normalize";
-import { syntheticCrowd } from "./simulate";
+import { syntheticCrowd, type LabeledIdentity } from "./simulate";
+
+/** P2-05 (workstream C): syntheticCrowd(seed, counts, tag, { window, simulated }) places every entrant inside the drop's
+ *  window and labels it honestly. Called through this signature so it also runs against the 3-argument version. */
+type CrowdFn = (
+  seed: number,
+  counts: Parameters<typeof syntheticCrowd>[1],
+  tag: string,
+  crowd: { window: { from: number; to: number }; simulated: true },
+) => (LabeledIdentity & { ts?: number; agentLabel?: string | null })[];
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -304,8 +313,15 @@ export function addSimulatedCrowd(dropIdOrSlug: string, seed = Math.floor(Math.r
   if (!dropIsOpen(drop)) throw new HttpError(409, "drop_closed");
   const sims = (db.prepare("SELECT COUNT(*) n FROM entries WHERE drop_id = ? AND source = 'simulated'").get(drop.id) as { n: number }).n;
   if (sims >= 60) throw new HttpError(409, "sim_limit", "This drop already has its simulated crowd.");
-  const crowd = syntheticCrowd(seed, { fans: 12, networks: 1, netSize: 6, households: 1, neighbors: 1, namesakes: 1 }, `sim${seed}`);
   const t = now();
+  const window = { from: drop.created_at, to: t };
+  const crowd = (syntheticCrowd as unknown as CrowdFn)(seed, { fans: 12, networks: 1, netSize: 6, households: 1, neighbors: 1, namesakes: 1 }, `sim${seed}`, { window, simulated: true });
+  // The older simulate.ts gives people no timestamp and a bot network fixed 2023 ones: keep everyone inside the drop's
+  // window anyway (never before it opened). People are spread over it; an out-of-window burst keeps its spacing, ending now.
+  const inWindow = (ts: number) => ts >= window.from && ts <= window.to;
+  const lastOutside = Math.max(0, ...crowd.map((p) => (p.ts != null && !inWindow(p.ts) ? p.ts : 0)));
+  const tsOf = (p: { ts?: number }, i: number) =>
+    p.ts == null ? Math.round(window.from + ((i + 1) / (crowd.length + 1)) * (window.to - window.from)) : inWindow(p.ts) ? p.ts : Math.max(window.from, window.to - (lastOutside - p.ts));
   for (const [i, p] of crowd.entries()) {
     const entryId = id("ent", 8);
     db.prepare(
@@ -315,7 +331,7 @@ export function addSimulatedCrowd(dropIdOrSlug: string, seed = Math.floor(Math.r
       entryId,
       publicId(),
       drop.id,
-      p.kind === "reshipper_network" ? "scalper-bot" : null,
+      p.agentLabel ?? (p.kind === "reshipper_network" ? "simulated-scalper-bot" : null),
       hmac(`sim:${p.id}`),
       p.name,
       `${p.name.split(" ")[0]} ${(p.name.split(" ")[1] ?? "").slice(0, 1)}.`,
@@ -323,7 +339,7 @@ export function addSimulatedCrowd(dropIdOrSlug: string, seed = Math.floor(Math.r
       JSON.stringify(p.address),
       drop.price_cents + drop.ship_hold_cents,
       `SIM-${entryId.slice(-8).toUpperCase()}`,
-      t - (crowd.length - i) * 7000,
+      tsOf(p, i),
       t,
     );
   }
@@ -342,7 +358,8 @@ function identityOf(e: EntryRow): Identity | null {
     email: e.email,
     address: JSON.parse(e.address_json),
     ts: e.created_at,
-    source: e.source === "simulated" && e.agent_label ? "agent" : e.source,
+    // honest provenance for the model and the rules: a simulated entrant is "simulated" (a scripted bot keeps its label)
+    source: e.source,
     agentLabel: e.agent_label,
   };
 }

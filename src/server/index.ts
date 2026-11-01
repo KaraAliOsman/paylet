@@ -10,6 +10,7 @@ import { env, unsafeConfig } from "./env";
 import {
   HttpError,
   addSimulatedCrowd,
+  aiSummary,
   analyzeDrop,
   createDrop,
   decideCluster,
@@ -37,6 +38,7 @@ import { pendingOps, startWorker } from "./queue";
 import { handleMcp, paypalState } from "./mcp";
 import { INTERNAL_HEADER, howItWent, internalToken, runFanAgent, runSwarm } from "./agent";
 import { aiConfigured, usageSummary } from "./ai";
+import { dropReport, globalStats } from "./report";
 
 const app = new Hono();
 
@@ -171,6 +173,12 @@ app.get("/api/drops/:slug/verify", (c) => c.json(verifyData(mustDrop(c.req.param
 /** alias of /verify (the data behind the /verify page) */
 app.get("/api/drops/:slug/verify-data", (c) => c.json(verifyData(mustDrop(c.req.param("slug")))));
 
+// P1-07: public Drop report (no PII), partial until the drop settles
+app.get("/api/drops/:slug/report", (c) => c.json(dropReport(mustDrop(c.req.param("slug")))));
+
+// landing page counters: real PayPal sandbox activity only
+app.get("/api/stats", (c) => c.json(globalStats()));
+
 app.post("/api/drops/:slug/entries", async (c) => {
   if (!limit(c, "entry", 20)) return c.json({ error: "rate_limited" }, 429);
   const r = await startEntry(c.req.param("slug"), "human");
@@ -300,7 +308,15 @@ app.get("/api/seller/:slug", (c) => {
     payerVerified: e.payer_verified == null ? null : e.payer_verified === 1,
     shipping: e.tracking_number ? { carrier: e.carrier ?? "OTHER", tracking: e.tracking_number } : null,
   }));
-  return c.json({ drop: { ...publicDrop(d), negativeTest: d.negative_test === 1 }, entries, clusters: listClusters(d.id), ai: usageSummary() });
+  const usage = usageSummary();
+  return c.json({
+    drop: { ...publicDrop(d), negativeTest: d.negative_test === 1 },
+    entries,
+    clusters: listClusters(d.id),
+    // AiSummary (contract) + today/dailyCap kept for older consoles
+    ai: { ...aiSummary(d.id), today: usage.today, dailyCap: usage.dailyCap },
+    usage,
+  });
 });
 
 app.post("/api/seller/:slug/simulate", (c) => {
@@ -322,7 +338,7 @@ app.post("/api/seller/:slug/swarm", async (c) => {
 app.post("/api/seller/:slug/analyze", async (c) => {
   const d = seller(c);
   const r = await analyzeDrop(d.id);
-  return c.json({ clusters: r.clusters.length, llmCalls: r.llmCalls, uncertainPairs: r.uncertainPairs, ms: r.ms });
+  return c.json({ clusters: r.clusters.length, llmCalls: r.llmCalls, uncertainPairs: r.uncertainPairs, keptApart: r.keptApart, degraded: r.degraded, ms: r.ms });
 });
 
 app.post("/api/seller/:slug/clusters/:id", async (c) => {
