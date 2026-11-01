@@ -19,7 +19,8 @@
     "evals": "node --no-warnings --env-file-if-exists=.env --import tsx scripts/run-evals.ts",
     "screens": "tsx scripts/screens.ts",
     "e2e:real": "playwright test e2e/real-paypal.spec.ts",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "badges": "vitest run --coverage --reporter=default --reporter=json --outputFile.json=test-results/vitest.json && node .github/scripts/badges.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
