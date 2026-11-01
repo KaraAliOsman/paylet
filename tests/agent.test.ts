@@ -132,6 +132,18 @@ describe("P0-04 / P2-02 Wren over MCP", () => {
     expect(agent.extraSentences("I've requested your entry. The draw is at 12:10 PM, good luck!")).toBe("The draw is at 12:10 PM, good luck!");
   });
 
+  it("model offline (budget/outage) but the person pasted a drop link: Wren still requests the entry over MCP, and says so", async () => {
+    const drop = await domain.createDrop({ ...domain.SHOWCASE, kind: "judge" });
+    script.replies.push(new Error("AI HTTP 422: budget_exceeded"));
+    const r = await chat(`Get me into this drop: https://paylet.onrender.com/d/${drop.slug}`);
+    expect(r.error).toBeUndefined();
+    expect(r.handoff?.title).toBe("Tidepool");
+    expect(r.reply).toContain(agent.AI_OFFLINE_NOTE);
+    expect(r.trace.map((t) => t.tool)).toEqual(["enter_drop"]);
+    expect(agent.slugIn("enter me in ember-glaze-mug-8f3a please")).toBe("ember-glaze-mug-8f3a");
+    expect(agent.slugIn("what drops are open?")).toBeNull();
+  });
+
   it("model unreachable before anything happened: the honest error reply (HTTP 200, error: true)", async () => {
     script.replies.push(new Error("AI HTTP 503"));
     const r = await chat("What drops are open?");

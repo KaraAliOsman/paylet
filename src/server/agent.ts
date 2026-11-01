@@ -51,6 +51,14 @@ Rules you must follow:
 - Be brief and warm: two or three short sentences, plain text.`;
 
 export const HONEST_ENTRY = "I've requested your entry. It only counts once you approve the hold in PayPal.";
+export const AI_OFFLINE_NOTE = "(My language model is offline right now, so I used my fixed rules for this one.)";
+
+/** A drop slug in a message: a pasted drop link (…/d/<slug>) or a bare slug like "ember-glaze-mug-8f3a". */
+export function slugIn(text: string): string | null {
+  const m = text.match(/\/d\/([a-z0-9]+(?:-[a-z0-9]+)*)/i) ?? text.match(/\b([a-z0-9]+(?:-[a-z0-9]+)*-[0-9a-f]{4})\b/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
 export const AGENT_ERROR_REPLY = "I couldn't reach Paylet just now. Nothing was requested or charged. Try again.";
 
 /** Statuses in which a hold really exists for the person (only then may Wren say they are in the ballot). */
@@ -206,6 +214,31 @@ export async function runFanAgent(history: { role: "user" | "assistant"; content
     console.warn("[wren]", String(e).slice(0, 200));
     // an entry was already requested: say exactly that (it exists), never "nothing was requested"
     if (handoff) return finish("");
+    // The model is unreachable (provider outage or budget) but the person pasted a drop link: Wren's one job needs no
+    // reasoning, so it requests the entry over the same MCP tool, deterministically, and says it ran without the model.
+    const slug = client && /^AI /.test(String((e as Error)?.message ?? "")) ? slugIn(history.filter((m) => m.role === "user").at(-1)?.content ?? "") : null;
+    if (client && slug) {
+      try {
+        const args = { drop: slug, agent_name: "Wren (fan's assistant)" };
+        const res = await client.callTool({ name: "enter_drop", arguments: args });
+        const structured = (res.structuredContent ?? null) as Record<string, any> | null;
+        trace.push({ tool: "enter_drop", summary: summarize("enter_drop", args, structured, textOf(res), Boolean(res.isError)), raw: { args, result: structured ?? textOf(res) } });
+        if (structured?.approve_url) {
+          handoff = {
+            entryRef: String(structured.entry_ref),
+            publicId: String(structured.public_id),
+            title: String(structured.title ?? ""),
+            holdCents: Math.round(Number(structured.hold_usd) * 100),
+            approveUrl: String(structured.approve_url),
+            expiresAt: Date.parse(String(structured.expires_at)) || Date.now() + 3 * 60 * 60_000,
+          };
+          const t = finish("");
+          return { ...t, reply: `${t.reply}\n\n${AI_OFFLINE_NOTE}` };
+        }
+      } catch (e2) {
+        console.warn("[wren] direct entry failed", String(e2).slice(0, 200));
+      }
+    }
     return { reply: AGENT_ERROR_REPLY, trace, handoff: null, error: true };
   } finally {
     await client?.close().catch(() => undefined);
