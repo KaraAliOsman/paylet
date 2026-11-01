@@ -183,7 +183,7 @@ test("ledger: PayPal trace chips behind a toggle, simulated runs folded, no SIMU
   await expect(group).toContainText("14 simulated holds released (labelled) · show");
   await group.locator("summary").click();
   await expect(group.locator(".ev-sub li")).toHaveCount(14);
-  expect(await ledger.innerText()).not.toContain("SIMULATED");
+  expect(await ledger.textContent()).not.toContain("SIMULATED");
   // trace off: status chips stay, endpoints go
   await page.getByTestId("trace-toggle").uncheck();
   await expect(ledger.locator(".pp-call")).toHaveCount(0);

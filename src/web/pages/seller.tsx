@@ -540,7 +540,7 @@ function Stepper(p: {
             ? `${nf(clusters.length)} group${clusters.length === 1 ? "" : "s"} found`
             : "Rules first, then the model on the fuzzy pairs",
       action: (
-        <button className={`btn btn-step ${aiRan ? "" : "btn-accent"}`} disabled={off} onClick={p.onAnalyze} data-testid="step-ai">
+        <button className="btn btn-step" disabled={off} onClick={p.onAnalyze} data-testid="step-ai">
           {p.busy === "ai" ? "AI reviewing…" : aiRan ? "Run the AI review again" : "Find households & networks"}
         </button>
       ),

@@ -120,7 +120,7 @@ export function VerifyPage({ slug }: { slug: string }) {
         <p className="eyebrow">Verify the draw</p>
         <h2>{d.title}</h2>
         <p className="muted">
-          {d.units} unit{d.units === 1 ? "" : "s"} · {d.frozenList ? `${n} eligible entries` : "entries still open"} · waitlist of {d.waitlistSize}
+          {d.units} unit{d.units === 1 ? "" : "s"} · {d.frozenList ? `${n} eligible ${n === 1 ? "entry" : "entries"}` : "entries still open"} · waitlist of {d.waitlistSize}
           {drop?.kind === "proof" && <span className="tag tag-real">real PayPal sandbox run</span>}
         </p>
 
@@ -195,7 +195,7 @@ function DrawTimeline({ d }: { d: VerifyData }) {
       title: "Freeze",
       detail: d.frozenHash ? (
         <>
-          {d.frozenList?.length ?? 0} eligible entries, list hashed{d.excluded?.length ? `, ${d.excluded.length} excluded` : ""}
+          {d.frozenList?.length ?? 0} eligible {(d.frozenList?.length ?? 0) === 1 ? "entry" : "entries"}, list hashed{d.excluded?.length ? `, ${d.excluded.length} excluded` : ""}
         </>
       ) : (
         <>at close</>
