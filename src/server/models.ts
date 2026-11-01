@@ -15,7 +15,7 @@ export interface DropRow {
   units: number;
   waitlist_size: number;
   closes_at: number;
-  status: "open" | "drawn" | "settled";
+  status: "open" | "frozen" | "drawn" | "settled";
   seed: string;
   seed_hash: string;
   frozen_hash: string | null;
@@ -26,6 +26,13 @@ export interface DropRow {
   kind: string;
   created_at: number;
   drawn_at: number | null;
+  frozen_at: number | null;
+  excluded_json: string | null;
+  randomness_round: number | null;
+  randomness_value: string | null;
+  randomness_hops: number;
+  final_seed: string | null;
+  proof_json: string | null;
 }
 
 export type EntryStatus =
@@ -79,6 +86,7 @@ export interface EntryRow {
   shipped_at: number | null;
   refund_id: string | null;
   refunded_cents: number | null;
+  promoted_at: number | null;
 }
 
 export interface ClusterRow {
@@ -92,6 +100,7 @@ export interface ClusterRow {
   explanation: string;
   member_ids: string;
   created_at: number;
+  normalized_key: string | null;
 }
 
 export function id(prefix: string, bytes = 8): string {

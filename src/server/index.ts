@@ -13,23 +13,25 @@ import {
   analyzeDrop,
   createDrop,
   decideCluster,
-  draw,
   ensureShowcase,
   fileAppeal,
   finalize,
+  freeze,
   handlers,
   listClusters,
   participantView,
   publicDrop,
   refundEntry,
+  scheduleReveal,
   shipEntry,
   startEntry,
   sweep,
+  verifyData,
 } from "./domain";
 import { emit, getDrop, getEntry, listEntries, type DropRow } from "./models";
 import { classify, ensureWebhook } from "./paypal";
 import { paypalCheck } from "./paypalcheck";
-import { maskId, traceFromData } from "./trace";
+import { maskId, toneOf, traceFromData } from "./trace";
 import { handlePayPalWebhook } from "./webhooks";
 import { pendingOps, startWorker } from "./queue";
 import { handleMcp } from "./mcp";
@@ -144,10 +146,11 @@ app.get("/api/drops/:slug/events", (c) => {
     real: 0 | 1;
     data_json: string | null;
   }[];
-  // data_json is never sent as is: only the whitelisted, already-masked PayPal trace (P1-01)
+  // data_json is never sent as is: only the whitelisted, already-masked PayPal trace (P1-01) and a "warn" tone
   const events = rows.reverse().map(({ data_json, ...e }) => {
     const trace = traceFromData(data_json);
-    return trace ? { ...e, trace } : e;
+    const tone = toneOf(data_json);
+    return { ...e, ...(trace ? { trace } : {}), ...(tone ? { tone } : {}) };
   });
   return c.json({ events });
 });
@@ -163,23 +166,9 @@ app.get("/api/drops/:slug/paypal-check", async (c) => {
   }
 });
 
-app.get("/api/drops/:slug/verify", (c) => {
-  const d = mustDrop(c.req.param("slug"));
-  const winners = listEntries(d.id)
-    .filter((e) => ["captured", "won", "capture_failed"].includes(e.status))
-    .map((e) => ({ publicId: e.public_id, status: e.status }));
-  return c.json({
-    title: d.title,
-    status: d.status,
-    units: d.units,
-    waitlistSize: d.waitlist_size,
-    seedHash: d.seed_hash,
-    seed: d.status === "open" ? null : d.seed,
-    frozenHash: d.frozen_hash,
-    frozenList: d.frozen_list ? JSON.parse(d.frozen_list) : null,
-    outcome: winners,
-  });
-});
+app.get("/api/drops/:slug/verify", (c) => c.json(verifyData(mustDrop(c.req.param("slug")))));
+/** alias of /verify (the data behind the /verify page) */
+app.get("/api/drops/:slug/verify-data", (c) => c.json(verifyData(mustDrop(c.req.param("slug")))));
 
 app.post("/api/drops/:slug/entries", async (c) => {
   if (!limit(c, "entry", 20)) return c.json({ error: "rate_limited" }, 429);
@@ -338,10 +327,13 @@ app.post("/api/seller/:slug/entries/:id/refund", async (c) => {
   return c.json({ ok: true });
 });
 
+// P0-03 + P2-10: freezes now (409 pending_reviews / no_eligible_entries / holds_pending), reveals with drand in a few seconds
 app.post("/api/seller/:slug/draw", async (c) => {
   const d = seller(c);
-  const r = await draw(d.id);
-  return c.json({ winners: r.winners, waitlist: r.waitlist, frozenHash: r.frozenHash });
+  const { force } = (await c.req.json().catch(() => ({}))) as { force?: unknown };
+  const f = await freeze(d.id, { force: force === true });
+  if (f.status === "frozen") void scheduleReveal(f.dropId);
+  return c.json({ status: f.status, frozenHash: f.frozenHash, eligible: f.eligible, excluded: f.excluded, round: f.round, revealAt: f.revealAt });
 });
 
 // ---------------------------------------------------------------- MCP endpoint for AI agents
@@ -398,7 +390,7 @@ async function boot() {
     setInterval(() => {
       const busy =
         pendingOps() > 0 ||
-        (db.prepare("SELECT COUNT(*) n FROM drops WHERE kind = 'judge' AND status = 'open'").get() as { n: number }).n > 0 ||
+        (db.prepare("SELECT COUNT(*) n FROM drops WHERE (kind = 'judge' AND status = 'open') OR status = 'frozen'").get() as { n: number }).n > 0 ||
         (db.prepare("SELECT COUNT(*) n FROM entries e JOIN drops d ON d.id = e.drop_id WHERE e.source <> 'simulated' AND e.status IN ('held','won','authorizing') AND d.kind = 'judge'").get() as { n: number }).n > 0;
       if (busy) void fetch(`${env.PUBLIC_URL.replace(/\/$/, "")}/api/health`, { signal: AbortSignal.timeout(10_000) }).catch(() => undefined);
     }, 9 * 60_000);

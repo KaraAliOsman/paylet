@@ -2,6 +2,7 @@
 // clock skew, JSON shape, rate limit), and the raw body reaches the verification byte for byte.
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { pp, webhookHeaders } from "./helpers/fakePaypal";
+import { installFakeDrand } from "./helpers/fakeDrand";
 
 vi.mock("../src/server/paypal", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/server/paypal")>()),
@@ -12,6 +13,7 @@ let app: typeof import("../src/server/index")["app"];
 let precheck: typeof import("../src/server/webhooks")["precheckWebhook"];
 
 beforeAll(async () => {
+  installFakeDrand();
   app = (await import("../src/server/index")).app;
   precheck = (await import("../src/server/webhooks")).precheckWebhook;
 });

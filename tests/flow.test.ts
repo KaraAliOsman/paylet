@@ -2,6 +2,7 @@
 // duplicate account → no hold, failed capture → waitlist promotion, losers voided, webhook signature enforced, MCP reachable.
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { pp } from "./helpers/fakePaypal";
+import { installFakeDrand } from "./helpers/fakeDrand";
 
 vi.hoisted(() => {
   process.env.PAYPAL_OPS_PER_MINUTE = "100000"; // the token bucket would otherwise throttle the drained queue
@@ -17,6 +18,7 @@ let models: typeof import("../src/server/models");
 let appMod: typeof import("../src/server/index");
 
 beforeAll(async () => {
+  installFakeDrand();
   domain = await import("../src/server/domain");
   queue = await import("../src/server/queue");
   models = await import("../src/server/models");
