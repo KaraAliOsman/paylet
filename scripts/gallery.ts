@@ -24,7 +24,7 @@ await snap("home", "/");
 await snap("seller", `/seller/${slug}?k=${sellerKey}`, 3500);
 // agent conversation
 await page.goto(`${base}/agent?drop=${slug}`, { waitUntil: "networkidle" });
-await page.getByRole("button", { name: "Send" }).click();
+await page.getByRole("button", { name: /Get me into this drop/ }).click();
 await page.getByText(/Your agent stopped here/).waitFor({ timeout: 120_000 }).catch(async (e) => { await page.screenshot({ path: "../shots/agent-fail.png", fullPage: true }); throw e; });
 await page.waitForTimeout(800);
 await page.screenshot({ path: `${out}/agent.png`, fullPage: true });

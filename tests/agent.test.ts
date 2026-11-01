@@ -122,9 +122,14 @@ describe("P0-04 / P2-02 Wren over MCP", () => {
     // the approval must happen before the drop closes (here sooner than PayPal's 3-hour link lifetime)
     expect(Math.abs(r.handoff!.expiresAt - Math.min(e.created_at + 3 * 60 * 60_000, drop.closes_at))).toBeLessThan(1000);
     expect(r.approveUrl).toBe(e.approve_url); // v1 field, still sent
-    expect(r.reply).toBe(`Requested entry ${e.public_id} in "Tidepool". Approve the $77.00 hold in PayPal; you're only charged if you win.\n\n${agent.HONEST_ENTRY}`);
+    expect(r.reply).toBe(`Requested entry ${e.public_id} in "Tidepool". It only counts once you approve the $77.00 hold in PayPal; you're only charged if you win.`);
     expect(r.reply).not.toMatch(/https?:|🎉|\[/);
     expect(r.trace).toEqual([{ tool: "enter_drop", summary: `enter_drop(${drop.slug}) → awaiting_person`, raw: expect.objectContaining({ args: expect.any(Object) }) }]);
+  });
+
+  it("after a handoff, model sentences that repeat the hold/money line are dropped; anything else is kept", () => {
+    expect(agent.extraSentences("I've requested your entry. It only counts once you approve the hold in PayPal. PayPal places a $48 hold when you approve.")).toBe("");
+    expect(agent.extraSentences("I've requested your entry. The draw is at 12:10 PM, good luck!")).toBe("The draw is at 12:10 PM, good luck!");
   });
 
   it("model unreachable before anything happened: the honest error reply (HTTP 200, error: true)", async () => {
@@ -139,7 +144,7 @@ describe("P0-04 / P2-02 Wren over MCP", () => {
     const r = await chat(`enter me in ${drop.slug}`);
     expect(r.error).toBeUndefined();
     expect(r.handoff?.title).toBe("Tidepool");
-    expect(r.reply).toMatch(/^Requested entry E-\w+ in "Tidepool"\. Approve the \$77\.00 hold in PayPal; you're only charged if you win\.$/);
+    expect(r.reply).toMatch(/^Requested entry E-\w+ in "Tidepool"\. It only counts once you approve the \$77\.00 hold in PayPal; you're only charged if you win\.$/);
   });
 
   it("list_drops never lists judge drops (P0-10); trace summaries are chips", async () => {

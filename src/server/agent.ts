@@ -125,7 +125,17 @@ function summarize(tool: string, args: Record<string, unknown>, structured: Reco
 
 /** Deterministic first line once enter_drop returned structured data (the model never phrases the money part). */
 export function requestedLine(h: AgentHandoff): string {
-  return `Requested entry ${h.publicId} in "${h.title}". Approve the ${formatUsd(h.holdCents)} hold in PayPal; you're only charged if you win.`;
+  return `Requested entry ${h.publicId} in "${h.title}". It only counts once you approve the ${formatUsd(h.holdCents)} hold in PayPal; you're only charged if you win.`;
+}
+
+/** After a handoff the deterministic line already covers the request, the hold and the money: keep only the model
+ *  sentences that add something else (an answer to another question, a drop tip), so Wren never says it three times. */
+export function extraSentences(text: string): string {
+  const sentences = text.split(/(?<=[.!?])\s+(?=[A-Z"'(])/);
+  return sentences
+    .filter((x) => x.trim() && !/\b(hold|approv\w*|charg\w*|request\w*|entry|entries|void\w*|win|PayPal)\b/i.test(x))
+    .join(" ")
+    .trim();
 }
 
 export async function runFanAgent(history: { role: "user" | "assistant"; content: string }[]): Promise<AgentTurn> {
@@ -136,8 +146,9 @@ export async function runFanAgent(history: { role: "user" | "assistant"; content
     let reply = cleanReply(modelText, { holdConfirmed });
     if (handoff) {
       const first = requestedLine(handoff);
-      // the model's own words follow, unless they only repeat the deterministic line
-      reply = reply && !reply.includes(handoff.publicId) ? `${first}\n\n${reply}` : first;
+      // the model's own words follow only where they add something the deterministic line doesn't already say
+      const extra = reply && !reply.includes(handoff.publicId) ? extraSentences(reply) : "";
+      reply = extra ? `${first}\n\n${extra}` : first;
     }
     if (!reply) reply = "I can find open drops or request an entry for you. Paste a drop link, or ask what's open.";
     return { reply, trace, handoff, ...(handoff ? { approveUrl: handoff.approveUrl, entryRef: handoff.entryRef } : {}) };

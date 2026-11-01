@@ -427,3 +427,6 @@ td code, th code { font-family: var(--mono); font-size: 12px; }
 /* /how: the explainer card runs the full width of the diagram card above it */
 .how .card.narrow { max-width: none; }
 .how .prose p, .how .faq dd { max-width: 78ch; }
+/* ledger: the mono uppercase tags need a wider second column */
+.ticker ol > li { grid-template-columns: 62px 96px minmax(0, 1fr); }
+@media (max-width: 600px) { .ticker ol > li { grid-template-columns: auto minmax(0, 1fr); } }
