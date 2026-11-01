@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { api, apiOptional, clock, nf, usd, type GlobalStats, type ProofInfo, type PublicDrop } from "../api";
 import { HoldDemo } from "../hold-demo";
+import { HoldField } from "../hold-field";
 import { ArrowIcon, BotIcon, CheckIcon, DiceIcon, PlayIcon, ShieldIcon, UserIcon } from "../icons";
 import { Link } from "../router";
 
@@ -43,44 +44,71 @@ export function Home() {
   const verifyHref = proof?.slug ? `/verify/${proof.slug}` : null;
   return (
     <>
-      <section className="hero">
-        <div className="hero-copy">
-          {verifyHref ? (
-            <Link className="hero-eyebrow" href={verifyHref}>
-              <i>Proof</i> A finished run with real PayPal sandbox money <ArrowIcon size={13} />
-            </Link>
-          ) : (
-            <p className="hero-eyebrow">
-              <i>Sandbox</i> Fair drops for the agent era
-            </p>
-          )}
-          <h1 className="hero-title">
-            One unit per PayPal account. <span>Agents welcome.</span>
-          </h1>
-          <p className="hero-lede">
-            Every entry is a PayPal hold. One per PayPal account. Losers are never charged.
-          </p>
-          <div className="cta">
-            <Link className="btn btn-primary btn-lg" href="/judge">
-              Judges: 2-minute guided demo
-            </Link>
-            {drop && (
-              <Link className="btn btn-lg" href={`/d/${drop.slug}`}>
-                Enter the {drop.title} drop
+      <section className="hero-band">
+        <div className="mesh" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+          <i />
+        </div>
+        <HoldField />
+        <div className="hero">
+          <div className="hero-copy">
+            {verifyHref ? (
+              <Link className="hero-eyebrow" href={verifyHref}>
+                <i>Proof</i> A finished run with real PayPal sandbox money <ArrowIcon size={13} />
               </Link>
+            ) : (
+              <p className="hero-eyebrow">
+                <i>Sandbox</i> Fair drops for the agent era
+              </p>
             )}
+            <h1 className="hero-title">
+              One unit per PayPal account. <span>Agents welcome.</span>
+            </h1>
+            <p className="hero-lede">Every entry is a PayPal hold. One per PayPal account. Losers are never charged.</p>
+            <div className="cta">
+              <Link className="btn btn-hero btn-lg" href="/judge">
+                Judges: 2-minute guided demo <ArrowIcon size={16} />
+              </Link>
+              {drop && (
+                <Link className="btn btn-glass btn-lg" href={`/d/${drop.slug}`}>
+                  Enter the {drop.title} drop
+                </Link>
+              )}
+            </div>
             <Link className="cta-link" href="/agent">
               <BotIcon size={16} /> Let my AI agent enter <ArrowIcon size={14} />
             </Link>
+            {VIDEO_URL && (
+              <a className="video-link" href={VIDEO_URL} target="_blank" rel="noopener">
+                <PlayIcon size={15} /> Watch the demo video
+              </a>
+            )}
+            <LiveCounters stats={stats} />
           </div>
-          {VIDEO_URL && (
-            <a className="video-link" href={VIDEO_URL} target="_blank" rel="noopener">
-              <PlayIcon size={15} /> Watch the demo video
-            </a>
-          )}
-          <LiveCounters stats={stats} />
+          <div className="hero-visual">
+            <HoldDemo verifyHref={verifyHref} />
+            <div className="float-chip fc-pp" aria-hidden="true">
+              <span className="ico">
+                <ShieldIcon size={15} />
+              </span>
+              <span>
+                Approved in PayPal
+                <small>by the person, not the agent</small>
+              </span>
+            </div>
+            <div className="float-chip fc-bots" aria-hidden="true">
+              <span className="ico">
+                <BotIcon size={15} />
+              </span>
+              <span>
+                12 scalper agents
+                <small>12 links issued · 0 holds</small>
+              </span>
+            </div>
+          </div>
         </div>
-        <HoldDemo verifyHref={verifyHref} />
       </section>
 
       <section className="sec" aria-labelledby="flow-title">
@@ -107,11 +135,7 @@ export function Home() {
         </ol>
       </section>
 
-      {proof?.slug && (
-        <section className="sec">
-          <ProofCard proof={proof} />
-        </section>
-      )}
+      {proof?.slug && <ProofCard proof={proof} />}
 
       <section className="sec two">
         <div className="card">
@@ -189,7 +213,30 @@ function LiveCounters({ stats }: { stats: GlobalStats | null | undefined }) {
 
 function ProofCard({ proof }: { proof: ProofInfo }) {
   return (
-    <section className="card proof" aria-labelledby="proof-title">
+    <section className="proof-band" aria-labelledby="proof-title">
+      <div className="proof-head">
+        <p className="eyebrow">Not a mockup</p>
+        <h2>Every number here came back from PayPal.</h2>
+      </div>
+      <div className="proof-facts-big" aria-hidden="true">
+        <div>
+          <b>$44.50</b>
+          <span>captured from the one winner</span>
+        </div>
+        <div>
+          <b>$3.50</b>
+          <span>of the hold released</span>
+        </div>
+        <div>
+          <b>13 → 0</b>
+          <span>agent requests → holds without a person</span>
+        </div>
+        <div>
+          <b>$0.00</b>
+          <span>charged to anyone who lost</span>
+        </div>
+      </div>
+      <div className="card proof">
       <span className="proof-badge" aria-hidden="true">
         <ShieldIcon size={20} />
       </span>
@@ -205,6 +252,7 @@ function ProofCard({ proof }: { proof: ProofInfo }) {
         <Link className="btn" href={`/d/${proof.slug}`}>
           Open the drop
         </Link>
+      </div>
       </div>
     </section>
   );

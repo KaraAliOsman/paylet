@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { loadCoreSdkScript } from "@paypal/paypal-js/sdk-v6";
 import { api, friendlyError, type Participant } from "./api";
-import { Link, navigate } from "./router";
+import { Link, navigate, usePath } from "./router";
 
 declare module "react" {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -15,9 +15,18 @@ declare module "react" {
 // ---------------------------------------------------------------- layout
 
 export function Shell({ children }: { children: ReactNode }) {
+  const { path } = usePath();
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 24);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
+  const onHero = path === "/" && !scrolled;
   return (
-    <div className="shell">
-      <header className="topbar">
+    <div className={`shell ${path === "/" ? "is-home" : "is-inner"}`}>
+      <header className={`topbar ${onHero ? "topbar-hero" : ""} ${scrolled ? "is-scrolled" : ""}`}>
         <Link href="/" className="brand">
           <BrandMark />
           <span className="brand-word">Paylet</span>
@@ -52,7 +61,7 @@ export function Shell({ children }: { children: ReactNode }) {
 export function BrandMark({ size = 26 }: { size?: number }) {
   return (
     <svg className="brand-mark" width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-      <rect width="32" height="32" rx="9" fill="#141414" />
+      <rect width="32" height="32" rx="9" fill="#0b1026" />
       <circle cx="16" cy="16" r="8.6" fill="none" stroke="#fff" strokeWidth="2.2" strokeDasharray="3.4 2.35" strokeLinecap="round" />
       <circle cx="16" cy="16" r="3.6" fill="#ff5a1f" />
     </svg>
