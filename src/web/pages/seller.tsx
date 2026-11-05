@@ -263,8 +263,8 @@ export function SellerPage({ slug }: { slug: string }) {
   if (err && !data)
     return (
       <section className="card narrow">
-        <p className="eyebrow">Seller console</p>
         <h2>{err.code === "seller_key_required" ? "This console needs its private link" : "Couldn't open the console"}</h2>
+        <p className="context">Seller console</p>
         <p>{err.text}</p>
         <div className="row gap wrap">
           <Link className="btn btn-primary" href="/judge">
@@ -293,8 +293,8 @@ export function SellerPage({ slug }: { slug: string }) {
       <section className="card seller-head">
         <Art art={drop.art} size={96} />
         <div className="grow">
-          <p className="eyebrow">Seller console · {drop.maker}</p>
           <h1>{drop.title}</h1>
+          <p className="context">Seller console · {drop.maker}</p>
           <p className="muted">
             {drop.units} units · {usd(drop.priceCents)} + shipping (hold {usd(drop.priceCents + drop.shipHoldCents)}, actual {usd(drop.shipActualCents)}) ·{" "}
             {open ? `closes in ${timeLeft(drop.closesAt - Date.now())}` : STATUS_WORD[drop.status]}

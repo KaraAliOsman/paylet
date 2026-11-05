@@ -4,6 +4,9 @@ All notable changes to Paylet. Dates are in America/Santiago time. Format: [Keep
 
 ## [Unreleased]
 
+### Changed
+- A quieter interface: Inter on a white canvas, the real ledger as the home page's main image, amber only for holds, and no dark bands or nested boxes.
+
 ### Fixed
 - A capture whose result is unknown no longer hands the unit on: the op stays alive until PayPal answers. A capture that
   landed after Paylet gave up is reconciled, and refunded in full if the unit already went to the next fan.
@@ -14,7 +17,7 @@ All notable changes to Paylet. Dates are in America/Santiago time. Format: [Keep
 - The reveal is one transaction, an op stays pending until its failure handler finished, and the sweeper finishes a drawn
   drop that a restart left behind.
 - Appeals work: a confirmed group reaches the fan before the draw, and an appeal returns it to the seller.
-- Production served fallback fonts because the CSP blocked Google Fonts: Archivo and JetBrains Mono are now self-hosted.
+- Production served fallback fonts because the CSP blocked Google Fonts: the fonts are now self-hosted.
 - The proof drop's PayPal panel says it is a recorded answer. "$0 charged to anyone who lost" only shows when somebody lost.
 
 ### Security

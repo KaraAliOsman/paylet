@@ -103,7 +103,7 @@ export function LiveBoard({ slug }: { slug: string | null }) {
     <figure className="board" aria-label="Replay of the proof drop's real PayPal ledger">
       <figcaption className="board-head">
         <span className="board-title">
-          <span className="board-rec" aria-hidden="true" /> Proof drop · real PayPal sandbox ledger
+          Proof drop · real PayPal sandbox ledger
         </span>
         {slug && (
           <Link href={`/verify/${slug}`} className="board-link">
@@ -111,6 +111,7 @@ export function LiveBoard({ slug }: { slug: string | null }) {
           </Link>
         )}
       </figcaption>
+      <div className={`board-prog ${shown === 0 ? "is-reset" : ""}`} style={{ transform: `scaleX(${rows.length ? shown / rows.length : 0})` }} aria-hidden="true" />
       <ol className="board-rows">
         {rows.length === 0 && <li className="board-empty">{events === null && slug ? "Loading the ledger…" : "The proof drop's ledger shows up here."}</li>}
         {rows.map((r, i) => (

@@ -63,12 +63,12 @@ export function DropPage({ slug }: { slug: string }) {
   return (
     <div className="drop">
       <section className="card drop-main">
-        <Art art={drop.art} size={260} />
+        <Art art={drop.art} size={340} />
         <div className="drop-info">
-          <p className="eyebrow">
+          <h1>{drop.title}</h1>
+          <p className="context">
             {drop.kind === "judge" ? "Judge drop · 30 minutes" : drop.kind === "proof" ? "Proof drop · real PayPal sandbox run" : "Limited drop"}
           </p>
-          <h1>{drop.title}</h1>
           <p className="maker">by {drop.maker}</p>
           <p>{drop.blurb}</p>
           <div className="stats">
@@ -137,7 +137,7 @@ export function DropPage({ slug }: { slug: string }) {
           ) : (
             <div className="entry-box">
               <p>{closedCopy(drop.status, drop.closesAt, now)}</p>
-              <Link className="btn" href={`/verify/${drop.slug}`}>
+              <Link className="btn btn-primary" href={`/verify/${drop.slug}`}>
                 Verify the draw
               </Link>
             </div>
@@ -200,15 +200,16 @@ export function ReturnPage({ entryId, cancelled }: { entryId: string; cancelled:
 export function NotFound({ what }: { what: "drop" | "entry" | "page" }) {
   return (
     <section className="card narrow not-found" aria-labelledby="nf-title">
-      <p className="eyebrow">{what === "page" ? "404" : "Gone"}</p>
       {what === "page" ? (
         <>
           <h2 id="nf-title">There's no page here</h2>
+          <p className="context">404</p>
           <p>The link may be mistyped. Everything in the demo starts from one of these:</p>
         </>
       ) : (
         <>
           <h2 id="nf-title">That {what} isn't here anymore</h2>
+          <p className="context">Gone</p>
           <p>The public demo runs on free hosting and its data resets when it restarts. Nothing was charged.</p>
         </>
       )}
@@ -256,8 +257,8 @@ export function MePage({ entryId }: { entryId: string }) {
       <div className="row gap center">
         <Art art={p.drop.art} size={88} />
         <div>
-          <p className="eyebrow">Your entry {p.publicId}</p>
           <h2>{p.drop.title}</h2>
+          <p className="context">Your entry {p.publicId}</p>
           <p className="muted">by {p.drop.maker}</p>
         </div>
       </div>

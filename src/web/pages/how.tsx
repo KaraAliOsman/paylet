@@ -67,8 +67,8 @@ export function HowPage() {
   return (
     <div className="how">
       <section className="card how-top">
-        <p className="eyebrow">How it works</p>
         <h1>Agents can enter. Only people can pay.</h1>
+        <p className="context">How it works</p>
         <p className="lede">
           Every entry is a PayPal hold, one per PayPal account, and losers are never charged. Here is every call, in order. Blue arrows are real PayPal sandbox
           API calls.

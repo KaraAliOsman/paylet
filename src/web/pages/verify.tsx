@@ -131,8 +131,8 @@ export function VerifyPage({ slug }: { slug: string }) {
   return (
     <div className="verify-page">
       <section className="card verify">
-        <p className="eyebrow">Verify the draw</p>
         <h2>{d.title}</h2>
+        <p className="context">Verify the draw</p>
         <p className="muted">
           {d.units} unit{d.units === 1 ? "" : "s"} · {d.frozenList ? `${n} eligible ${n === 1 ? "entry" : "entries"}` : "entries still open"} · waitlist of {d.waitlistSize}
           {drop?.kind === "proof" && <span className="tag tag-real">real PayPal sandbox run</span>}

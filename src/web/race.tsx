@@ -28,7 +28,6 @@ export function RaceVsBallot() {
   return (
     <section className="race" aria-labelledby="race-title">
       <div className="race-copy">
-        <p className="kicker">Why not just sell it fast</p>
         <h2 id="race-title">A race rewards the fastest bot.</h2>
         <p>Ten mugs, three hundred real fans, and one reseller. Move the slider to give that reseller more PayPal accounts.</p>
         <p>The FTC alleges one broker used 1,300 accounts on a single concert.</p>

@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "@fontsource-variable/archivo/wdth.css";
+import "@fontsource-variable/inter/opsz.css";
 import "@fontsource-variable/jetbrains-mono/index.css";
 import "./theme.css";
 import { Shell } from "./components";

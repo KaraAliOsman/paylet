@@ -20,5 +20,5 @@ Full license text: https://www.apache.org/licenses/LICENSE-2.0
 - `src/web/assets/tidepool.jpg`: photo by Jay Zhang, https://unsplash.com/photos/ZByWaPXD2fU (cropped and resized).
 The Unsplash License (https://unsplash.com/license) allows free commercial and non-commercial use without permission;
 credit is given here anyway.
-- `@fontsource-variable/archivo` and `@fontsource-variable/jetbrains-mono`: Archivo and JetBrains Mono, SIL Open Font License 1.1, bundled and self-hosted.
+- `@fontsource-variable/inter` and `@fontsource-variable/jetbrains-mono`: Inter and JetBrains Mono, SIL Open Font License 1.1, bundled and self-hosted.
 - `@noble/curves`: BLS12-381 signature verification, MIT.

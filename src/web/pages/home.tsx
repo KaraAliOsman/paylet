@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, apiOptional, clock, nf, usd, type DropReport, type GlobalStats, type ProofInfo, type PublicDrop } from "../api";
 import { HoldDemo } from "../hold-demo";
-import { ArrowIcon, BotIcon, PlayIcon } from "../icons";
+import { ArrowIcon, PlayIcon } from "../icons";
 import { LiveBoard } from "../live-board";
 import { RaceVsBallot } from "../race";
 import { Link } from "../router";
@@ -47,61 +47,48 @@ export function Home() {
   return (
     <>
       <section className="hx">
-        <p className="kicker">For makers with more fans than stock · on PayPal</p>
         <h1 className="hx-title">
-          One unit per{" "}
-          <span className="hx-held">
-            <span className="held-tag" aria-hidden="true">
-              Hold · $48.00 · authorized
-            </span>
-            PayPal account.
-          </span>{" "}
-          <span className="hx-second">Agents welcome.</span>
+          One unit per PayPal account.
+          <br />
+          Agents welcome.
         </h1>
-        <div className="hx-grid">
-          <div className="hx-copy">
-            <p className="hx-lede">Every entry is a PayPal hold. One per PayPal account. Losers are never charged.</p>
-            <div className="cta">
-              <Link className="btn btn-primary btn-lg" href="/judge">
-                Judges: 2-minute guided demo <ArrowIcon size={16} />
-              </Link>
-              {drop && (
-                <Link className="btn btn-lg" href={`/d/${drop.slug}`}>
-                  Enter the {drop.title} drop
-                </Link>
-              )}
-            </div>
-            <Link className="cta-link" href="/agent">
-              <BotIcon size={16} /> Let my AI agent enter <ArrowIcon size={14} />
+        <p className="hx-lede">For makers with more fans than stock. Every entry is a PayPal hold. One per PayPal account. Losers are never charged.</p>
+        <div className="cta">
+          <Link className="btn btn-primary btn-lg" href="/judge">
+            Judges: 2-minute guided demo
+          </Link>
+          {drop && (
+            <Link className="btn btn-lg" href={`/d/${drop.slug}`}>
+              Enter the {drop.title} drop
             </Link>
-            {VIDEO_URL && (
-              <a className="video-link" href={VIDEO_URL} target="_blank" rel="noopener">
-                <PlayIcon size={15} /> Watch the demo video
-              </a>
-            )}
-            <LiveCounters stats={stats} />
-          </div>
-          <LiveBoard slug={proofSlug} />
+          )}
+          <Link className="cta-link" href="/agent">
+            Let my AI agent enter <ArrowIcon size={14} />
+          </Link>
         </div>
+        {VIDEO_URL && (
+          <a className="video-link" href={VIDEO_URL} target="_blank" rel="noopener">
+            <PlayIcon size={15} /> Watch the demo video
+          </a>
+        )}
+        <LiveCounters stats={stats} />
+        <LiveBoard slug={proofSlug} />
       </section>
 
       <section className="rules" aria-labelledby="rules-title">
         <h2 id="rules-title" className="sr-only">
           The three rules
         </h2>
-        {RULES.map((r, i) => (
+        {RULES.map((r) => (
           <article key={r.title} className="rule">
-            <span className="rule-n">{String(i + 1).padStart(2, "0")}</span>
             <h3>{r.title}</h3>
             <p>{r.text}</p>
-            <code>{r.api}</code>
           </article>
         ))}
       </section>
 
       <section className="outcomes" aria-labelledby="outcomes-title">
         <div className="outcomes-copy">
-          <p className="kicker">What happens to your $48</p>
           <h2 id="outcomes-title">A hold, not a charge.</h2>
           <p>
             The fan approves the price plus the most shipping could cost. Nothing moves until the draw. Then PayPal does exactly one of these, and
@@ -127,11 +114,10 @@ export function Home() {
         </div>
         <ol className="timeline">
           {FLOW.map((f, i) => (
-            <li key={f.title} className={f.real ? "real" : ""}>
+            <li key={f.title}>
               <span className="tl-n">{i + 1}</span>
               <b>{f.title}</b>
               <p>{f.text}</p>
-              <code>{f.api}</code>
             </li>
           ))}
         </ol>
@@ -139,30 +125,8 @@ export function Home() {
 
       {proof?.slug && <ProofCard proof={proof} />}
 
-      <section className="sec two">
-        <div className="card">
-          <p className="kicker">For AI agents</p>
-          <h3>Paylet speaks MCP</h3>
-          <p>
-            Any assistant can enter drops for its person through Paylet's MCP server. It can <b>request</b> an entry. It can never approve or pay.
-          </p>
-          <code className="block">{mcp || "…/mcp"}</code>
-          <p className="muted small">Tools: list_drops · enter_drop · entry_status (Streamable HTTP)</p>
-        </div>
-        <div className="card">
-          <p className="kicker">For judges</p>
-          <h3>Try to scalp us</h3>
-          <p>
-            Spin up your own 30-minute drop with its own seller console, then try to get two units with one PayPal account. A checklist walks you through it.
-          </p>
-          <Link className="btn btn-primary" href="/judge">
-            Start a judge drop <ArrowIcon size={15} />
-          </Link>
-        </div>
-      </section>
-
       {data && data.past.length > 0 && (
-        <section className="sec card">
+        <section className="sec past">
           <h3>Past drops (verifiable)</h3>
           <ul className="plain">
             {data.past.map((d) => (
@@ -176,6 +140,25 @@ export function Home() {
           </ul>
         </section>
       )}
+      <section className="closing">
+        <div>
+          <h2>Paylet speaks MCP</h2>
+          <p>
+            Any assistant can enter drops for its person through Paylet's MCP server. It can <b>request</b> an entry. It can never approve or pay.
+          </p>
+          <code className="block">{mcp || "…/mcp"}</code>
+          <p className="closing-note">Tools: list_drops · enter_drop · entry_status (Streamable HTTP)</p>
+        </div>
+        <div>
+          <h2>Try to scalp us</h2>
+          <p>
+            Spin up your own 30-minute drop with its own seller console, then try to get two units with one PayPal account. A checklist walks you through it.
+          </p>
+          <Link className="btn btn-primary" href="/judge">
+            Start a judge drop
+          </Link>
+        </div>
+      </section>
     </>
   );
 }
@@ -192,21 +175,16 @@ function LiveCounters({ stats }: { stats: GlobalStats | null | undefined }) {
       ]
     : [];
   return (
-    <div className="live" aria-live="polite" aria-busy={!stats}>
-      <span className="live-tag">
-        <span className="live-dot" aria-hidden="true" /> Live · real PayPal sandbox calls only
-      </span>
-      <div className="live-row">
-        {stats
-          ? items.map(([n, l]) => (
-              <div key={l} className="live-item">
-                <b>{n}</b>
-                <span>{l}</span>
-              </div>
-            ))
-          : [0, 1, 2].map((i) => <div key={i} className="live-item skeleton" />)}
-      </div>
-    </div>
+    <p className="live" aria-live="polite" aria-busy={!stats}>
+      <span className="live-dot" aria-hidden="true" />
+      <span className="live-tag">Live · real PayPal sandbox calls only</span>
+      {stats &&
+        items.map(([n, l]) => (
+          <span key={l} className="live-item">
+            <b>{n}</b> {l}
+          </span>
+        ))}
+    </p>
   );
 }
 
@@ -214,14 +192,23 @@ function ProofCard({ proof }: { proof: ProofInfo }) {
   const report = usePolled<DropReport>(`/api/drops/${proof.slug}/report`, 0);
   const released = report ? usd(report.shippingReleasedCents) : "…";
   return (
-    <section className="sec proof-sec" aria-labelledby="proof-title">
-      <div className="proof-grid">
-        <div className="proof-copy">
-          <p className="kicker">Not a mockup</p>
-          <h2>Every number here came back from PayPal.</h2>
+    <section className="proof-band" aria-labelledby="proof-title">
+      <div className="proof-copy">
+        <h2>Every number here came back from PayPal.</h2>
+        {proof.summary && <p>{proof.summary}</p>}
+        <div className="proof-actions">
+          <Link className="btn btn-primary" href={`/verify/${proof.slug}`}>
+            Verify + ask PayPal
+          </Link>
+          <Link className="btn" href={`/d/${proof.slug}`}>
+            Open the drop
+          </Link>
         </div>
-        <dl className="proof-nums">
-          <div>
+      </div>
+      <article className="run">
+        <h3 id="proof-title">A finished run with real PayPal sandbox money</h3>
+        <dl>
+          <div className="is-money">
             <dt>Captured from the winner</dt>
             <dd>{report ? usd(report.capturedCents) : "…"}</dd>
           </div>
@@ -238,22 +225,8 @@ function ProofCard({ proof }: { proof: ProofInfo }) {
             <dd>{report ? (report.holdsVoided ? usd(report.chargedToLosersCents) : report.sameAccountDuplicates) : "…"}</dd>
           </div>
         </dl>
-      </div>
-      <div className="card proof">
-        <div className="proof-body">
-          <h3 id="proof-title">A finished run with real PayPal sandbox money</h3>
-          {proof.summary && <p>{proof.summary}</p>}
-          {proof.checkedAt && <p className="muted small">Every ID re-checked with PayPal at {clock(proof.checkedAt)}.</p>}
-        </div>
-        <div className="proof-actions">
-          <Link className="btn btn-primary" href={`/verify/${proof.slug}`}>
-            Verify + ask PayPal
-          </Link>
-          <Link className="btn" href={`/d/${proof.slug}`}>
-            Open the drop
-          </Link>
-        </div>
-      </div>
+        {proof.checkedAt && <p className="run-foot">Every ID re-checked with PayPal at {clock(proof.checkedAt)}.</p>}
+      </article>
     </section>
   );
 }
@@ -262,24 +235,21 @@ const RULES = [
   {
     title: "One PayPal account, one unit.",
     text: "PayPal's own order record says who approved. A second approval from the same account never becomes a hold.",
-    api: "payer_id · HMAC · unique per drop",
   },
   {
     title: "Agents can ask. People approve.",
     text: "Any AI agent can request an entry over MCP. It gets a PayPal approval link, and that's where it stops.",
-    api: "MCP enter_drop → PAYER_ACTION_REQUIRED",
   },
   {
     title: "Losing costs nothing.",
     text: "Every entry is an authorization. Winners pay the price plus real shipping; every other hold is voided.",
-    api: "AUTHORIZE → capture | void",
   },
 ];
 
-const FLOW: { title: string; text: string; api: string; real?: boolean }[] = [
-  { title: "Request", text: "A fan, or their AI agent over MCP, asks for an entry.", api: "MCP enter_drop" },
-  { title: "Approve a hold", text: "The person approves a hold in PayPal. Agents can't.", api: "Orders v2 · AUTHORIZE", real: true },
-  { title: "One per account", text: "PayPal's order record says who approved. A second entry from that account gets no hold.", api: "payer_id", real: true },
-  { title: "Public draw", text: "The list is frozen, then public randomness picks the winners. Re-run it yourself.", api: "SHA-256 + drand" },
-  { title: "Settle", text: "Winners pay price + real shipping. Everyone else: hold voided, $0.", api: "capture · void", real: true },
+const FLOW: { title: string; text: string }[] = [
+  { title: "Request", text: "A fan, or their AI agent over MCP, asks for an entry." },
+  { title: "Approve a hold", text: "The person approves a hold in PayPal. Agents can't." },
+  { title: "One per account", text: "PayPal's order record says who approved. A second entry from that account gets no hold." },
+  { title: "Public draw", text: "The list is frozen, then public randomness picks the winners. Re-run it yourself." },
+  { title: "Settle", text: "Winners pay price + real shipping. Everyone else: hold voided, $0." },
 ];

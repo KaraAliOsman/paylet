@@ -100,8 +100,8 @@ export function EvalsPage() {
   return (
     <div className="evals-page">
       <section className="card evals">
-        <p className="eyebrow">Measured, not vibes</p>
         <h2>Can the AI tell a household from a reseller?</h2>
+        <p className="context">Measured, not vibes</p>
         <p className="lede">
           A false merge costs a real fan their chance, so we measure it. Every number below can be reproduced offline with <code>pnpm evals --replay</code>{" "}
           (each model answer is recorded). In production nothing is auto-merged: the seller confirms and fans can appeal.

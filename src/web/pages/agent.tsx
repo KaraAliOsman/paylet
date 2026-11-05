@@ -137,10 +137,10 @@ export function AgentPage() {
   return (
     <div className="agent">
       <header className="page-intro">
-        <p className="eyebrow">Fan's agent</p>
         <h1>
           Your agent can enter. <span>Only you can pay.</span>
         </h1>
+        <p className="context">Fan's agent</p>
         <p className="lede">
           Wren is an AI assistant that talks to Paylet over MCP, the way any agent would. It can request an entry and hand you a PayPal link.
           It can't approve a payment.

@@ -159,8 +159,8 @@ export function JudgePage() {
   return (
     <div className="judge-page">
       <section className="judge-intro">
-        <p className="eyebrow">Judge mode · about 2 minutes</p>
         <h1>Try to scalp us</h1>
+        <p className="context">Judge mode · about 2 minutes</p>
         <p className="lede">
           Your own 30-minute drop with 2 units, its fan page and its seller console. Every entry is a real PayPal sandbox hold, one per PayPal account. The
           checklist ticks itself as things happen.
