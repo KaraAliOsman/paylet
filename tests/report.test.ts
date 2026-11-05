@@ -181,6 +181,7 @@ describe("P2-04 backend: AiSummary and the Cluster contract", () => {
           memberIds: [ids[0], ids[1]],
           normalizedKey: "1200 HARBOR BLVD STE 4B 43215",
           createdAt: expect.any(Number),
+          appeals: [],
         },
       ]);
       expect(s.drop.pendingReviews).toBe(1);

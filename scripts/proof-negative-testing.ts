@@ -77,6 +77,7 @@ async function attempt<T>(step: string, fn: () => Promise<T & { trace?: { httpSt
 const order = await pp.createHoldOrder({
   dropId: `drop_spike${RUN}`,
   entryId: `ent_spike${RUN}`,
+  binding: `spike:${RUN}`,
   title: "Paylet negative-testing spike",
   sku: `spike-${RUN}`,
   priceCents: PRICE,

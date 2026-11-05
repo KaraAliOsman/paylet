@@ -3,6 +3,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
+import { APPROVAL_CARD_HTML, APPROVAL_CARD_MIME, APPROVAL_CARD_URI } from "./approval-card";
 import { db, now } from "./db";
 import { HttpError, participantView, publicDrop, startEntry } from "./domain";
 import type { DropRow } from "./models";
@@ -40,7 +41,15 @@ export function paypalState(status: string, holdCents: number | null, capturedCe
 }
 
 function buildServer(): McpServer {
-  const server = new McpServer({ name: "paylet", version: "0.1.0" });
+  const server = new McpServer({ name: "paylet", version: "1.1.0" });
+
+  // MCP Apps: compatible hosts draw this card under enter_drop; every other host just uses approve_url.
+  server.registerResource(
+    "approval-card",
+    APPROVAL_CARD_URI,
+    { title: "PayPal approval card", description: "Shows the person what their agent requested and hands them to PayPal.", mimeType: APPROVAL_CARD_MIME },
+    async () => ({ contents: [{ uri: APPROVAL_CARD_URI, mimeType: APPROVAL_CARD_MIME, text: APPROVAL_CARD_HTML, _meta: { ui: { prefersBorder: false } } }] }),
+  );
 
   server.registerTool(
     "list_drops",
@@ -75,6 +84,7 @@ function buildServer(): McpServer {
         agent_name: z.string().max(60).optional().describe("Your agent's display name"),
       },
       annotations: { destructiveHint: false, openWorldHint: true },
+      _meta: { ui: { resourceUri: APPROVAL_CARD_URI } },
     },
     async ({ drop, agent_name }) => {
       try {

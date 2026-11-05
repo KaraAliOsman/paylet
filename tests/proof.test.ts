@@ -92,7 +92,7 @@ describe("P1-04 proof drop", () => {
     const winner = snap.entries.find((x) => x.status === "captured")!;
     expect(winner).toMatchObject({ authorization: `…${e.authorization_id!.slice(-4)}`, shipping: { carrier: "USPS", tracking: `…${e.tracking_number!.slice(-4)}` }, capturedCents: 4450, holdCents: 4800 }); // $38 + $6.50 actual shipping, of a $48 hold
     expect(snap.entries.find((x) => x.status === "duplicate")!.holdCents).toBeNull();
-    expect(snap.paypalCheck!.totals).toEqual({ captured: 1, voided: 0, mismatches: 0 });
+    expect(snap.paypalCheck!.totals).toMatchObject({ captured: 1, voided: 0, mismatches: 0 });
     expect(snap.events.find((x) => x.kind === "captured")!.trace).toMatchObject({ endpoint: expect.stringMatching(/\/capture$/), httpStatus: 201 });
     expect(snap.drop.randomnessValue).toMatch(/^[0-9a-f]{64}$/);
 

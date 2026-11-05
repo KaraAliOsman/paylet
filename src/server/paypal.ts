@@ -139,6 +139,8 @@ export function mockHeader(code: string | undefined): string | undefined {
 export interface CreateHoldInput {
   dropId: string;
   entryId: string;
+  /** custom_id: public entry id + seed commitment, kept in PayPal's own record of the hold */
+  binding: string;
   title: string;
   sku: string;
   priceCents: number;
@@ -162,7 +164,7 @@ export async function createHoldOrder(i: CreateHoldInput): Promise<{ orderId: st
             purchaseUnits: [
               {
                 referenceId: i.dropId,
-                customId: `${i.dropId}:${i.entryId}`,
+                customId: i.binding,
                 description: `Paylet allocation ballot — right to purchase "${i.title}" at list price`,
                 softDescriptor: "PAYLET",
                 amount: {
@@ -302,7 +304,20 @@ export async function getAuthorization(authorizationId: string) {
     () => payments.getAuthorizedPayment({ authorizationId }, deadline()),
     (r) => (r.status ? String(r.status) : undefined),
   );
-  return { status: String(result.status ?? ""), amount: result.amount?.value, trace };
+  return { status: String(result.status ?? ""), amount: result.amount?.value, customId: result.customId, createdAt: result.createTime, trace };
+}
+
+/** The authorization PayPal holds for an order, if any: a timed-out /authorize may have landed all the same. */
+export async function findAuthorization(orderId: string): Promise<string | null> {
+  const { result } = await orders.getOrder({ id: orderId }, deadline());
+  return result.purchaseUnits?.[0]?.payments?.authorizations?.[0]?.id ?? null;
+}
+
+/** The capture PayPal holds for an order, if any (a capture may land after we gave up waiting for its answer). */
+export async function findCapture(orderId: string): Promise<{ captureId: string; amountCents: number } | null> {
+  const { result } = await orders.getOrder({ id: orderId }, deadline());
+  const c = result.purchaseUnits?.[0]?.payments?.captures?.[0];
+  return c?.id ? { captureId: c.id, amountCents: fromPayPal(c.amount?.value) } : null;
 }
 
 export async function captureAuthorization(authorizationId: string, amountCents: number, requestId: string, invoiceId: string, opts: { mock?: string } = {}) {

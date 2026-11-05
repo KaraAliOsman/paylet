@@ -729,6 +729,11 @@ function ClusterCard({
         )}
       </header>
       <p className={`explain ${ai ? "explain-ai" : ""}`}>{c.explanation}</p>
+      {c.appeals?.map((a) => (
+        <p key={a.publicId} className="note" data-testid="cluster-appeal">
+          <b>{a.publicId} appealed:</b> {a.message}
+        </p>
+      ))}
       {c.normalizedKey && (
         <p className="addr-key">
           <span>Normalized address</span> <code>{c.normalizedKey}</code>

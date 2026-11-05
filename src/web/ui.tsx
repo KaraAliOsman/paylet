@@ -181,7 +181,13 @@ export function SettlementSummary({ slug, settled, judge = false, showVerify = t
             <ShieldIcon size={16} />
           </span>
           <span>
-            <b>{plural(r.holdsVoided, "hold")}</b> voided · <b>{usd(r.chargedToLosersCents).replace(".00", "")}</b> charged to anyone who lost
+            {r.holdsVoided ? (
+              <>
+                <b>{plural(r.holdsVoided, "hold")}</b> voided · <b>{usd(r.chargedToLosersCents).replace(".00", "")}</b> charged to anyone who lost
+              </>
+            ) : (
+              <>Nobody else held a hold in this run, so there was nothing to void</>
+            )}
           </span>
         </li>
         {r.failedPayments > 0 && (

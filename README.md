@@ -92,12 +92,12 @@ Native support would enforce the limit inside PayPal, before the approval, acros
 |---|---|---|
 | 1. Request | A fan clicks the PayPal button (JS SDK v6), or their agent calls `enter_drop` over MCP and gets an approval link. **The agent stops there.** | `POST /v2/checkout/orders` (`AUTHORIZE`, `payer-action` link) |
 | 2. One per account | After approval Paylet reads the payer **server-side**, keeps the payer id only as an HMAC, and enforces a unique constraint on it per drop before authorizing. A second approval from the same account places **no hold**. | `GET /v2/checkout/orders/{id}` → `POST …/authorize` |
-| 3. Households & networks | Rules normalize addresses (suffixes, `Ste/Unit/#`, `c/o`, mailbox aliases). Only fuzzy pairs go to the model, which must cite fields and may keep pairs apart. **Nothing is auto-merged**: the seller confirms, and the draw is blocked while suggestions are pending. | — |
-| 4. Freeze | At close, the eligible list is frozen and its SHA-256 published, together with every exclusion and its reason. The seed's SHA-256 was published when the drop opened. | — |
-| 5. Public randomness | Paylet waits for a future [drand](https://drand.love) quicknet round that nobody could know at freeze time, then reveals the seed. `finalSeed = SHA-256(seed + ":" + round randomness)`; each entry ranks by `SHA-256(finalSeed + ":" + publicId)`. Not even Paylet knew the winners in advance. | — |
+| 3. Households & networks | Rules normalize addresses (suffixes, `Ste/Unit/#`, `c/o`, mailbox aliases). Only fuzzy pairs go to the model, which must cite fields and may keep pairs apart. **Nothing is auto-merged**: the seller confirms, and a seller can't draw past an undecided suggestion on a judge drop. On a seller's own drop they can override it, and if closing time arrives first the automatic draw runs after a 15-minute grace; either way the public ledger names what wasn't reviewed. A grouped fan can appeal until the list freezes, and the group goes back to the seller. | — |
+| 4. Freeze | At close, the eligible list is frozen and its SHA-256 published, together with every held entry it left out and why. The seed's SHA-256 was published when the drop opened, and every PayPal order carries it in `custom_id`, so PayPal's own timestamped record holds the commitment too. | — |
+| 5. Public randomness | Paylet waits for a future [drand](https://drand.love) quicknet round that nobody could know at freeze time, then reveals the seed. The round comes from a public rule (the first one at least 6 s after the freeze), so Paylet can't shop for one, and an outage only delays the draw: there is no fallback and no second round. `finalSeed = SHA-256(seed + ":" + round randomness)`; each entry ranks by `SHA-256(finalSeed + ":" + publicId)`. | — |
 | 6. Settle | Winners: **partial capture** (price + *actual* shipping, the rest of the hold released). Everyone else: **void**. Failed capture → next on the waitlist, whose hold already exists. Signed webhooks move state; a sweeper re-checks with GETs. | `…/authorizations/{id}/capture`, `…/void`, webhooks + `verify-webhook-signature` |
 | 7. After the sale | The maker marks the order shipped (tracking appears in the buyer's PayPal account) or refunds if they can't ship. | `POST /v2/checkout/orders/{id}/track`, `POST /v2/payments/captures/{id}/refund` |
-| 8. Verify | `/verify/<drop>` recomputes every hash and the draw in your browser, and **Ask PayPal** re-checks each hold against PayPal's records. | `GET /v2/payments/authorizations/{id}` |
+| 8. Verify | `/verify/<drop>` recomputes every hash and the draw in your browser, picks its own drand relay and checks the League of Entropy's BLS signature, and **Ask PayPal** re-checks each hold against PayPal's records. `pnpm verify:drop <url>` does the same from your own machine. | `GET /v2/payments/authorizations/{id}` |
 
 ### Entry lifecycle
 ```mermaid
@@ -139,36 +139,37 @@ stateDiagram-v2
 ## Proven against the real PayPal sandbox
 Mocked tests prove our logic; these prove PayPal agrees. [`e2e/real-paypal.spec.ts`](e2e/real-paypal.spec.ts) logs in as a
 sandbox buyer **inside PayPal's own window**, and every hold, capture and void it produces is cross-checked with PayPal
-(`GET /v2/payments/authorizations/{id}`), on top of Paylet's own records. Last recorded run: **5/5 passed on 2026-11-01
-(commit `b1090e1`)** against https://paylet.onrender.com ([record](docs/e2e-real/latest.json)).
+(`GET /v2/payments/authorizations/{id}`), on top of Paylet's own records. Last recorded run: **5/5 passed on 2026-11-04**
+against a local server on this code, with the real PayPal sandbox ([how to repeat it](docs/e2e-real/README.md)). Scenario 2 also asserts that PayPal's
+own record of the hold carries the entry's public id and the drop's seed commitment.
 
 | # | Real scenario | What the test asserts | Checked with |
 |---|---|---|---|
 | 1 | JS SDK v6 button → hold; same PayPal account again → "no hold placed" | the authorization is `CREATED`; Paylet counts 1 hold and 1 blocked duplicate | PayPal + Paylet |
 | 2 | Agent's approval link → person approves → draw → winner captured | the authorization is `PARTIALLY_CAPTURED` / `CAPTURED`; Paylet captured $44.50 of the $48.00 hold | PayPal + Paylet |
-| 3 | Sandbox negative test on the only real entrant (no waitlist) | the capture fails; the authorization ends `VOIDED`, never charged | PayPal + Paylet |
+| 3 | Sandbox negative test on the only real entrant (no waitlist) | PayPal answers 422; the authorization ends `VOIDED`, never charged | PayPal + Paylet |
 | 4 | Real entrant + labelled simulated crowd + AI review → draw | whichever way the draw goes, PayPal agrees: `CAPTURED` if the real entrant won, `VOIDED` if not | PayPal + Paylet |
 | 5 | Buyer cancels inside PayPal | the return page says no hold was placed; 0 holds | Paylet |
 
 - [`scripts/paypal-approve.ts`](scripts/paypal-approve.ts) is a reusable recipe for driving the PayPal sandbox approval page
   with Playwright (login, "already logged in", guest-to-login switch, review page), in English or Spanish.
 - No login needed to see real money: the **proof drop** (https://paylet.onrender.com/d/ember-glaze-mug-2710) is a finished run with real sandbox money:
-  14 real PayPal orders · 13 agent requests → 0 holds without a person · 1 same-account duplicate blocked · partial capture $44.50 ($3.50 of the hold released) · tracking added in PayPal · $0.00 charged to anyone who lost. Its **Ask PayPal now** button re-checks every authorization with PayPal live.
+  14 real PayPal orders · 13 agent requests → 0 holds without a person · 1 same-account duplicate blocked · partial capture $44.50 ($3.50 of the hold released) · tracking added in PayPal. It had one real buyer, so nobody lost; the void path is proven by scenarios 3 and 4 above. Its PayPal ids are masked in this public repo, so its **Ask PayPal** panel shows what PayPal answered when the run finished, and says so. Every judge drop asks PayPal live.
 - The daily [`e2e-prod`](.github/workflows/e2e-prod.yml) job runs the judge flow against production (real sandbox orders
   from the scalper agents, AI review, draw, browser verification) and keeps the Playwright report.
 
 ### Idempotency keys
-Every money-moving call is an op in a persistent queue; the op key **is** the `PayPal-Request-Id`, so a retry after a crash,
+Every call that moves money is an op in a persistent queue; the op key **is** the `PayPal-Request-Id`, so a retry after a crash,
 a timeout or a 429 replays the same request and can never charge twice.
 
 | Key | PayPal call |
 |---|---|
-| `create:<entryId>` | `POST /v2/checkout/orders` |
+| `create:<entryId>` | `POST /v2/checkout/orders` (sent directly: the person needs the link now and no money moves; capped per drop and globally) |
 | `auth:<entryId>` | `POST /v2/checkout/orders/{id}/authorize` |
 | `cap:<authorizationId>:1` | `POST /v2/payments/authorizations/{id}/capture` |
 | `void:<authorizationId>` | `POST /v2/payments/authorizations/{id}/void` (after a GET: a void is not idempotent on PayPal's side) |
 | `refund:<captureId>` | `POST /v2/payments/captures/{id}/refund` |
-| `track:<captureId>` | `POST /v2/checkout/orders/{id}/track` |
+| `track:<captureId>` | `POST /v2/checkout/orders/{id}/track` (this endpoint takes no `PayPal-Request-Id`, so the op reads the order's trackers first) |
 
 ## Unhappy paths
 | Scenario | What Paylet does | Proven by |
@@ -177,16 +178,22 @@ a timeout or a 429 replays the same request and can never charge twice.
 | An agent requests an entry and nobody approves | No hold ever exists; the request expires at the draw and never enters the ballot | code: `draw()` in [`domain.ts`](src/server/domain.ts) · `e2e-prod`: 3 agents → 3 PayPal links, 0 holds |
 | Buyer cancels in PayPal | No hold is placed, and the return page says so | real sandbox #5 |
 | A winner's capture is declined | GET the authorization, void it if still alive, promote waitlist #1 (hold already in place) | unit: waitlist promotion after a failed capture ([`flow.test.ts`](tests/flow.test.ts)) · real sandbox #3: the authorization ends `VOIDED` · code: capture failure handler in [`domain.ts`](src/server/domain.ts) |
-| Capture comes back `PENDING` | Entry waits; `PAYMENT.CAPTURE.COMPLETED` / `DENIED` webhooks, or the sweeper's GET, settle it | code: webhook routing + sweeper in [`domain.ts`](src/server/domain.ts) |
+| Capture comes back `PENDING` | Entry waits; `PAYMENT.CAPTURE.COMPLETED` / `DENIED` webhooks, or the sweeper's GET, settle it | unit: [`money.test.ts`](tests/money.test.ts) |
+| A capture fails and PayPal can't confirm the result | Nothing moves: the winner stays, and the same op (same `PayPal-Request-Id`) runs again until PayPal answers | unit: [`hardening.test.ts`](tests/hardening.test.ts) |
+| A capture we gave up on turns out to have gone through | The void finds it, or the webhook reports it: the ledger is corrected, and if the unit already went to the next fan this payment is refunded in full | unit: [`hardening.test.ts`](tests/hardening.test.ts) |
+| `/authorize` times out, then the drop closes | The retry looks at the order and voids any hold the lost attempt placed | unit: [`hardening.test.ts`](tests/hardening.test.ts) |
+| The server restarts in the middle of a settlement | The reveal is one transaction, an op stays pending until its failure handler finished, and the sweeper finishes a drawn drop with nothing running | unit: [`hardening.test.ts`](tests/hardening.test.ts) |
 | PayPal answers 429, 5xx or times out | Retried with the same `PayPal-Request-Id`, honoring `Retry-After`; configuration errors never consume the waitlist | code: [`queue.ts`](src/server/queue.ts), `classify()` in [`paypal.ts`](src/server/paypal.ts) |
-| Webhook replayed, or unsigned | De-duplicated by `event_id`; unverified signature → 401, nothing changes | unit: unsigned → 401 ([`flow.test.ts`](tests/flow.test.ts)) · de-duplication: code, the `webhook_events` insert in [`index.ts`](src/server/index.ts) |
+| Webhook replayed, or unsigned | De-duplicated by `event_id`; unverified signature → 401, nothing changes | unit: [`flow.test.ts`](tests/flow.test.ts), [`money.test.ts`](tests/money.test.ts) |
 | Approval arrives after the drop closed | No hold; if PayPal authorized in the race, the hold is voided at once | code: `finalize()` and the authorize handler in [`domain.ts`](src/server/domain.ts) |
-| Void on an authorization that is already voided | GET first; `VOIDED` / `PREVIOUSLY_VOIDED` count as success | code: `voidAuthorizationSafe()` in [`paypal.ts`](src/server/paypal.ts) |
-| Seller tries to draw with AI suggestions unreviewed, or with no eligible entries | `409 pending_reviews` / `409 no_eligible_entries`, with a human message | code: `draw()` in [`domain.ts`](src/server/domain.ts) |
+| Void on an authorization that is already voided | GET first; `VOIDED` / `PREVIOUSLY_VOIDED` count as success | real sandbox #3 · code: `voidAuthorizationSafe()` in [`paypal.ts`](src/server/paypal.ts) |
+| Seller tries to draw with AI suggestions unreviewed, or with no eligible entries | `409 pending_reviews` / `409 no_eligible_entries`, with a human message | unit: [`draw.test.ts`](tests/draw.test.ts) |
+| A fan says a grouping is wrong | One appeal per entry until the list freezes: the group returns to the seller with the fan's words, and the draw waits | unit: [`hardening.test.ts`](tests/hardening.test.ts) |
+| A buyer types instructions for the AI into a PayPal name or address | That text is removed before the model sees it, the seller is told, and rules still apply | unit: [`hardening.test.ts`](tests/hardening.test.ts) |
+| Someone floods the open MCP endpoint | A global ceiling on order creation and a cap of waiting requests per drop keep the shared sandbox quota for captures and voids | unit: [`hardening.test.ts`](tests/hardening.test.ts) |
 | AI provider down or over budget | Rule-only suggestions with a visible "AI unavailable" warning, never a fake success | code: [`er/resolve.ts`](src/server/er/resolve.ts) |
-| drand unreachable at reveal | Retries, then the next round, with a visible warning; never a silent fallback to the seed alone | code: reveal in [`domain.ts`](src/server/domain.ts) |
-| Maker can't ship | Full refund through PayPal, confirmed by `PAYMENT.CAPTURE.REFUNDED`; the fan sees "Refunded, you owe nothing" | code: refund op in [`domain.ts`](src/server/domain.ts) |
-<!-- Integrator: when the unhappy-path unit tests land, replace "code: …" with the exact test names that cover each row. -->
+| drand unreachable at reveal | The list stays frozen on the same round and Paylet retries every minute, with a visible warning. A published round stays available, so an outage can delay the draw but never change it | unit: [`hardening.test.ts`](tests/hardening.test.ts) |
+| Maker can't ship | Full refund through PayPal, confirmed by `PAYMENT.CAPTURE.REFUNDED`; the fan sees "Refunded, you owe nothing" | unit: [`money.test.ts`](tests/money.test.ts) |
 
 ## Impact
 **Who it is for:** anyone launching something where demand is bigger than supply and the maker wants it to go to real
@@ -236,7 +243,7 @@ honor period for authorizations.
 | **Technological implementation** | Seller console ledger with the PayPal API trace (endpoint, status, masked ids, `debug_id`) · `/verify` → **Ask PayPal now** · [real sandbox e2e](docs/e2e-real/README.md) | [`paypal.ts`](src/server/paypal.ts), [`queue.ts`](src/server/queue.ts), [`domain.ts`](src/server/domain.ts), [`e2e/`](e2e) |
 | **Design** | [`/judge`](https://paylet.onrender.com/judge) live checklist · fan page hold timeline · agent hand-off card · seller console steps | [`src/web/`](src/web) |
 | **Potential impact** | [Impact](#impact) · the Drop report at the end of every drop · [Launch requirements](#launch-requirements) | `GET /api/drops/:slug/report` |
-| **Innovation** | Agents welcome but unable to pay (MCP + PayPal approval) · AI that keeps real neighbours apart ([evals](https://paylet.onrender.com/evals)) · public drand randomness · [PayPal Verified Drops](#why-paypal-and-what-paypal-could-ship-paypal-verified-drops) | [`mcp.ts`](src/server/mcp.ts), [`er/`](src/server/er), [`draw.ts`](src/shared/draw.ts) |
+| **Innovation** | Agents welcome but unable to pay (MCP + PayPal approval, with an approval card inside the chat) · AI that keeps real neighbours apart ([evals](https://paylet.onrender.com/evals)) · a draw you can check without trusting Paylet: BLS-verified drand, seed commitment in PayPal's own records · [PayPal Verified Drops](#why-paypal-and-what-paypal-could-ship-paypal-verified-drops) | [`mcp.ts`](src/server/mcp.ts), [`approval-card.ts`](src/server/approval-card.ts), [`er/`](src/server/er), [`drand-verify.ts`](src/shared/drand-verify.ts) |
 | **Presentation** | The video · [`/how`](https://paylet.onrender.com/how) sequence diagram and FAQ · this README | [`docs/`](docs) |
 
 ## Bring your own agent
@@ -254,6 +261,12 @@ npx @modelcontextprotocol/inspector
 ```
 Then ask it: *"Enter me in https://paylet.onrender.com/d/&lt;slug&gt;"*. Your agent gets a link; you approve in PayPal.
 
+**Approval card ([MCP Apps](https://modelcontextprotocol.io/), spec 2026-01-26).** `enter_drop` also points at a small card
+([`approval-card.ts`](src/server/approval-card.ts)) that compatible hosts draw in the chat: what your agent asked for, the amount
+held, and a button that opens PayPal. It then follows the entry to *Hold placed*. The card can't approve anything, and it only
+opens PayPal sandbox links. Hosts without MCP Apps use the plain `approve_url`. Tested with a real MCP client and in a browser
+with a stand-in host ([`mcp-card.spec.ts`](e2e/mcp-card.spec.ts)), not yet inside a shipping chat app.
+
 ## How AI is used
 * **Model:** Xiaomi **MiMo V2.6 Pro** through an OpenAI-compatible endpoint (Primalabs). Any OpenAI-compatible model works.
 * **Entity resolution** ([`src/server/er/`](src/server/er)): rules decide the obvious cases; MiMo adjudicates only the fuzzy
@@ -262,6 +275,8 @@ Then ask it: *"Enter me in https://paylet.onrender.com/d/&lt;slug&gt;"*. Your ag
 * **Fan's agent "Wren"** ([`src/server/agent.ts`](src/server/agent.ts)): MiMo with tool calling, using the same Streamable
   HTTP MCP endpoint any client uses (over loopback, with an internal token that only skips the rate limiter). It can request
   an entry and report back how it went; it cannot approve or pay.
+* **Text aimed at the model:** a PayPal name or address is typed by the buyer, so anything addressed to the reviewer is removed
+  before the model sees it and flagged to the seller. Clean entries reach the model unchanged, so the numbers below still apply.
 * **Red-team agent** ([`scripts/build-dataset.ts`](scripts/build-dataset.ts)): writes evasive variants of reseller records
   for the eval set, which is then frozen and hashed.
 * **Scalper swarm:** a dozen agents hit a drop through MCP. They get PayPal approval links and **0 holds** without a person.
@@ -301,15 +316,17 @@ sandbox buyers and labelled simulated entrants. Before launch, pseudonymize name
 | Orders v2 `AUTHORIZE`, authorize, partial capture, void, refund, tracking, signed webhooks, JS SDK v6, MCP | **Works today** in the PayPal sandbox |
 | Paying the maker directly (payee = the maker's PayPal merchant account) and a platform fee | Requires **PayPal Commerce Platform** (partner onboarding, `payee` + `platform_fees`) |
 | Drops longer than 72 hours | Reauthorization (authorizations are honored for 3 days); Paylet drops close within 48 h |
-| "Know Your Agent" signals (who operates an agent) | **Gated**: announced by PayPal in August 2026, no public API yet. Paylet records agent provenance (self-declared name vs. its own signed agent) and the PayPal-verified status of the payer |
+| "Know Your Agent" signals (who operates an agent) | **Gated**: announced by PayPal in August 2026, no public API yet. Today Paylet labels agent entries with the name the agent declares, which proves nothing, and shows the PayPal-verified status of the payer, which does |
 | A per-payer limit enforced by PayPal itself | Would need [PayPal Verified Drops](#why-paypal-and-what-paypal-could-ship-paypal-verified-drops) |
 | Persistent hosting | The demo runs on Render's free tier, which wipes its database on restart: judge drops are created on demand and the proof drop is restored from a snapshot in this repo. A paid instance with a disk ([`render.yaml`](render.yaml)) removes that limit |
 | Legal review | Allocation ballots for goods at list price are not prize draws in most places, but rules vary by jurisdiction |
 
 **What this does not guarantee:** a PayPal account is not proof of a unique human (one person can hold two accounts; the AI
-review and the seller catch the common patterns, not all of them); the seller is trusted not to collude (the frozen-list
-hash and public randomness make after-the-fact edits detectable, not impossible); simulated entrants exist only to show
-scale and are labelled everywhere.
+review and the seller catch the common patterns, not all of them). The seller is trusted not to collude. Public randomness
+stops anyone from knowing the winners in advance, and PayPal's records pin the seed commitment, but the frozen list itself
+is published by Paylet: a change after the freeze is caught by anyone who saved the page or the `verify:drop` output, and
+each fan can check their own entry is on it, not prevented outright. Simulated entrants exist only to show scale and are
+labelled everywhere, `/verify` included.
 
 ## Quickstart
 Requirements: Node 24 and pnpm.
@@ -322,6 +339,7 @@ pnpm test:coverage         # the same, with coverage floors
 pnpm e2e                   # Playwright judge flow against E2E_BASE_URL (default http://127.0.0.1:8790)
 pnpm evals --replay        # entity-resolution evals from the recorded run, no API key needed
 pnpm mcp:smoke             # MCP client → list_drops / enter_drop / entry_status (pass the /mcp URL if not on 8790)
+pnpm verify:drop <url>     # re-check a finished draw from your machine, trusting neither Paylet nor the relay
 ```
 The port is whatever `PORT` says in your `.env` (8790 when unset); point a local `PUBLIC_URL` and `E2E_BASE_URL` at it.
 PayPal webhooks need a public https URL. Locally: `cloudflared tunnel --url http://localhost:<PORT>`, set `PUBLIC_URL` to

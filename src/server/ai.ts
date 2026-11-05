@@ -32,9 +32,9 @@ function callsToday(purpose?: string): number {
     ? (db.prepare("SELECT COUNT(*) n FROM llm_usage WHERE ts >= ? AND purpose = ?").get(dayStart(), purpose) as { n: number }).n
     : (db.prepare("SELECT COUNT(*) n FROM llm_usage WHERE ts >= ?").get(dayStart()) as { n: number }).n;
 }
-/** The public chat agent can never starve the seller-facing entity resolution. */
+/** Neither public surface can starve the other: Wren and the seller reviews each have a share of the daily budget. */
 function capFor(purpose: string): number {
-  return purpose === "fan_agent" ? Math.floor(env.AI_DAILY_CALL_LIMIT * 0.4) : env.AI_DAILY_CALL_LIMIT;
+  return Math.floor(env.AI_DAILY_CALL_LIMIT * (purpose === "fan_agent" ? 0.4 : 0.75));
 }
 
 export function usageSummary() {

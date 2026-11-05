@@ -95,6 +95,9 @@ export interface Participant {
   explanation: string | null;
   approveUrl?: string | null;
   payerVerified?: boolean | null;
+  /** the seller grouped this entry with others and the list isn't frozen: it can still be appealed */
+  grouped?: boolean;
+  appealed?: boolean;
   shipping?: { carrier: string; tracking: string } | null;
   timeline?: EntryTimeline;
   drop: { slug: string; title: string; maker: string; status: string; closesAt: number; units: number; art: string };
@@ -134,9 +137,11 @@ export interface VerifyData {
   randomness?: Randomness | null;
   finalSeed?: string | null;
   excluded?: { publicId: string; reason: "merged" | "duplicate" | string }[];
-  outcome: { publicId: string; status: string; note?: string }[];
+  outcome: { publicId: string; status: string; note?: string; simulated?: boolean }[];
   /** not in the contract; read when present (older servers send neither) */
   closesAt?: number;
+  frozenAt?: number | null;
+  negativeTest?: boolean;
 }
 
 export interface PaypalCheck {
@@ -149,8 +154,13 @@ export interface PaypalCheck {
     capturedCents: number;
     ledgerStatus: string;
     matchesLedger: boolean;
+    boundToDrop?: boolean;
+    paypalCreatedAt?: string | null;
   }[];
-  totals: { captured: number; voided: number; mismatches: number };
+  totals: { captured: number; voided: number; mismatches: number; bound?: number; realHolds?: number };
+  /** the imported proof run: what PayPal answered when it was checked, not a call made now */
+  recorded?: boolean;
+  cached?: boolean;
 }
 
 export interface GlobalStats {
@@ -235,6 +245,8 @@ export interface Cluster {
   memberIds: string[];
   /** e.g. "1200 HARBOR BLVD STE 4B 43215", for the address diff */
   normalizedKey?: string | null;
+  /** fans in this group who told the seller it is wrong */
+  appeals?: { publicId: string; message: string }[];
 }
 
 export interface AiSummary {

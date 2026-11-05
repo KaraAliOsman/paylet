@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { api, apiOptional, clock, nf, usd, type GlobalStats, type ProofInfo, type PublicDrop } from "../api";
+import { api, apiOptional, clock, nf, usd, type DropReport, type GlobalStats, type ProofInfo, type PublicDrop } from "../api";
 import { HoldDemo } from "../hold-demo";
 import { ArrowIcon, BotIcon, PlayIcon } from "../icons";
 import { LiveBoard } from "../live-board";
+import { RaceVsBallot } from "../race";
 import { Link } from "../router";
 
 /** YouTube link of the demo video; the link shows up on the home page once this is set. */
@@ -46,7 +47,7 @@ export function Home() {
   return (
     <>
       <section className="hx">
-        <p className="kicker">Fair drops for the agent era · on PayPal</p>
+        <p className="kicker">For makers with more fans than stock · on PayPal</p>
         <h1 className="hx-title">
           One unit per{" "}
           <span className="hx-held">
@@ -114,6 +115,8 @@ export function Home() {
         </div>
         <HoldDemo verifyHref={verifyHref} />
       </section>
+
+      <RaceVsBallot />
 
       <section className="sec" aria-labelledby="flow-title">
         <div className="sec-head">
@@ -184,7 +187,8 @@ function LiveCounters({ stats }: { stats: GlobalStats | null | undefined }) {
     ? [
         [nf(stats.agentRequests), "agent requests"],
         [nf(stats.duplicatesBlocked), "same-account duplicates blocked"],
-        [usd(stats.chargedToLosersCents).replace(".00", ""), "charged to anyone who lost"],
+        // "$0 to losers" only means something once somebody has lost
+        stats.voidedHolds ? [usd(stats.chargedToLosersCents).replace(".00", ""), `charged across ${nf(stats.voidedHolds)} voided holds`] : [nf(stats.holds), "real holds placed"],
       ]
     : [];
   return (
@@ -207,6 +211,8 @@ function LiveCounters({ stats }: { stats: GlobalStats | null | undefined }) {
 }
 
 function ProofCard({ proof }: { proof: ProofInfo }) {
+  const report = usePolled<DropReport>(`/api/drops/${proof.slug}/report`, 0);
+  const released = report ? usd(report.shippingReleasedCents) : "…";
   return (
     <section className="sec proof-sec" aria-labelledby="proof-title">
       <div className="proof-grid">
@@ -217,19 +223,19 @@ function ProofCard({ proof }: { proof: ProofInfo }) {
         <dl className="proof-nums">
           <div>
             <dt>Captured from the winner</dt>
-            <dd>$44.50</dd>
+            <dd>{report ? usd(report.capturedCents) : "…"}</dd>
           </div>
           <div>
             <dt>Of the hold released</dt>
-            <dd>$3.50</dd>
+            <dd>{released}</dd>
           </div>
           <div>
             <dt>Agent requests → holds</dt>
-            <dd>13 → 0</dd>
+            <dd>{report ? `${report.agentRequests} → ${report.agentHoldsWithoutPerson}` : "…"}</dd>
           </div>
           <div>
-            <dt>Charged to anyone who lost</dt>
-            <dd>$0.00</dd>
+            <dt>{report?.holdsVoided ? "Charged to anyone who lost" : "Same-account duplicates blocked"}</dt>
+            <dd>{report ? (report.holdsVoided ? usd(report.chargedToLosersCents) : report.sameAccountDuplicates) : "…"}</dd>
           </div>
         </dl>
       </div>

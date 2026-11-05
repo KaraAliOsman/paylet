@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
 
+/** The owner key skips the per-IP quota on judge drops, so repeated runs from one machine stay independent. */
+const OWNER = process.env.SELLER_ADMIN_KEY ? { headers: { "x-seller-key": process.env.SELLER_ADMIN_KEY } } : {};
+
 // Judge flow without a PayPal login: real sandbox orders are created by the agent swarm (approval links),
 // the simulated crowd is resolved by the AI, the seller confirms, draws, and the draw is re-verified in the browser.
 test("judge drop: swarm → AI review → decide → confirm the draw → verify", async ({ page, request }) => {
-  const r = await request.post("/api/judge-drop");
+  const r = await request.post("/api/judge-drop", OWNER);
   expect(r.ok()).toBeTruthy();
   const { slug, sellerKey } = await r.json();
 
@@ -60,7 +63,7 @@ test("fan page renders the PayPal v6 button", async ({ page }) => {
 test("fan's AI agent requests an entry over MCP and stops at the PayPal approval", async ({ page, request }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  const { slug } = await (await request.post("/api/judge-drop")).json();
+  const { slug } = await (await request.post("/api/judge-drop", OWNER)).json();
   await page.goto(`/agent?drop=${slug}`);
   await page.getByRole("button", { name: /Get me into this drop/ }).click();
   await expect(page.getByText(/Your agent stopped here/)).toBeVisible({ timeout: 120_000 });

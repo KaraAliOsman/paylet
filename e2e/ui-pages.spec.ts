@@ -76,7 +76,7 @@ test("home: live counters and the proof card come from /api/stats and /api/proof
   await expect(page.getByText("Every entry is a PayPal hold. One per PayPal account. Losers are never charged.")).toBeVisible();
   await expect(page.getByRole("link", { name: /Judges: 2-minute guided demo/ })).toHaveAttribute("href", "/judge");
   await expect(page.locator(".live-item").filter({ hasText: "agent requests" })).toContainText("131");
-  await expect(page.locator(".live-item").filter({ hasText: "charged to anyone who lost" })).toContainText("$0");
+  await expect(page.locator(".live-item").filter({ hasText: "charged across 11 voided holds" })).toContainText("$0");
   await expect(page.getByRole("heading", { name: "A finished run with real PayPal sandbox money" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Verify + ask PayPal" })).toHaveAttribute("href", "/verify/proof-run");
   expect(errors).toEqual([]);
@@ -180,8 +180,10 @@ test("/verify: drand recomputation, consistent outcome with a failed payment, an
   const seed = "9f2c1a7e44b0d3c8a1e5f6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091";
   const ids = ["E-7K2Q", "E-AB12", "E-QQ9X", "E-M4RT", "E-ZK31", "E-P0L8", "E-HH21", "E-TY77"];
   const chain = "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971";
-  const round = 23_456_789;
-  const value = "c3a1f0e2d9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a392";
+  // a real quicknet beacon: the page checks its BLS signature for real
+  const round = 33_566_234;
+  const value = "437546a7113a08f9fc305ac7d349b0dbf4f3f7dfc62ea89ea3e10a7c5463886c";
+  const signature = "9477f1a5470a304bb7b8c04dd3c38a649ce93d7ad25d06059888477af1269a437b3419e5858c79b53a7bb267ed37b3fd";
   const finalSeed = await sha256Hex(`${seed}:${value}`);
   const rank = (await computeDraw(finalSeed, ids, 2, 3)).ranking.map((r) => r.publicId);
   const url = `https://api.drand.sh/${chain}/public/${round}`;
@@ -194,13 +196,14 @@ test("/verify: drand recomputation, consistent outcome with a failed payment, an
     seed,
     frozenHash: await sha256Hex(canonicalList(ids)),
     frozenList: ids,
+    frozenAt: (1692803367 + (round - 1) * 3) * 1000 - 6000,
     randomness: { source: "drand-quicknet", round, value, chainHash: chain, url },
     finalSeed,
     excluded: [{ publicId: "E-DUP1", reason: "duplicate" }],
     outcome: rank.map((id, i) => ({ publicId: id, status: i === 0 || i === 2 ? "captured" : i === 1 ? "capture_failed" : "voided" })),
   });
   await json(page, "**/api/drops/mock-drop", { ...drop, id: "d", status: "settled", kind: "judge", stats: {} });
-  await json(page, url, { round, randomness: value, signature: "00" });
+  await json(page, url, { round, randomness: value, signature });
   await json(page, "**/api/drops/mock-drop/paypal-check", {
     checkedAt: now,
     rows: [
@@ -231,7 +234,8 @@ test("/verify: drand recomputation, consistent outcome with a failed payment, an
   await page.getByRole("button", { name: "Re-run the draw here" }).click();
   await expect(page.getByText(/SHA-256\(seed\) matches the commitment/)).toBeVisible();
   await expect(page.getByText(/eligible list matches the hash/)).toBeVisible();
-  await expect(page.getByText(/fetched by your browser .* matches the randomness Paylet used/)).toBeVisible();
+  await expect(page.getByText(/checked its BLS signature against the League of Entropy's public key/)).toBeVisible();
+  await expect(page.getByText(/Paylet couldn't pick this round/)).toBeVisible();
   await expect(page.getByText("Recorded outcome is consistent with your computation.")).toBeVisible();
   await expect(page.getByRole("row", { name: new RegExp(`^2 ${rank[1]} Winner #2`) })).toContainText(`payment failed → waitlist #1 ${rank[2]}`);
 
@@ -241,6 +245,37 @@ test("/verify: drand recomputation, consistent outcome with a failed payment, an
   await expect(page.locator(".pp-rows li").first()).toContainText("matches our ledger");
   expect(await page.evaluate(() => localStorage.getItem("paylet.verified.mock-drop"))).toBe("1");
   expect(errors).toEqual([]);
+});
+
+test("/verify: a forged beacon or a hand-picked round turns the check red", async ({ page }) => {
+  const seed = "9f2c1a7e44b0d3c8a1e5f6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091";
+  const ids = ["E-7K2Q", "E-AB12", "E-QQ9X"];
+  const chain = "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971";
+  const round = 33_566_234;
+  const value = "437546a7113a08f9fc305ac7d349b0dbf4f3f7dfc62ea89ea3e10a7c5463886c";
+  const finalSeed = await sha256Hex(`${seed}:${value}`);
+  const url = `https://api.drand.sh/${chain}/public/${round}`;
+  await json(page, "**/api/drops/mock-drop/verify", {
+    title: "Ember Glaze Mug",
+    status: "settled",
+    units: 1,
+    waitlistSize: 1,
+    seedHash: await sha256Hex(seed),
+    seed,
+    frozenHash: await sha256Hex(canonicalList(ids)),
+    frozenList: ids,
+    frozenAt: (1692803367 + (round - 1) * 3) * 1000 - 60_000, // the rule gives an earlier round than the one used
+    randomness: { source: "drand-quicknet", round, value, chainHash: chain, url },
+    finalSeed,
+    excluded: [],
+    outcome: [],
+  });
+  await json(page, "**/api/drops/mock-drop", { ...drop, id: "d", status: "settled", kind: "judge", stats: {} });
+  await json(page, url, { round, randomness: value, signature: "a".repeat(96) });
+  await page.goto("/verify/mock-drop");
+  await page.getByRole("button", { name: "Re-run the draw here" }).click();
+  await expect(page.getByText(/does NOT carry a valid League of Entropy signature/)).toBeVisible();
+  await expect(page.getByText(/NOT the one the public rule gives/)).toBeVisible();
 });
 
 test("/verify: Ask PayPal on a server without the endpoint says so", async ({ page }) => {

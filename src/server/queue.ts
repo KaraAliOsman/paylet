@@ -28,7 +28,8 @@ export function enqueue(kind: OpKind, key: string, entryId: string, payload: Rec
 
 export interface Handlers {
   run(op: OpRow): Promise<void>;
-  onTerminal(op: OpRow, failure: PayPalFailure): void | Promise<void>;
+  /** Returning `rearmMs` keeps the op alive: the same key (same PayPal-Request-Id) runs again after that long. */
+  onTerminal(op: OpRow, failure: PayPalFailure): void | { rearmMs: number } | Promise<void | { rearmMs: number }>;
 }
 
 const PER_MINUTE = Number(process.env.PAYPAL_OPS_PER_MINUTE ?? 40);
@@ -76,11 +77,16 @@ export async function tick(h: Handlers): Promise<boolean> {
       const backoff = f.retryAfterMs ?? (f.status === 429 ? 60_000 : Math.min(60_000, 1000 * 2 ** attempts));
       db.prepare("UPDATE ops SET next_at = ?, last_error = ?, updated_at = ? WHERE key = ?").run(now() + backoff, `${f.status} ${f.issue} debug=${f.debugId ?? "-"}`, now(), op.key);
     } else {
-      db.prepare("UPDATE ops SET status = 'failed', last_error = ?, updated_at = ? WHERE key = ?").run(`${f.status} ${f.issue}: ${f.description} debug=${f.debugId ?? "-"}`.slice(0, 500), now(), op.key);
+      const error = `${f.status} ${f.issue}: ${f.description} debug=${f.debugId ?? "-"}`.slice(0, 500);
+      // The op stays `pending` until its terminal handler finished, so a crash in between replays it instead of leaving
+      // a winner in `won` (or an entry in `authorizing`) forever.
       try {
-        await h.onTerminal(op, f);
+        const next = await h.onTerminal(op, f);
+        if (next?.rearmMs) db.prepare("UPDATE ops SET attempts = 0, next_at = ?, last_error = ?, updated_at = ? WHERE key = ?").run(now() + next.rearmMs, error, now(), op.key);
+        else db.prepare("UPDATE ops SET status = 'failed', last_error = ?, updated_at = ? WHERE key = ?").run(error, now(), op.key);
       } catch (err) {
         console.error("onTerminal failed", err);
+        db.prepare("UPDATE ops SET next_at = ?, last_error = ?, updated_at = ? WHERE key = ?").run(now() + 60_000, error, now(), op.key);
       }
     }
   } finally {

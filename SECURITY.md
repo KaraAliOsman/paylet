@@ -33,8 +33,11 @@ compromised machine or a malicious seller (the seller is trusted by design; see 
   `event_id` before they change anything.
 - **Agents cannot pay.** The MCP server can only create an order and return PayPal's approval link; a hold exists only
   after a person approves inside PayPal.
-- **Abuse limits.** Per-client rate limits on entries, agent chat, judge drops and MCP; request body limits; per-drop caps
-  on simulated entrants and AI analysis; a daily cap on LLM calls.
+- **Abuse limits.** Per-client rate limits on entries, agent chat, judge drops, AI reviews and MCP; request body limits;
+  a global ceiling on order creation and a cap of unapproved requests per drop; per-drop caps on simulated entrants and AI
+  reviews; a daily LLM budget split so neither public surface can starve the other.
+- **Untrusted text.** Names and addresses come from buyers. Text addressed to the AI reviewer is removed before the model
+  sees it and flagged to the seller, and fan-facing explanations are templates, never model output.
 - **What goes to the LLM.** Only the fuzzy candidate pairs (names and shipping addresses of sandbox buyers or simulated
   entrants) are sent to the model, and nothing is merged until the seller confirms. Details in the README, "Data flow & PII".
 - **Automated checks.** CodeQL code scanning and Dependabot run on this repository; CI runs type checks, unit tests with

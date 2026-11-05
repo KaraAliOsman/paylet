@@ -331,9 +331,10 @@ export function MePage({ entryId }: { entryId: string }) {
           <b>Why:</b> {p.explanation}
         </div>
       )}
-      {(p.status === "merged" || p.explanation) && !sent && (
+      {p.grouped && !p.appealed && !sent && (
         <div className="appeal">
-          <label htmlFor="appeal-text">Not the same household? Tell the seller:</label>
+          <p className="note">The seller grouped this PayPal account with others at the same address, so together they get one ticket.</p>
+          <label htmlFor="appeal-text">Not the same household? Tell the seller before the draw:</label>
           <textarea id="appeal-text" value={appeal} onChange={(e) => setAppeal(e.target.value)} placeholder="e.g. We're roommates with separate orders." />
           <button
             className="btn"
@@ -351,7 +352,7 @@ export function MePage({ entryId }: { entryId: string }) {
           {appealErr && <p className="err small">{appealErr}</p>}
         </div>
       )}
-      {sent && <p className="hint">Appeal sent. The seller reviews it before the draw.</p>}
+      {(sent || p.appealed) && <p className="hint">Appeal sent. The draw waits until the seller decides again.</p>}
       <div className="row gap wrap">
         <Link href={`/d/${p.drop.slug}`}>Back to the drop</Link>
         {["drawn", "settled"].includes(p.drop.status) && <Link href={`/verify/${p.drop.slug}`}>Verify the draw →</Link>}

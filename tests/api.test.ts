@@ -100,7 +100,7 @@ describe("P1-03 Ask PayPal: live re-check of every real hold", () => {
     const body = (await res.json()) as import("../src/server/paypalcheck").PaypalCheck & { cached: boolean };
     expect(body.cached).toBe(false);
     expect(body.rows).toHaveLength(3); // the duplicate account never got a hold
-    expect(body.totals).toEqual({ captured: 1, voided: 2, mismatches: 0 });
+    expect(body.totals).toMatchObject({ captured: 1, voided: 2, mismatches: 0 });
     const captured = body.rows.find((r) => r.ledgerStatus === "captured")!;
     expect(captured).toMatchObject({ paypalStatus: "CAPTURED", heldCents: 4800, capturedCents: 7250, matchesLedger: true });
     expect(captured.authorization).toMatch(/^…\w{4}$/);

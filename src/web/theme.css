@@ -64,8 +64,8 @@
   --ease: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
 
-  --font-ui: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-ui: "Archivo Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --mono: var(--font-mono);
   --hatch: repeating-linear-gradient(-45deg, rgba(17, 17, 16, 0.07) 0 1px, transparent 1px 6px);
 
@@ -1059,3 +1059,26 @@ a { text-decoration-color: rgba(17, 17, 16, 0.25); }
 @media (prefers-reduced-motion: reduce) {
   .bloub-eye, .bloub-eyes { animation: none !important; }
 }
+
+/* ---------- race vs ballot (home) ---------- */
+.race { margin-top: 120px; display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 64px; align-items: start; }
+.race h2 { font-size: clamp(36px, 4.4vw, 60px); line-height: 0.98; margin: 0 0 18px; }
+.race-copy p { font-size: 17px; color: var(--ink-2); max-width: 42ch; margin: 0 0 14px; }
+.race-copy p.kicker { font-size: 13px; color: var(--accent-ink); }
+.race-panel { border-top: 1.5px solid var(--ink); padding-top: 18px; }
+.race-control { display: grid; gap: 8px; margin-bottom: 26px; }
+.race-control label { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; color: var(--ink-2); }
+.race-control output { font: 600 22px/1 var(--font-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.race-control input[type="range"] { width: 100%; accent-color: var(--ink); height: 28px; margin: 0; }
+.race-row { display: grid; gap: 7px; padding: 14px 0; border-top: 1px solid var(--line); }
+.race-row header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.race-row h3 { margin: 0; font-size: 16px; letter-spacing: -0.01em; }
+.race-row b { font: 600 15px/1 var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.race-row p { margin: 0; font-size: 13.5px; color: var(--muted); }
+.race-units { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
+.race-units i { height: 14px; border-radius: 3px; background: var(--surface-3); position: relative; overflow: hidden; }
+.race-units i > span { position: absolute; inset: 0 auto 0 0; background: var(--good); transition: width 0.25s var(--ease); }
+.race-row.is-paylet .race-units i > span { background: var(--ink); }
+.race-note { font-size: 12.5px; color: var(--muted); margin: 14px 0 0; max-width: 62ch; }
+@media (max-width: 1000px) { .race { grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 88px; } }
+@media (prefers-reduced-motion: reduce) { .race-units i > span { transition: none; } }

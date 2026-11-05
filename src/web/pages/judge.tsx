@@ -136,7 +136,7 @@ export function JudgePage() {
     setBusy(true);
     setErr("");
     try {
-      const r = await api<JudgeDrop>("/api/judge-drop", { method: "POST" });
+      const r = await api<JudgeDrop>("/api/judge-drop", { method: "POST", headers: code ? { "x-judge-code": code } : undefined });
       store.set(JUDGE_KEY, r);
       window.history.replaceState({}, "", judgeUrl(r));
       setNotice(null);

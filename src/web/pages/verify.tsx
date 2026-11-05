@@ -13,8 +13,12 @@ import { SettlementSummary } from "../ui";
 interface RunResult {
   seedOk: boolean;
   listOk: boolean;
-  /** null = this drop has no public randomness (older drops) */
-  drand: null | { fetched: boolean; matches: boolean; finalOk: boolean; round: number; error?: string };
+  /** null = this drop has no public randomness */
+  drand: null | { fetched: boolean; matches: boolean; finalOk: boolean; round: number; error?: string; signatureOk?: boolean; relay?: string };
+  /** the round is the only one the public rule allows for this freeze time (null: the server gave no freeze time) */
+  roundOk: boolean | null;
+  /** a frozen list with entries must have used public randomness */
+  usedRandomness: boolean;
   rec: Reconciliation;
 }
 
@@ -74,28 +78,38 @@ export function VerifyPage({ slug }: { slug: string }) {
       let drawSeed = d.seed;
       let drand: RunResult["drand"] = null;
       const r = d.randomness;
+      let roundOk: boolean | null = null;
       if (r && r.value) {
+        // relays and chain key live in this page's code, not in the server's answer, and the BLS library loads only here
+        const { committedRound, fetchVerifiedBeacon } = await import("../../shared/drand-verify");
+        if (d.frozenAt) roundOk = committedRound(d.frozenAt) === r.round;
         let value = r.value;
         let fetched = false;
         let matches = false;
+        let signatureOk: boolean | undefined;
+        let relay: string | undefined;
         let error: string | undefined;
         try {
-          const j = (await fetch(r.url, { cache: "no-store" }).then((x) => x.json())) as { round?: number; randomness?: string };
+          const b = await fetchVerifiedBeacon(r.round);
           fetched = true;
-          matches = j.round === r.round && j.randomness === r.value;
-          if (j.randomness) value = j.randomness;
+          signatureOk = b.check.ok;
+          relay = b.relay;
+          matches = b.randomness === r.value;
+          value = b.randomness;
         } catch (e) {
           error = e instanceof Error ? e.message : String(e);
         }
         const final = await sha256Hex(`${d.seed}:${value}`);
         drawSeed = final;
-        drand = { fetched, matches, finalOk: final === d.finalSeed, round: r.round, error };
+        drand = { fetched, matches, finalOk: final === d.finalSeed, round: r.round, error, signatureOk, relay };
       }
       const draw = await computeDraw(drawSeed, d.frozenList, d.units, d.waitlistSize);
       setRes({
         seedOk,
         listOk,
         drand,
+        roundOk,
+        usedRandomness: !!r?.value || d.frozenList.length === 0,
         rec: reconcile(
           draw.ranking.map((x) => x.publicId),
           d.units,
@@ -258,12 +272,14 @@ function Results({ d, res }: { d: VerifyData; res: RunResult }) {
           {res.listOk ? "The eligible list matches the hash frozen before the reveal." : "The eligible list does NOT match the frozen hash."}
         </Check>
         {res.drand && (
-          <Check ok={res.drand.fetched ? res.drand.matches && res.drand.finalOk : null}>
+          <Check ok={res.drand.fetched ? res.drand.matches && res.drand.finalOk && res.drand.signatureOk === true : null}>
             {res.drand.fetched ? (
-              res.drand.matches && res.drand.finalOk ? (
+              res.drand.signatureOk === false ? (
+                <>The relay's answer for round {nf(res.drand.round)} does NOT carry a valid League of Entropy signature.</>
+              ) : res.drand.matches && res.drand.finalOk ? (
                 <>
-                  drand round {nf(res.drand.round)}, fetched by your browser from <a href={d.randomness!.url}>the League of Entropy relay</a>, matches the
-                  randomness Paylet used, and SHA-256(seed:randomness) gives the recorded final seed.
+                  Your browser fetched round {nf(res.drand.round)} from {new URL(res.drand.relay!).hostname} and checked its BLS signature against the League of
+                  Entropy's public key. It matches the randomness Paylet used, and SHA-256(seed:randomness) gives the recorded final seed.
                 </>
               ) : (
                 <>
@@ -278,6 +294,14 @@ function Results({ d, res }: { d: VerifyData; res: RunResult }) {
             )}
           </Check>
         )}
+        {res.roundOk !== null && (
+          <Check ok={res.roundOk}>
+            {res.roundOk
+              ? `Paylet couldn't pick this round: the public rule (first round 6 s after the freeze) gives ${nf(d.randomness!.round)} for this freeze time.`
+              : "This round is NOT the one the public rule gives for the freeze time."}
+          </Check>
+        )}
+        {!res.usedRandomness && <Check ok={false}>This draw has entries but used no public randomness, so Paylet could have known the winners in advance.</Check>}
         <Check ok={rec.consistent}>
           {rec.consistent === true
             ? "Recorded outcome is consistent with your computation."
@@ -437,7 +461,7 @@ function AskPayPal({ slug }: { slug: string }) {
     <section className="card ask-paypal" aria-labelledby="ask-title" id="ask-paypal">
       <div className="card-head">
         <h3 id="ask-title">Settlement checked against PayPal</h3>
-        <span className="tag tag-real">live PayPal sandbox API</span>
+        <span className="tag tag-real">{data?.recorded ? "recorded PayPal answer" : "PayPal sandbox API"}</span>
       </div>
       <p>
         "Losers are never charged" shouldn't rest on our word. Paylet asks PayPal for the current status of every real hold in this drop (
@@ -448,7 +472,11 @@ function AskPayPal({ slug }: { slug: string }) {
         <button className="btn btn-primary" onClick={ask} disabled={state.busy}>
           {state.busy ? "Asking PayPal…" : data ? "Ask PayPal again" : "Ask PayPal now"}
         </button>
-        {data && <span className="muted small">Checked with PayPal at {clock(data.checkedAt, true)} · answers are cached for up to 60 s</span>}
+        {data && (
+          <span className="muted small">
+            {data.recorded ? `Recorded when this run finished, ${new Date(data.checkedAt).toLocaleString()}. Every judge drop asks PayPal live.` : `Checked with PayPal at ${clock(data.checkedAt, true)} · answers are cached for up to 60 s`}
+          </span>
+        )}
       </div>
       {state.err && (
         <p className="alert" role="status">
@@ -471,13 +499,18 @@ function AskPayPal({ slug }: { slug: string }) {
                   <span className={row.matchesLedger ? "ok-mark" : "bad-mark"}>
                     {row.matchesLedger ? "✓ matches our ledger" : `✗ our ledger says ${row.ledgerStatus}`}
                   </span>
-                  <small className="muted">authorization {row.authorization}</small>
+                  <small className="muted">
+                    authorization {row.authorization}
+                    {row.boundToDrop ? ` · PayPal's record names ${row.publicId} and this drop's seed commitment` : ""}
+                    {row.paypalCreatedAt ? ` · created ${new Date(row.paypalCreatedAt).toLocaleTimeString()} by PayPal's clock` : ""}
+                  </small>
                 </li>
               ))}
             </ul>
             <p className={`small ${data.totals.mismatches ? "err" : "muted"}`}>
               {data.totals.captured} captured · {data.totals.voided} voided · {data.totals.mismatches} mismatch{data.totals.mismatches === 1 ? "" : "es"} with
               our ledger
+              {data.totals.realHolds && data.totals.realHolds > data.rows.length ? ` · showing the first ${data.rows.length} of ${data.totals.realHolds} real holds` : ""}
             </p>
           </>
         ))}

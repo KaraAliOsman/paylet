@@ -10,8 +10,8 @@ type Fail = Error | "PENDING" | "DECLINED";
 export const pp = {
   seq: 0,
   calls: [] as string[],
-  orders: new Map<string, { payer?: string; status: string; accountStatus?: string }>(),
-  auths: new Map<string, { status: string; cents: number; order: string }>(),
+  orders: new Map<string, { payer?: string; status: string; accountStatus?: string; binding?: string }>(),
+  auths: new Map<string, { status: string; cents: number; order: string; customId?: string }>(),
   captures: new Map<string, { status: string; cents: number; auth: string; order: string }>(),
   refunds: new Map<string, { capture: string; cents: number; key: string }>(),
   trackers: new Map<string, string[]>(), // orderId → tracker ids
@@ -70,9 +70,9 @@ function throwWithTrace(e: Error, trace: Trace): never {
 }
 
 export const fakeApi = {
-  async createHoldOrder(i: { entryId: string; priceCents: number; shipHoldCents: number }) {
+  async createHoldOrder(i: { entryId: string; priceCents: number; shipHoldCents: number; binding?: string }) {
     const orderId = id("ORD");
-    pp.orders.set(orderId, { status: "PAYER_ACTION_REQUIRED" });
+    pp.orders.set(orderId, { status: "PAYER_ACTION_REQUIRED", binding: i.binding });
     pp.calls.push(`create ${orderId}`);
     return { orderId, approveUrl: `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`, trace: tr("POST", "/v2/checkout/orders", 200, "PAYER_ACTION_REQUIRED", orderId, `create:${i.entryId}`) };
   },
@@ -99,13 +99,21 @@ export const fakeApi = {
     const f = takeFail("authorize");
     if (f instanceof Error) throwWithTrace(f, trace);
     const authorizationId = id("AUTH");
-    pp.auths.set(authorizationId, { status: "CREATED", cents: 4800, order: orderId });
+    pp.auths.set(authorizationId, { status: "CREATED", cents: 4800, order: orderId, customId: pp.orders.get(orderId)?.binding });
     return { authorizationId, status: "CREATED", amount: "48.00", trace: { ...trace, id: maskId(authorizationId) } };
   },
   async getAuthorization(authorizationId: string) {
     const a = pp.auths.get(authorizationId);
     if (!a) throw apiError(404, "INVALID_RESOURCE_ID");
-    return { status: a.status, amount: (a.cents / 100).toFixed(2), trace: tr("GET", `/v2/payments/authorizations/${maskId(authorizationId)}`, 200, a.status, authorizationId) };
+    return { status: a.status, amount: (a.cents / 100).toFixed(2), customId: a.customId, createdAt: "2026-11-04T20:00:00Z", trace: tr("GET", `/v2/payments/authorizations/${maskId(authorizationId)}`, 200, a.status, authorizationId) };
+  },
+  async findAuthorization(orderId: string) {
+    for (const [id, a] of pp.auths) if (a.order === orderId) return id;
+    return null;
+  },
+  async findCapture(orderId: string) {
+    for (const [captureId, c] of pp.captures) if (pp.auths.get(c.auth)?.order === orderId) return { captureId, amountCents: c.cents };
+    return null;
   },
   async captureAuthorization(authorizationId: string, cents: number, requestId: string, _invoice: string, opts: { mock?: string } = {}) {
     pp.calls.push(`capture ${authorizationId}${opts.mock ? ` mock=${opts.mock}` : ""} key=${requestId}`);

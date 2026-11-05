@@ -4,7 +4,32 @@ All notable changes to Paylet. Dates are in America/Santiago time. Format: [Keep
 
 ## [Unreleased]
 
+### Fixed
+- A capture whose result is unknown no longer hands the unit on: the op stays alive until PayPal answers. A capture that
+  landed after Paylet gave up is reconciled, and refunded in full if the unit already went to the next fan.
+- The drand round fixed at the freeze is final. The "next round" and seed-only fallbacks are gone, because either would let
+  an operator re-roll a result.
+- A retried `/authorize` after the drop closed looks for the hold it may have placed and voids it. A failed hold no longer
+  locks the account out of the drop.
+- The reveal is one transaction, an op stays pending until its failure handler finished, and the sweeper finishes a drawn
+  drop that a restart left behind.
+- Appeals work: a confirmed group reaches the fan before the draw, and an appeal returns it to the seller.
+- Production served fallback fonts because the CSP blocked Google Fonts: Archivo and JetBrains Mono are now self-hosted.
+- The proof drop's PayPal panel says it is a recorded answer. "$0 charged to anyone who lost" only shows when somebody lost.
+
+### Security
+- Global ceiling on order creation and a per-drop cap of unapproved requests. AI reviews are capped per drop and per client,
+  and the daily budget is split between reviews and the fan agent. The judge code skips the public quotas.
+- Text addressed to the AI reviewer is removed from names and addresses before the model sees them.
+- The seller key is only accepted in a header and never logged. Drop slugs carry 32 bits instead of 16.
+- The negative test can't change after a drop closes, and the public showcase drop never fails a real winner on purpose.
+
 ### Added
+- `/verify` checks the League of Entropy's BLS signature in the browser, chooses its own relay, and checks the round against
+  the public rule. `pnpm verify:drop <url>` runs the same checks from your machine.
+- Every PayPal order carries the public entry id and the seed commitment in `custom_id`, and Ask PayPal reports the binding.
+- MCP Apps approval card for `enter_drop`, with the plain link for every other host.
+- Home page: a race-versus-ballot model, the real Open Graph card and the Paylet favicon.
 - Unit-test coverage (`pnpm test:coverage`, `@vitest/coverage-v8`) with floor thresholds; CI publishes a coverage summary
   and report.
 - `e2e-prod` workflow: the judge flow runs every day against the live demo; the Playwright report is kept as an artifact.

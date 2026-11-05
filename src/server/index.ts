@@ -228,8 +228,11 @@ app.post("/api/entries/:id/appeal", async (c) => {
 app.post("/api/judge-drop", async (c) => {
   const adminKey = c.req.header("x-seller-key");
   const isOwner = Boolean(env.SELLER_ADMIN_KEY && adminKey && safeEq(adminKey, env.SELLER_ADMIN_KEY)); // test suite / owner
-  if (!isOwner && !limit(c, "judge", 4)) return c.json({ error: "rate_limited" }, 429);
+  if (!isOwner && !limit(c, "judge", 8)) return c.json({ error: "rate_limited" }, 429);
   const ip = clientIp(c);
+  // the Devpost judge code skips the public quotas: nobody can spend a real judge's chance to try the demo
+  const judgeHeader = c.req.header("x-judge-code");
+  const isJudge = Boolean(env.JUDGE_CODE && judgeHeader && safeEq(judgeHeader, env.JUDGE_CODE));
   const body = (await c.req.json().catch(() => ({}))) as { kind?: unknown; units?: unknown; negativeTest?: unknown };
   if (isOwner && body.kind === "proof") {
     // P1-04 (owner only): the proof run's drop. Never closes or draws by itself; scripts/proof-run.ts draws it.
@@ -250,9 +253,9 @@ app.post("/api/judge-drop", async (c) => {
     return c.json({ slug: d.slug, sellerKey: d.seller_token });
   }
   const mine = judgeQuota.get(ip);
-  if (!isOwner && mine && mine.reset > Date.now() && mine.n >= 12) return c.json({ error: "judge_drop_quota", message: "You already have several judge drops today — reuse one of them." }, 429);
+  if (!isOwner && !isJudge && mine && mine.reset > Date.now() && mine.n >= 6) return c.json({ error: "judge_drop_quota", message: "You already have several judge drops today — reuse one of them." }, 429);
   const today = (db.prepare("SELECT COUNT(*) n FROM drops WHERE kind = 'judge' AND created_at > ?").get(now() - 86_400_000) as { n: number }).n;
-  if (today > 150) return c.json({ error: "judge_drop_quota" }, 429);
+  if (!isOwner && !isJudge && today > 60) return c.json({ error: "judge_drop_quota", message: "Today's public demo drops are used up. The finished proof drop stays open to everyone." }, 429);
   judgeQuota.set(ip, { n: (mine && mine.reset > Date.now() ? mine.n : 0) + 1, reset: mine && mine.reset > Date.now() ? mine.reset : Date.now() + 86_400_000 });
   const d = await createDrop({
     title: "Ember Glaze Mug",
@@ -319,7 +322,7 @@ function safeEq(a: string, b: string): boolean {
 }
 function seller(c: Context): DropRow {
   const d = mustDrop(c.req.param("slug")!);
-  const key = c.req.header("x-seller-key") ?? c.req.query("k") ?? "";
+  const key = c.req.header("x-seller-key") ?? ""; // never a query parameter: URLs end up in logs and history
   const ok = key && (safeEq(key, d.seller_token) || (env.SELLER_ADMIN_KEY ? safeEq(key, env.SELLER_ADMIN_KEY) : false));
   if (!ok) throw new HttpError(403, "seller_key_required");
   return d;
@@ -375,8 +378,16 @@ app.post("/api/seller/:slug/swarm", async (c) => {
   return c.json({ started: count });
 });
 
+/** AI reviews one drop may run: the shared daily AI budget must survive a visitor pressing the button in a loop. */
+const MAX_ANALYZE_PER_DROP = 5;
+const analyzeRuns = new Map<string, number>();
+
 app.post("/api/seller/:slug/analyze", async (c) => {
   const d = seller(c);
+  if (!limit(c, "analyze", 3)) return c.json({ error: "rate_limited", message: "AI reviews are limited to a few per minute." }, 429);
+  const runs = (analyzeRuns.get(d.id) ?? 0) + 1;
+  if (runs > MAX_ANALYZE_PER_DROP) throw new HttpError(429, "analyze_limit", "This drop has used its AI reviews. Decide the suggestions you have, or use rules only.");
+  analyzeRuns.set(d.id, runs);
   const r = await analyzeDrop(d.id);
   return c.json({ clusters: r.clusters.length, llmCalls: r.llmCalls, uncertainPairs: r.uncertainPairs, keptApart: r.keptApart, degraded: r.degraded, ms: r.ms });
 });
@@ -392,6 +403,7 @@ app.post("/api/seller/:slug/clusters/:id", async (c) => {
 app.post("/api/seller/:slug/negative-test", async (c) => {
   const d = seller(c);
   const { on } = (await c.req.json().catch(() => ({}))) as { on?: boolean };
+  if (d.status !== "open") throw new HttpError(409, "drop_closed", "The negative test can only change while the drop is open.");
   db.prepare("UPDATE drops SET negative_test = ? WHERE id = ?").run(on ? 1 : 0, d.id);
   return c.json({ ok: true });
 });
@@ -469,13 +481,13 @@ app.get("*", serveStatic({ root: "./dist", rewriteRequestPath: (p) => (/\.[a-z0-
 // ---------------------------------------------------------------- boot
 async function boot() {
   const showcase = await ensureShowcase();
-  const link = `${env.PUBLIC_URL.replace(/\/$/, "")}/seller/${showcase.slug}?k=${showcase.seller_token}`;
+  const link = `${env.PUBLIC_URL.replace(/\/$/, "")}/seller/${showcase.slug}#k=${showcase.seller_token}`;
   try {
     writeFileSync(join(env.DATA_DIR, "showcase-seller-link.txt"), link + "\n");
+    console.log(`[paylet] showcase seller console link saved to ${join(env.DATA_DIR, "showcase-seller-link.txt")}`); // never log the key itself
   } catch {
     /* ignore */
   }
-  console.log(`[paylet] showcase seller console: ${link}`);
   // P1-04: the proof drop survives deploys (re-imported from docs/proof-run.json); a live one is re-checked with PayPal
   const proof = ensureProofDrop();
   if (proof && !proof.proof_json) void paypalCheck(proof, { force: true }).catch((e) => console.warn("[paylet] proof re-check skipped:", String(e).slice(0, 120)));

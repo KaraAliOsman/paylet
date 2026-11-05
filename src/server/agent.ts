@@ -58,7 +58,7 @@ export const AGENT_DEADLINE_MS = 35_000;
 
 /** A drop slug in a message: a pasted drop link (…/d/<slug>) or a bare slug like "ember-glaze-mug-8f3a". */
 export function slugIn(text: string): string | null {
-  const m = text.match(/\/d\/([a-z0-9]+(?:-[a-z0-9]+)*)/i) ?? text.match(/\b([a-z0-9]+(?:-[a-z0-9]+)*-[0-9a-f]{4})\b/i);
+  const m = text.match(/\/d\/([a-z0-9]+(?:-[a-z0-9]+)*)/i) ?? text.match(/\b([a-z0-9]+(?:-[a-z0-9]+)*-[0-9a-f]{4,8})\b/i);
   return m ? m[1].toLowerCase() : null;
 }
 

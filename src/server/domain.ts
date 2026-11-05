@@ -55,7 +55,7 @@ export interface NewDrop {
 export async function createDrop(d: NewDrop): Promise<DropRow> {
   const seed = randomBytes(32).toString("hex");
   const dropId = id("drop", 6);
-  const slug = `${d.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${dropId.slice(-4)}`;
+  const slug = `${d.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${dropId.slice(-8)}`; // 32 bits: judge drops are unlisted
   db.prepare(
     `INSERT INTO drops(id, slug, title, maker, blurb, art, price_cents, ship_hold_cents, ship_actual_cents, units, waitlist_size, closes_at, status, seed, seed_hash, seller_token, kind, negative_test, created_at)
      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 3, ?, 'open', ?, ?, ?, ?, ?, ?)`,
@@ -94,7 +94,6 @@ export const SHOWCASE: NewDrop = {
   units: 5,
   minutesOpen: 48 * 60,
   kind: "showcase",
-  negativeTest: true,
 };
 
 export async function ensureShowcase(): Promise<DropRow> {
@@ -173,10 +172,42 @@ function dropIsOpen(d: DropRow): boolean {
   return d.status === "open" && d.closes_at > now();
 }
 
+/** Unapproved requests one drop may hold at once: they cost PayPal calls and sweeper time, never a hold. */
+export const MAX_AWAITING_PER_DROP = 120;
+/** Orders created per minute across every drop. The sandbox rate limit is shared with captures and voids, so an open
+ *  MCP endpoint must never be able to starve settlement. */
+const ORDERS_PER_MINUTE = Number(process.env.PAYLET_ORDERS_PER_MINUTE ?? 40);
+let orderRate = ORDERS_PER_MINUTE;
+let orderTokens = ORDERS_PER_MINUTE;
+let orderRefill = Date.now();
+function takeOrderToken(): boolean {
+  const t = Date.now();
+  orderTokens = Math.min(ORDERS_PER_MINUTE, orderTokens + ((t - orderRefill) / 60_000) * orderRate);
+  orderRefill = t;
+  if (orderTokens < 1) return false;
+  orderTokens -= 1;
+  return true;
+}
+/** Test hook. */
+export function _resetOrderBucket(tokens = ORDERS_PER_MINUTE, rate = ORDERS_PER_MINUTE): void {
+  orderTokens = tokens;
+  orderRate = rate;
+  orderRefill = Date.now();
+}
+
+/** What every PayPal order carries in custom_id: PayPal's own timestamped record ties the hold to its public entry id
+ *  and to the seed commitment, so the commitment can't be swapped later without contradicting PayPal. */
+export function orderBinding(pid: string, seedHash: string): string {
+  return `pl1:${pid}:${seedHash.slice(0, 32)}`;
+}
+
 export async function startEntry(dropIdOrSlug: string, source: "human" | "agent", agentLabel?: string) {
   const drop = getDrop(dropIdOrSlug);
   if (!drop) throw new HttpError(404, "drop_not_found");
   if (!dropIsOpen(drop)) throw new HttpError(409, "drop_closed");
+  const waiting = (db.prepare("SELECT COUNT(*) n FROM entries WHERE drop_id = ? AND status = 'awaiting_person'").get(drop.id) as { n: number }).n;
+  if (waiting >= MAX_AWAITING_PER_DROP) throw new HttpError(429, "drop_busy", "Too many entry requests are waiting for a person in this drop. Try again in a few minutes.");
+  if (!takeOrderToken()) throw new HttpError(429, "rate_limited", "Paylet is creating a lot of PayPal orders right now. Try again in a minute.");
   const entryId = id("ent", 8);
   const pid = publicId();
   db.prepare(
@@ -186,6 +217,7 @@ export async function startEntry(dropIdOrSlug: string, source: "human" | "agent"
   const { orderId, approveUrl, trace } = await paypal.createHoldOrder({
     dropId: drop.id,
     entryId,
+    binding: orderBinding(pid, drop.seed_hash),
     title: drop.title,
     sku: drop.slug.slice(0, 120),
     priceCents: drop.price_cents,
@@ -311,6 +343,7 @@ export function addSimulatedCrowd(dropIdOrSlug: string, seed = Math.floor(Math.r
   const drop = getDrop(dropIdOrSlug);
   if (!drop) throw new HttpError(404, "drop_not_found");
   if (!dropIsOpen(drop)) throw new HttpError(409, "drop_closed");
+  if (drop.kind === "proof") throw new HttpError(409, "proof_drop", "The proof drop only holds real PayPal entries.");
   const sims = (db.prepare("SELECT COUNT(*) n FROM entries WHERE drop_id = ? AND source = 'simulated'").get(drop.id) as { n: number }).n;
   if (sims >= 60) throw new HttpError(409, "sim_limit", "This drop already has its simulated crowd.");
   const t = now();
@@ -413,6 +446,9 @@ export async function analyzeDrop(dropIdOrSlug: string) {
   } finally {
     analyzing.delete(drop.id);
   }
+  if (result.suspicious?.length) {
+    emit(drop.id, "ai_text_removed", `${plural(result.suspicious.length, "entry", "entries")} (${result.suspicious.join(", ")}) had text addressed to an AI reviewer in their PayPal name or address. It was removed before the review, and the seller decides as usual.`, false, { tone: "warn" });
+  }
   const ms = Date.now() - t0;
   // resolve() reports pairs by public label; map any internal id defensively so only public ids ever leave the server
   const pidOf = new Map(listEntries(drop.id).map((e) => [e.id, e.public_id]));
@@ -460,6 +496,11 @@ export function decideCluster(dropId: string, clusterId: string, decision: "conf
   const d = getDrop(dropId)!;
   if (d.status !== "open") throw new HttpError(409, "drop_closed");
   db.prepare("UPDATE clusters SET status = ? WHERE id = ? AND drop_id = ?").run(decision, clusterId, dropId);
+  const mark = db.prepare("UPDATE entries SET cluster_id = ?, updated_at = ? WHERE id = ? AND status = 'held'");
+  for (const m of JSON.parse(c.member_ids) as string[]) mark.run(decision === "confirmed" ? c.id : null, now(), m);
+  if (decision === "dismissed") {
+    db.prepare("UPDATE appeals SET status = 'upheld' WHERE drop_id = ? AND status = 'open' AND entry_id IN (SELECT value FROM json_each(?))").run(dropId, c.member_ids);
+  }
   emit(c.drop_id, "cluster_" + decision, clusterDecisionMessage(c.kind, (JSON.parse(c.member_ids) as string[]).length, decision), false);
 }
 
@@ -484,6 +525,9 @@ export function listClusters(dropId: string) {
     memberIds: JSON.parse(c.member_ids) as string[],
     normalizedKey: c.normalized_key ?? null,
     createdAt: c.created_at,
+    appeals: (db
+      .prepare("SELECT a.message, e.public_id FROM appeals a JOIN entries e ON e.id = a.entry_id WHERE a.drop_id = ? AND a.status = 'open' AND e.cluster_id = ?")
+      .all(dropId, c.id) as { message: string; public_id: string }[]).map((a) => ({ publicId: a.public_id, message: a.message })),
   }));
 }
 
@@ -523,9 +567,6 @@ export function pendingReviewsMessage(p: { suggestions: number; accounts: number
 
 /** After closing time the seller still gets this long to decide pending AI suggestions before the automatic draw. */
 export const REVIEW_GRACE_MS = 15 * 60_000;
-/** drand unreachable for this long after the freeze: draw with the committed seed alone (said in the ledger). */
-export const DRAND_GIVE_UP_MS = 15 * 60_000;
-const MAX_DRAND_HOPS = 2;
 
 export interface DrawOptions {
   /** skip the "pending AI suggestions" guard (never for judge drops) */
@@ -680,112 +721,74 @@ export function whenRevealed(dropId: string): Promise<RevealResult | null> {
   return reveals.get(dropId) ?? Promise.resolve(null);
 }
 
-/** Phase 2: wait for the committed drand round, fetch it (3 tries; then the next round, said in the ledger), draw, settle. */
+/** Phase 2: wait for the committed drand round, draw, settle.
+ *  The round fixed at the freeze is final. There is no "next round" and no seed-only fallback: either would let the
+ *  operator see an outcome, pretend drand failed and roll again. A published round stays available on every relay, so
+ *  an outage only delays the draw (said in the ledger) and can never change it. */
 async function reveal(dropId: string): Promise<RevealResult | null> {
   let drop = getDrop(dropId);
-  if (!drop || drop.status !== "frozen") return null;
-  let round = drop.randomness_round;
-  let value: string | null = null;
-  while (round != null) {
-    const beacon = await fetchRoundWithRetries(round);
-    drop = getDrop(dropId)!;
-    if (drop.status !== "frozen") return null;
-    if (beacon) {
-      value = beacon.randomness;
-      break;
-    }
-    if ((drop.randomness_hops ?? 0) < MAX_DRAND_HOPS) {
-      db.prepare("UPDATE drops SET randomness_round = ?, randomness_hops = randomness_hops + 1 WHERE id = ? AND status = 'frozen'").run(round + 1, dropId);
-      emit(
-        dropId,
-        "drand_next_round",
-        `drand round ${roundLabel(round)} could not be fetched after 3 tries, so the draw uses the next round, ${roundLabel(round + 1)} (also published after the freeze).`,
-        false,
-        { tone: "warn" },
-      );
-      round += 1;
-      continue;
-    }
-    if (now() - (drop.frozen_at ?? now()) < DRAND_GIVE_UP_MS) {
-      if (!drandWaitWarned.has(dropId)) {
-        drandWaitWarned.add(dropId);
-        emit(
-          dropId,
-          "drand_unreachable",
-          "drand is unreachable right now. The list stays frozen and Paylet retries every minute; it only draws without public randomness after 15 minutes, and says so here.",
-          false,
-          { tone: "warn" },
-        );
-      }
-      revealRetryAt.set(dropId, now() + 60_000);
-      return null;
-    }
-    // Never silently: the ledger says the draw fell back to the committed seed alone.
-    db.prepare("UPDATE drops SET randomness_round = NULL, randomness_value = NULL WHERE id = ? AND status = 'frozen'").run(dropId);
-    emit(
-      dropId,
-      "drand_fallback",
-      "drand was unreachable for 15 minutes, so this draw uses the committed seed alone. That is weaker: Paylet knew the seed before the list was frozen.",
-      false,
-      { tone: "warn" },
-    );
-    round = null;
-  }
+  if (!drop || drop.status !== "frozen" || drop.randomness_round == null) return null;
+  const round = drop.randomness_round;
+  const beacon = await fetchRoundWithRetries(round);
   drop = getDrop(dropId)!;
   if (drop.status !== "frozen") return null;
-  const finalSeed = value ? finalSeedOf(drop.seed, value) : null;
+  if (!beacon) {
+    if (!drandWaitWarned.has(dropId)) {
+      drandWaitWarned.add(dropId);
+      emit(dropId, "drand_unreachable", `drand round ${roundLabel(round)} can't be fetched right now. The list stays frozen, the round stays the same, and Paylet retries every minute.`, false, { tone: "warn" });
+    }
+    revealRetryAt.set(dropId, now() + 60_000);
+    return null;
+  }
+  const value = beacon.randomness;
+  const finalSeed = finalSeedOf(drop.seed, value);
   const ids = JSON.parse(drop.frozen_list ?? "[]") as string[];
-  const result = await computeDraw(finalSeed ?? drop.seed, ids, drop.units, drop.waitlist_size);
+  const result = await computeDraw(finalSeed, ids, drop.units, drop.waitlist_size);
 
-  // --- synchronous from here: status, outcome and every scheduled money movement
-  const opened = db
-    .prepare("UPDATE drops SET status = 'drawn', drawn_at = ?, randomness_value = ?, final_seed = ? WHERE id = ? AND status = 'frozen'")
-    .run(now(), value, finalSeed, dropId);
-  if (!opened.changes) return null;
+  // --- one transaction: a crash leaves the drop frozen (and the reveal repeats, same result) or fully drawn with its
+  // money movements queued; never drawn with winners nobody will capture.
+  const outcome = tx(() => {
+    const opened = db
+      .prepare("UPDATE drops SET status = 'drawn', drawn_at = ?, randomness_value = ?, final_seed = ? WHERE id = ? AND status = 'frozen'")
+      .run(now(), value, finalSeed, dropId);
+    if (!opened.changes) return null;
+    const d = getDrop(dropId)!;
+    const byPid = new Map(listEntries(dropId).map((e) => [e.public_id, e]));
+    const stillHeld = (pid: string) => byPid.get(pid)?.status === "held";
+    emit(dropId, "randomness", `Randomness: League of Entropy drand round ${roundLabel(round)}, published after the list was frozen. Not even Paylet knew the winners in advance.`, false, { round, value });
+    const winners = result.winners.filter(stillHeld);
+    const lostHold = result.winners.filter((pid) => !stillHeld(pid));
+    const waitlist = result.waitlist.filter(stillHeld);
+    const losers = ids.filter((pid) => stillHeld(pid) && !result.winners.includes(pid) && !result.waitlist.includes(pid));
+    // 1) every status first (settlement bookkeeping never sees a half-drawn drop) …
+    for (const pid of winners) updateEntry(byPid.get(pid)!.id, { status: "won" });
+    for (const pid of waitlist) updateEntry(byPid.get(pid)!.id, { status: "waitlist" });
+    for (const pid of losers) updateEntry(byPid.get(pid)!.id, { status: "lost" });
+    // a winner whose hold disappeared since the freeze reads as a failed payment on /verify: the unit passes on
+    for (const pid of lostHold) {
+      const e = byPid.get(pid);
+      if (e) updateEntry(e.id, { status: "capture_failed", note: "This hold was no longer alive at the draw, so the unit passed to the waitlist." });
+    }
+    emit(dropId, "draw", `Seed revealed. ${plural(winners.length, "winner")}, ${waitlist.length} on the waitlist. Settling with PayPal…`, false, { finalSeed, seed: d.seed });
+    // 2) … then queue the money.
+    // Sandbox negative test: one winner's payment fails so the waitlist hand-off is visible. Prefer a simulated winner
+    // (so a real person's hold is captured normally); only if every winner is real does a real hold get the PayPal 422.
+    const failPid = d.negative_test === 1 ? (winners.find((p) => byPid.get(p)!.source === "simulated") ?? winners[0]) : null;
+    for (const pid of winners) scheduleCapture(d, getEntry(byPid.get(pid)!.id)!, pid === failPid);
+    const loserRows = losers.map((pid) => getEntry(byPid.get(pid)!.id)!);
+    for (const e of loserRows.filter((x) => x.source !== "simulated")) scheduleVoid(d, e, "not selected");
+    releaseSimulated(d, loserRows.filter((x) => x.source === "simulated"), "not selected");
+    return { winners, waitlist, lostHold };
+  });
+  if (!outcome) return null;
   revealRetryAt.delete(dropId);
   drandWaitWarned.delete(dropId);
-  drop = getDrop(dropId)!;
-  const byPid = new Map(listEntries(dropId).map((e) => [e.public_id, e]));
-  const stillHeld = (pid: string) => byPid.get(pid)?.status === "held";
-  if (value && round != null) {
-    emit(
-      dropId,
-      "randomness",
-      `Randomness: League of Entropy drand round ${roundLabel(round)}, published after the list was frozen. Not even Paylet knew the winners in advance.`,
-      false,
-      { round, value },
-    );
-  }
-  const winners = result.winners.filter(stillHeld);
-  const lostHold = result.winners.filter((pid) => !stillHeld(pid));
-  const waitlist = result.waitlist.filter(stillHeld);
-  const losers = ids.filter((pid) => stillHeld(pid) && !result.winners.includes(pid) && !result.waitlist.includes(pid));
-  // 1) every status first (settlement bookkeeping never sees a half-drawn drop) …
-  for (const pid of winners) updateEntry(byPid.get(pid)!.id, { status: "won" });
-  for (const pid of waitlist) updateEntry(byPid.get(pid)!.id, { status: "waitlist" });
-  for (const pid of losers) updateEntry(byPid.get(pid)!.id, { status: "lost" });
-  emit(
-    dropId,
-    "draw",
-    `Seed revealed. ${plural(winners.length, "winner")}, ${waitlist.length} on the waitlist. Settling with PayPal…`,
-    false,
-    { finalSeed, seed: drop.seed },
-  );
-  // 2) … then move money.
-  // Sandbox negative test: one winner's payment fails so the waitlist hand-off is visible. Prefer a simulated winner
-  // (so a real person's hold is captured normally); only if every winner is real does a real hold get the PayPal 422.
-  const failPid = drop.negative_test === 1 ? (winners.find((p) => byPid.get(p)!.source === "simulated") ?? winners[0]) : null;
-  for (const pid of winners) scheduleCapture(drop, getEntry(byPid.get(pid)!.id)!, pid === failPid);
-  const loserRows = losers.map((pid) => getEntry(byPid.get(pid)!.id)!);
-  for (const e of loserRows.filter((x) => x.source !== "simulated")) scheduleVoid(drop, e, "not selected");
-  releaseSimulated(drop, loserRows.filter((x) => x.source === "simulated"), "not selected");
-  // a winner whose hold disappeared between the freeze and the reveal (e.g. voided at PayPal) passes the unit on
-  for (const pid of lostHold) {
+  for (const pid of outcome.lostHold) {
     emit(dropId, "winner_without_hold", `${pid} was drawn but no longer has a live hold, so the unit passes to the waitlist.`, false, { tone: "warn" });
     await promoteNext(dropId);
   }
   settleIfDone(dropId);
-  return { winners, waitlist, round: value ? round : null, finalSeed };
+  return { winners: outcome.winners, waitlist: outcome.waitlist, round, finalSeed };
 }
 
 /** Freeze, then wait for the reveal (tests, scripts). The HTTP endpoint and the sweeper freeze and reveal in the background. */
@@ -799,7 +802,7 @@ function captureAmount(drop: DropRow): number {
   return drop.price_cents + drop.ship_actual_cents; // partial capture: real shipping < shipping held
 }
 
-/** The seed the ranking uses: the final seed after a drand reveal, the committed seed for older drops. */
+/** The seed the ranking uses: the final seed after a drand reveal (drops drawn before P2-10 have only the seed). */
 function drawSeed(drop: DropRow): string {
   return drop.final_seed ?? drop.seed;
 }
@@ -911,6 +914,24 @@ async function markCaptureFailed(e: EntryRow, note: string): Promise<boolean> {
   return true;
 }
 
+/** PayPal says this hold was captured although we had given up on it. The money is real, so the ledger must say so; if
+ *  the unit already went to the next fan the drop is oversold by one, and this late payment is refunded in full. */
+function reconcileLateCapture(e: EntryRow, cents: number, captureId: string | null | undefined): boolean {
+  const ch = db
+    .prepare("UPDATE entries SET status = 'captured', captured_cents = ?, capture_id = COALESCE(?, capture_id), note = ?, updated_at = ? WHERE id = ? AND status IN ('capture_failed','lost','voided')")
+    .run(cents, captureId ?? null, "PayPal confirmed this payment after Paylet had given up on it.", now(), e.id).changes;
+  if (!ch) return false;
+  const drop = getDrop(e.drop_id)!;
+  // `won` counts: a promoted fan may be mid-capture, and the void that found this payment runs before their capture
+  const paid = listEntries(drop.id).filter((x) => x.status === "captured" || x.status === "won").length;
+  const fresh = getEntry(e.id)!;
+  const oversold = paid > drop.units;
+  emit(drop.id, "late_capture", `PayPal reports ${e.public_id} as captured after all. ${oversold ? "The unit already went to the next fan, so this payment is being refunded in full." : "The ledger now matches PayPal."}`, true, { tone: "warn" });
+  if (oversold && fresh.capture_id) enqueue("refund", `refund:${fresh.capture_id}`, e.id, { reason: "the unit passed to the next fan before this payment confirmed" });
+  settleIfDone(drop.id);
+  return true;
+}
+
 /** captured → refunded (refund op, PAYMENT.CAPTURE.REFUNDED / REVERSED webhook, or reconciliation). */
 function markRefunded(e: EntryRow, cents: number, refundId: string | null | undefined): boolean {
   return (
@@ -926,6 +947,8 @@ type OpPayload = { injectFailure?: boolean; reason?: string; authorizationId?: s
 
 const DECLINED_NOTE = "PayPal couldn't use that funding source. Approve again to choose another.";
 
+const unknownCaptureWarned = new Set<string>();
+
 export const handlers: Handlers = {
   async run(op: OpRow) {
     const e = getEntry(op.entry_id);
@@ -937,11 +960,15 @@ export const handlers: Handlers = {
       // never place a hold for an entry that is no longer waiting for one, or after the drop closed
       if (e.status !== "authorizing") return;
       if (!dropIsOpen(drop)) {
-        db.prepare("UPDATE entries SET status = 'expired', note = ?, updated_at = ? WHERE id = ? AND status = 'authorizing'").run(
+        // an earlier attempt may have reached PayPal before it timed out or we crashed: look before walking away
+        const stray = op.attempts > 0 ? await paypal.findAuthorization(e.order_id!) : null;
+        db.prepare("UPDATE entries SET status = 'expired', note = ?, payer_hash = NULL, authorization_id = COALESCE(?, authorization_id), updated_at = ? WHERE id = ? AND status = 'authorizing'").run(
           "The drop closed before the hold was placed — nothing was charged.",
+          stray,
           now(),
           e.id,
         );
+        if (stray) enqueue("void", `void:${stray}`, e.id, { reason: "drop closed during authorization", authorizationId: stray });
         return;
       }
       const r = await paypal.authorizeOrder(e.order_id!, op.key);
@@ -983,6 +1010,8 @@ export const handlers: Handlers = {
       if (r.status !== "VOIDED") {
         // PayPal says the hold was captured: never mark it released
         emit(drop.id, "void_skipped", `No void for ${e.public_id}: PayPal reports the hold as ${r.status}.`, true, data(r.trace));
+        const c = e.order_id ? await paypal.findCapture(e.order_id) : null;
+        reconcileLateCapture(e, c?.amountCents || captureAmount(drop), c?.captureId ?? null);
         return;
       }
       db.prepare("UPDATE entries SET status = CASE WHEN status IN ('merged','capture_failed') THEN status ELSE 'voided' END, settled_at = COALESCE(settled_at, ?), updated_at = ? WHERE id = ?").run(
@@ -1035,14 +1064,17 @@ export const handlers: Handlers = {
         if (back.changes) emit(e.drop_id, "authorize_declined", `PayPal declined the funding source for ${e.public_id} (${f.status} INSTRUMENT_DECLINED): no hold placed. The person can approve again with another one.`, true, data);
         return;
       }
-      updateEntry(e.id, { status: "error", note: `PayPal could not place the hold (${f.issue}).` });
+      // the attempt may have reached PayPal even though we never saw the answer: release any hold it placed
+      const stray = await paypal.findAuthorization(e.order_id!).catch(() => null);
+      // payer_hash goes back to NULL: a failed attempt must not read as "this account already holds an entry"
+      updateEntry(e.id, { status: "error", payer_hash: null, note: `PayPal could not place the hold (${f.issue}).`, ...(stray ? { authorization_id: stray } : {}) });
+      if (stray) enqueue("void", `void:${stray}`, e.id, { reason: "the hold could not be confirmed", authorizationId: stray });
       emit(e.drop_id, "authorize_failed", `Hold failed for ${e.public_id}: ${f.status} ${f.issue}.`, true, data);
     } else if (op.kind === "capture") {
       if (f.cls === "CONFIG") {
         // our credentials/permissions are broken: do NOT burn through the waitlist — retry later
-        db.prepare("UPDATE ops SET status = 'pending', attempts = 0, next_at = ? WHERE key = ?").run(now() + 10 * 60_000, op.key);
         emit(e.drop_id, "capture_blocked", `Capture for ${e.public_id} blocked by a configuration error (${f.status} ${f.issue}); retrying in 10 minutes.`, true, data);
-        return;
+        return { rearmMs: 10 * 60_000 };
       }
       // reconcile with PayPal before declaring the payment failed
       let holdStatus = "";
@@ -1051,11 +1083,18 @@ export const handlers: Handlers = {
         holdStatus = a.status;
         if (a.status === "CAPTURED" || a.status === "PARTIALLY_CAPTURED") {
           emit(e.drop_id, "captured", `Capture for ${e.public_id} confirmed by reconciliation with PayPal (${a.status}).`, true, { trace: a.trace });
-          markCaptured(e, captureAmount(getDrop(e.drop_id)!), null);
+          const c = e.order_id ? await paypal.findCapture(e.order_id).catch(() => null) : null;
+          markCaptured(e, c?.amountCents || captureAmount(getDrop(e.drop_id)!), c?.captureId ?? null);
           return;
         }
       } catch {
-        /* reconciliation is best-effort; the void op GETs again before voiding */
+        // PayPal didn't answer, so we can't tell a declined capture from one that went through. Never hand the unit on
+        // blind: the same op (same PayPal-Request-Id) tries again, and if the first attempt landed PayPal replays it.
+        if (!unknownCaptureWarned.has(op.key)) {
+          unknownCaptureWarned.add(op.key);
+          emit(e.drop_id, "capture_unknown", `Capture for ${e.public_id}: PayPal can't confirm the result yet (${f.status} ${f.issue}). Nothing changes until it does; retrying in 2 minutes.`, true, { ...data, tone: "warn" });
+        }
+        return { rearmMs: 2 * 60_000 };
       }
       const alive = holdStatus === "CREATED" || holdStatus === "PENDING" ? ` PayPal still shows the hold as ${holdStatus}: voiding it` : " Voiding the hold";
       if (payload.injectFailure) {
@@ -1149,6 +1188,7 @@ export async function routeWebhook(evt: WebhookEvent): Promise<{ entry?: EntryRo
   switch (type) {
     case "PAYMENT.CAPTURE.COMPLETED":
       if (markCaptured(e, amountCents || captureAmount(drop), rid)) return { entry: e, outcome: "captured" };
+      if (reconcileLateCapture(e, amountCents || captureAmount(drop), rid)) return { entry: e, outcome: "late capture reconciled" };
       return { entry: e, outcome: e.status === "captured" || e.status === "refunded" ? "capture confirmed" : `no change (${e.status})` };
     case "PAYMENT.CAPTURE.PENDING":
       if (e.status === "won" && !e.capture_id && rid) updateEntry(e.id, { capture_id: rid, note: "Payment pending at PayPal — waiting for confirmation." });
@@ -1212,6 +1252,7 @@ export async function sweep(): Promise<void> {
     updateEntry(e.id, { status: "lost", note: "Hold placed outside the ballot — released." });
     scheduleVoid(getDrop(e.drop_id)!, getEntry(e.id)!, "outside the ballot");
   }
+  repairDrawn();
   // Re-arm voids that failed terminally (voidAuthorizationSafe GETs first, so this is idempotent).
   db.prepare(
     "UPDATE ops SET status = 'pending', attempts = 0, next_at = ? WHERE key IN (SELECT key FROM ops WHERE kind = 'void' AND status = 'failed' AND updated_at < ? AND created_at > ? ORDER BY updated_at LIMIT 3)",
@@ -1230,6 +1271,28 @@ export async function sweep(): Promise<void> {
     } catch (err) {
       console.warn("auto-draw", d.id, String(err));
     }
+  }
+}
+
+/** A restart can stop a settlement between two steps. Once a drawn drop has nothing queued and nothing in flight,
+ *  finish what's owed: a winner with no capture running, a unit still to pass on, or the final settle. */
+function repairDrawn(): void {
+  const drawn = db.prepare("SELECT * FROM drops WHERE status = 'drawn' AND drawn_at < ?").all(now() - 60_000) as unknown as DropRow[];
+  for (const drop of drawn) {
+    const entries = listEntries(drop.id);
+    if (entries.some((e) => pendingOpsFor(e.id).length)) continue;
+    for (const e of entries.filter((x) => x.status === "won" && !x.capture_id)) {
+      if (e.source === "simulated") scheduleCapture(drop, e, false);
+      else if (e.authorization_id) {
+        const key = `cap:${e.authorization_id}:1`;
+        enqueue("capture", key, e.id);
+        db.prepare("UPDATE ops SET status = 'pending', attempts = 0, next_at = ? WHERE key = ? AND status = 'failed'").run(now(), key);
+      }
+    }
+    const paid = entries.filter((e) => e.status === "captured").length;
+    const owed = entries.some((e) => e.status === "capture_failed") && paid < drop.units && !entries.some((e) => e.status === "won");
+    if (owed && entries.some((e) => e.status === "waitlist")) void promoteNext(drop.id);
+    else settleIfDone(drop.id);
   }
 }
 
@@ -1340,6 +1403,9 @@ export function participantView(entryId: string) {
     // only while the person still has to approve (lets /me resume the approval)
     approveUrl: e.status === "awaiting_person" ? e.approve_url : null,
     payerVerified: e.payer_verified == null ? null : e.payer_verified === 1,
+    // the seller grouped this account with others and the draw hasn't closed: the fan can still appeal
+    grouped: d.status === "open" && e.status === "held" && e.cluster_id != null,
+    appealed: (db.prepare("SELECT COUNT(*) n FROM appeals WHERE entry_id = ?").get(e.id) as { n: number }).n > 0,
     shipping: e.tracking_number ? { carrier: e.carrier ?? "OTHER", tracking: e.tracking_number } : null,
     timeline: { requestedAt: e.created_at, approvedAt: e.approved_at, heldAt: e.held_at, drawAt: d.drawn_at, settledAt: e.settled_at },
     drop: { slug: d.slug, title: d.title, maker: d.maker, status: d.status, closesAt: d.closes_at, units: d.units, art: d.art },
@@ -1363,6 +1429,9 @@ export function verifyData(d: DropRow) {
     units: d.units,
     waitlistSize: d.waitlist_size,
     closesAt: d.closes_at,
+    frozenAt: d.status === "open" ? null : d.frozen_at,
+    // a labelled sandbox test made one payment fail on purpose: /verify says so instead of treating it as a real decline
+    negativeTest: d.negative_test === 1,
     seedHash: d.seed_hash,
     seed: revealed(d) ? d.seed : null,
     frozenHash: d.status === "open" ? null : d.frozen_hash,
@@ -1373,15 +1442,21 @@ export function verifyData(d: DropRow) {
     outcome: (frozenList ?? []).map((pid) => {
       const e = byPid.get(pid);
       const note = e?.note && e.source !== "simulated" ? e.note : e?.status === "capture_failed" || e?.promoted_at ? (e?.note ?? undefined) : undefined;
-      return { publicId: pid, status: e?.status ?? "unknown", ...(note ? { note } : {}) };
+      return { publicId: pid, status: e?.status ?? "unknown", ...(e?.source === "simulated" ? { simulated: true } : {}), ...(note ? { note } : {}) };
     }),
   };
 }
 
+/** A fan grouped with other accounts can object while the drop is open. The group goes back to the seller, and the draw
+ *  stays blocked until the seller decides again (one appeal per entry; the text reaches only the seller). */
 export function fileAppeal(entryId: string, message: string) {
   const e = getEntry(entryId);
   if (!e) throw new HttpError(404, "entry_not_found");
-  db.prepare("INSERT INTO appeals(id, drop_id, entry_id, message, status, created_at) VALUES(?, ?, ?, ?, 'open', ?)").run(id("apl", 6), e.drop_id, e.id, message.slice(0, 600), now());
-  if (e.cluster_id) db.prepare("UPDATE clusters SET status = 'suggested' WHERE id = ? AND status = 'confirmed'").run(e.cluster_id);
-  emit(e.drop_id, "appeal", `Appeal filed by ${e.public_id}: "${message.slice(0, 80)}" — cluster returned to the seller for review.`, false);
+  const d = getDrop(e.drop_id)!;
+  if (d.status !== "open" || !e.cluster_id) throw new HttpError(409, "appeal_closed", d.status === "open" ? "This entry isn't part of a group." : "The list is frozen, so this group can no longer change.");
+  if ((db.prepare("SELECT COUNT(*) n FROM appeals WHERE entry_id = ?").get(e.id) as { n: number }).n) throw new HttpError(409, "appeal_exists", "This entry already has an appeal with the seller.");
+  const text = message.replace(/\s+/g, " ").trim().slice(0, 400);
+  db.prepare("INSERT INTO appeals(id, drop_id, entry_id, message, status, created_at) VALUES(?, ?, ?, ?, 'open', ?)").run(id("apl", 6), e.drop_id, e.id, text, now());
+  db.prepare("UPDATE clusters SET status = 'suggested' WHERE id = ? AND status = 'confirmed'").run(e.cluster_id);
+  emit(e.drop_id, "appeal", `${e.public_id} appealed a confirmed group: it goes back to the seller, and the draw waits for their decision.`, false);
 }

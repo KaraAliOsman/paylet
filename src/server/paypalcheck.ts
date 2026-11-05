@@ -2,6 +2,7 @@
 // is stated by PayPal, not by our ledger. Public, read-only (GETs only), cached 60 s per drop, globally capped.
 // Rows carry masked ids and statuses only: no names, emails or full PayPal ids.
 import { fromPayPal } from "../shared/money";
+import { orderBinding } from "./domain";
 import { emit, listEntries, type DropRow, type EntryRow } from "./models";
 import { classify, getAuthorization, getCapture } from "./paypal";
 import { pendingOpsFor } from "./queue";
@@ -15,15 +16,19 @@ export interface PaypalCheckRow {
   capturedCents: number;
   ledgerStatus: string;
   matchesLedger: boolean;
+  /** PayPal's own record of the hold names this public entry id and this drop's seed commitment */
+  boundToDrop: boolean;
+  /** when PayPal says the hold was created (its clock, not ours) */
+  paypalCreatedAt: string | null;
 }
 export interface PaypalCheck {
   checkedAt: number;
   rows: PaypalCheckRow[];
-  totals: { captured: number; voided: number; mismatches: number };
+  totals: { captured: number; voided: number; mismatches: number; bound: number; realHolds: number };
 }
 
 export const CHECK_CACHE_MS = 60_000;
-const MAX_ROWS = 25;
+const MAX_ROWS = 40;
 const MAX_FRESH_PER_MINUTE = 10; // across all drops: protects the shared sandbox app from being hammered
 const cache = new Map<string, PaypalCheck>();
 const inflight = new Map<string, Promise<PaypalCheck>>();
@@ -46,7 +51,7 @@ function expected(e: EntryRow): { auth: string[]; capture?: string[] } {
   }
 }
 
-async function checkEntry(e: EntryRow): Promise<PaypalCheckRow> {
+async function checkEntry(e: EntryRow, seedHash: string): Promise<PaypalCheckRow> {
   const row: PaypalCheckRow = {
     publicId: e.public_id,
     authorization: maskId(e.authorization_id) ?? "…",
@@ -55,10 +60,14 @@ async function checkEntry(e: EntryRow): Promise<PaypalCheckRow> {
     capturedCents: 0,
     ledgerStatus: e.status,
     matchesLedger: false,
+    boundToDrop: false,
+    paypalCreatedAt: null,
   };
   try {
     const a = await getAuthorization(e.authorization_id!);
     row.paypalStatus = a.status;
+    row.boundToDrop = a.customId === orderBinding(e.public_id, seedHash);
+    row.paypalCreatedAt = a.createdAt ?? null;
     row.heldCents = fromPayPal(a.amount);
     const want = expected(e);
     let ok = want.auth.includes(a.status);
@@ -86,9 +95,8 @@ async function checkEntry(e: EntryRow): Promise<PaypalCheckRow> {
 }
 
 async function runCheck(drop: DropRow): Promise<PaypalCheck> {
-  const real = listEntries(drop.id)
-    .filter((e) => e.source !== "simulated" && e.authorization_id && !e.authorization_id.startsWith("SIM-"))
-    .slice(0, MAX_ROWS);
+  const held = listEntries(drop.id).filter((e) => e.source !== "simulated" && e.authorization_id && !e.authorization_id.startsWith("SIM-"));
+  const real = held.slice(0, MAX_ROWS);
   const rows: PaypalCheckRow[] = new Array(real.length);
   let next = 0;
   // three at a time: fast enough for a judge drop, gentle on the sandbox rate limit
@@ -96,7 +104,7 @@ async function runCheck(drop: DropRow): Promise<PaypalCheck> {
     Array.from({ length: Math.min(3, real.length) }, async () => {
       while (next < real.length) {
         const i = next++;
-        rows[i] = await checkEntry(real[i]);
+        rows[i] = await checkEntry(real[i], drop.seed_hash);
       }
     }),
   );
@@ -108,6 +116,8 @@ async function runCheck(drop: DropRow): Promise<PaypalCheck> {
       captured: rows.filter((r) => isCaptured(r.paypalStatus)).length,
       voided: rows.filter((r) => r.paypalStatus === "VOIDED").length,
       mismatches: rows.filter((r) => !r.matchesLedger).length,
+      bound: rows.filter((r) => r.boundToDrop).length,
+      realHolds: held.length,
     },
   };
   if (rows.length) {

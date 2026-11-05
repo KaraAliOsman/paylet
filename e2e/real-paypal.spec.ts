@@ -87,9 +87,14 @@ test("agent link → approve → partial capture of the winner, verified on PayP
   expect(e.status).toBe("captured");
   expect(e.capturedCents).toBe(4450); // $38 + $6.50 real shipping out of a $48 hold
   expect(await paypalAuthStatus(e.authorizationId!)).toMatch(/^(CAPTURED|PARTIALLY_CAPTURED)$/);
+  // PayPal's own record of this hold names the public entry and the seed commitment, stamped by PayPal's clock
+  const check = (await (await request.get(`/api/drops/${slug}/paypal-check`)).json()) as { rows: { boundToDrop: boolean; paypalCreatedAt: string | null }[] };
+  expect(check.rows.length).toBe(1);
+  expect(check.rows[0].boundToDrop).toBe(true);
+  expect(check.rows[0].paypalCreatedAt).toBeTruthy();
 });
 
-test("sandbox negative test on a real hold: PayPal 422, hold released, unit passes on", async ({ page, request }) => {
+test("sandbox negative test on the only real entrant: PayPal 422, the hold ends voided, never charged", async ({ page, request }) => {
   const { slug, sellerKey } = await newJudgeDrop(request);
   await enterWithButton(page, slug);
   await expect(page.getByText(/Hold placed|Placing hold/).first()).toBeVisible({ timeout: 60_000 });
@@ -99,10 +104,10 @@ test("sandbox negative test on a real hold: PayPal 422, hold released, unit pass
   await waitFor(async () => (await seller(request, slug, sellerKey)).drop.status === "settled", 90_000);
   const e = (await seller(request, slug, sellerKey)).entries.find((x) => x.source === "human")!;
   expect(e.status).toBe("capture_failed");
-  expect(await paypalAuthStatus(e.authorizationId!)).toBe("VOIDED"); // never charged
+  await waitFor(async () => (await paypalAuthStatus(e.authorizationId!)) === "VOIDED", 30_000); // never charged
 });
 
-test("a real loser is voided on PayPal (simulated crowd + AI review + confirmed cluster)", async ({ page, request }) => {
+test("real entrant + labelled simulated crowd + AI review: PayPal agrees with the outcome", async ({ page, request }) => {
   const { slug, sellerKey } = await newJudgeDrop(request);
   await enterWithButton(page, slug);
   await expect(page.getByText(/Hold placed|Placing hold/).first()).toBeVisible({ timeout: 60_000 });

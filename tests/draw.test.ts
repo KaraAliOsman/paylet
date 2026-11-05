@@ -1,5 +1,5 @@
 // P0-03 draw guards and P2-10 public randomness (drand quicknet, fetch mocked by tests/helpers/fakeDrand.ts):
-// freeze → reveal in two phases, the committed round, the next round when drand fails, the seed-only fallback said out
+// freeze → reveal in two phases, the committed round, an outage that only delays the draw, said out
 // loud, and the public /verify data that lets anyone recompute the draw.
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { pp } from "./helpers/fakePaypal";
@@ -225,41 +225,19 @@ describe("P2-10 drand: freeze, then reveal with public randomness", () => {
     expect(msgs.find((m) => m.startsWith("List frozen:"))).toMatch(/^List frozen: 4 eligible entries \(SHA-256 [0-9a-f]{12}…\)\. The winners come from drand round [\d,]+, published about \d s from now, after the freeze\.$/);
   });
 
-  it("if a round can't be fetched after 3 tries, the next round is used and the ledger warns", async () => {
+  it("if a round can't be fetched after 3 tries, the list waits for that same round and retries on every relay", async () => {
     const { drop } = await dropWithHolds(3);
     const f = await domain.freeze(drop.id);
     drand.failures.set(f.round!, 3);
-    await domain.scheduleReveal(drop.id);
-    const d = models.getDrop(drop.id)!;
-    expect(d.status).not.toBe("frozen");
-    expect(d.randomness_round).toBe(f.round! + 1);
-    expect(d.randomness_value).toBe(drand.valueOf(f.round! + 1));
-    expect(drand.calls.slice(0, 3).map((u) => new URL(u).host)).toEqual(["api.drand.sh", "api2.drand.sh", "drand.cloudflare.com"]);
-    const warn = events(drop.id).find((e) => e.kind === "drand_next_round")!;
-    expect(warn.message).toMatch(/could not be fetched after 3 tries, so the draw uses the next round/);
-    expect(JSON.parse(warn.data_json!).tone).toBe("warn");
-    await drain();
-  });
-
-  it("drand down: the list stays frozen (warned once); after 15 minutes the draw falls back to the seed alone, said out loud", async () => {
-    const { drop } = await dropWithHolds(2);
-    await domain.freeze(drop.id);
-    drand.down = true;
     expect(await domain.scheduleReveal(drop.id)).toBeNull();
-    expect(models.getDrop(drop.id)!.status).toBe("frozen");
-    expect(events(drop.id).filter((e) => e.kind === "drand_unreachable")).toHaveLength(1);
-
-    db.db.prepare("UPDATE drops SET frozen_at = ? WHERE id = ?").run(Date.now() - domain.DRAND_GIVE_UP_MS - 1000, drop.id);
-    await domain.scheduleReveal(drop.id);
+    expect(models.getDrop(drop.id)).toMatchObject({ status: "frozen", randomness_round: f.round });
+    expect(drand.calls.slice(0, 3).map((u) => new URL(u).host)).toEqual(["api.drand.sh", "api2.drand.sh", "drand.cloudflare.com"]);
+    const warn = events(drop.id).find((e) => e.kind === "drand_unreachable")!;
+    expect(warn.message).toMatch(/the round stays the same/);
+    expect(JSON.parse(warn.data_json!).tone).toBe("warn");
+    await domain.scheduleReveal(drop.id); // the sweeper's next try
+    expect(models.getDrop(drop.id)!.randomness_value).toBe(drand.valueOf(f.round!));
     await drain();
-    const d = await (await app.request(`/api/drops/${drop.slug}`)).json();
-    expect(d.status).toBe("settled");
-    expect(d.randomness).toBeNull();
-    expect(d.finalSeed).toBeNull();
-    expect(events(drop.id).find((e) => e.kind === "drand_fallback")!.message).toMatch(/uses the committed seed alone\. That is weaker/);
-    const again = await shared.computeDraw(d.seed, d.frozenList, d.units, d.waitlistSize);
-    const winner = models.listEntries(drop.id).find((e) => e.status === "captured")!;
-    expect(again.winners).toEqual([winner.public_id]);
   });
 
   it("/verify lists every frozen entry's recorded outcome and every exclusion with its reason", async () => {

@@ -7,6 +7,7 @@ export default defineConfig({
     pool: "forks",
     env: {
       PAYLET_NO_LISTEN: "1",
+      PAYLET_ORDERS_PER_MINUTE: "100000",
       PAYLET_DB: ":memory:",
       PAYPAL_CLIENT_ID: "test-client-id-not-real",
       PAYPAL_CLIENT_SECRET: "test-client-secret-not-real",
