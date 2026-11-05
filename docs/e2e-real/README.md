@@ -5,7 +5,7 @@ logs in as a sandbox buyer in PayPal's own approval window. Every hold, capture 
 cross-checked with PayPal (`GET /v2/payments/authorizations/{id}`); counts such as holds, blocked duplicates and the
 captured amount come from Paylet's seller API.
 
-Latest recorded run: **5/5 on 2026-10-31, commit `4e11af4`** ([`latest.json`](./latest.json), also shown by the README
+Latest recorded run: **5/5 on 2026-11-04, commit `3238de9`, against the live demo** ([`latest.json`](./latest.json), also shown by the README
 badge). `latest.json` always names the commit the run used, so a newer commit means the record is older than the code.
 
 | # | Scenario | What the test asserts | Checked with |

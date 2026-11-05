@@ -2,16 +2,41 @@
   "suite": "e2e/real-paypal.spec.ts",
   "environment": "PayPal SANDBOX (no mocks): a sandbox buyer logs in inside PayPal's window; every hold, capture and void is cross-checked with GET /v2/payments/authorizations/{id}",
   "baseUrl": "https://paylet.onrender.com",
-  "commit": "b1090e1",
-  "date": "2026-11-01",
+  "commit": "3238de9",
+  "date": "2026-11-04",
   "passed": 5,
   "total": 5,
-  "note": "Run against the live demo after the identity redesign (deployed commit b1090e1), workers=1. docs/e2e-real/README.md lists what each test asserts.",
   "tests": [
-    { "title": "JS SDK v6 button: hold placed, then the same PayPal account gets 'no hold placed'", "status": "passed", "durationMs": 26700, "retries": 0 },
-    { "title": "agent link → approve → partial capture of the winner, verified on PayPal", "status": "passed", "durationMs": 27100, "retries": 0 },
-    { "title": "sandbox negative test on a real hold: PayPal 422, hold released, unit passes on", "status": "passed", "durationMs": 24700, "retries": 0 },
-    { "title": "a real loser is voided on PayPal (simulated crowd + AI review + confirmed cluster)", "status": "passed", "durationMs": 49700, "retries": 0 },
-    { "title": "cancelling in PayPal places no hold", "status": "passed", "durationMs": 4100, "retries": 0 }
-  ]
+    {
+      "title": "JS SDK v6 button: hold placed, then the same PayPal account gets 'no hold placed'",
+      "status": "passed",
+      "durationMs": 34167,
+      "retries": 0
+    },
+    {
+      "title": "agent link → approve → partial capture of the winner, verified on PayPal",
+      "status": "passed",
+      "durationMs": 27948,
+      "retries": 0
+    },
+    {
+      "title": "sandbox negative test on the only real entrant: PayPal 422, the hold ends voided, never charged",
+      "status": "passed",
+      "durationMs": 27448,
+      "retries": 0
+    },
+    {
+      "title": "real entrant + labelled simulated crowd + AI review: PayPal agrees with the outcome",
+      "status": "passed",
+      "durationMs": 31879,
+      "retries": 0
+    },
+    {
+      "title": "cancelling in PayPal places no hold",
+      "status": "passed",
+      "durationMs": 4828,
+      "retries": 0
+    }
+  ],
+  "note": "Run against the live demo after deploying commit 3238de9, workers=1. Every outcome cross-checked with PayPal's own records."
 }

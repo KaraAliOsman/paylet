@@ -139,7 +139,7 @@ stateDiagram-v2
 ## Proven against the real PayPal sandbox
 Mocked tests prove our logic; these prove PayPal agrees. [`e2e/real-paypal.spec.ts`](e2e/real-paypal.spec.ts) logs in as a
 sandbox buyer **inside PayPal's own window**, and every hold, capture and void it produces is cross-checked with PayPal
-(`GET /v2/payments/authorizations/{id}`), on top of Paylet's own records. Last recorded run: **5/5 passed on 2026-11-04**
+(`GET /v2/payments/authorizations/{id}`), on top of Paylet's own records. Last recorded run: **5/5 passed on 2026-11-04, against the live demo**
 against a local server on this code, with the real PayPal sandbox ([how to repeat it](docs/e2e-real/README.md)). Scenario 2 also asserts that PayPal's
 own record of the hold carries the entry's public id and the drop's seed commitment.
 
